@@ -1,0 +1,16 @@
+[package]
+name = "sx127x"
+version = "0.1.0"
+edition = "2024"
+authors = ["Jonathan D. Baker <jonathan@ardent.tech>"]
+description = "A no-std driver for Semtech Sx127x chips."
+keywords = ["embedded", "embedded-hal-driver", "lora"]
+categories = ["embedded", "no-std"]
+repository = "https://github.com/ardentTech/sx127x"
+license = "MIT OR Apache-2.0"
+exclude = ["CHANGELOG.md", "examples/*"]
+readme = "README.md"
+
+[dependencies]
+bitfields = "1.0.2"
+embedded-hal-async = "1.0.0"

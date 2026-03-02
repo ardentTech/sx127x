@@ -5,7 +5,9 @@ mod types;
 
 use embedded_hal_async::spi::SpiDevice;
 use crate::registers::*;
-use crate::types::{CyclicErrorCoding, DeviceMode, SpreadingFactor};
+use crate::types::{DeviceMode, RxStatus};
+
+//const FXOSC_HHZ: u32 = 32;
 
 pub enum Sx127xError<SPI> {
     SPI(SPI),
@@ -17,33 +19,24 @@ pub struct Sx127x<SPI> {
 }
 impl <SPI: SpiDevice>Sx127x<SPI> {
 
-    // enable_shared_reg_access
+    pub fn new(spi: SPI) -> Self {
+        Self { spi }
+    }
 
-    /// Sets the coding rate.
-    // TODO "In implicit header mode should be set on receiver to determine expected coding rate. See 4.1.1.3"
-    // pub async fn set_coding_rate(&mut self, rate: CyclicErrorCoding) -> Result<(), Sx127xError<SPI::Error>> {
-    //     self.set_register_bits(REG_MODEM_CONFIG_1, REG_MODEM_CONFIG_1_CODING_RATE_MASK, rate as u8).await
-    // }
-    //
-    // pub async fn set_header_mode(&mut self, implicit: bool) -> Result<(), Sx127xError<SPI::Error>> {
-    //     self.set_register_bits(REG_MODEM_CONFIG_1, REG_MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, implicit as u8).await
-    // }
+    /// Reads the byte from the register at `addr`.
+    pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
+        let mut read = [0u8; 2];
+        // other module: let write = [reg & 0x7f, 0]; 0x7f == 0111_1111 // TODO why?
+        let write = [addr, 0u8];
+        self.spi.transfer(&mut read, &write).await.map_err(Sx127xError::SPI)?;
+        Ok(read[1])
+    }
 
-    // set_low_frequency_mode(&mut self, on: bool)
-
-    /// Sets the spreading factor.
-    // pub async fn set_spreading_factor(&mut self, factor: SpreadingFactor) -> Result<(), Sx127xError<SPI::Error>> {
-    //     self.set_register_bits(REG_MODEM_CONFIG_2, REG_MODEM_CONFIG_2_SPREADING_FACTOR_MASK, (factor as u8) << 4).await?;
-    //     if factor == SpreadingFactor::Factor6 {
-    //         self.set_header_mode(true).await?;
-    //         self.set_register_bits(REG_DETECT_OPTIMIZE, REG_DETECT_OPTIMIZE_DETECT_OPTIMIZE_MASK, 0x5).await?;
-    //         self.write(REG_DETECTION_THRESHOLD, 0x0c).await
-    //     } else {
-    //         // TODO set explicit header mode?
-    //         self.set_register_bits(REG_DETECT_OPTIMIZE, REG_DETECT_OPTIMIZE_DETECT_OPTIMIZE_MASK, 0x3).await?;
-    //         self.write(REG_DETECTION_THRESHOLD, 0x0a).await
-    //     }
-    // }
+    /// Reads the RX modem status.
+    pub async fn rx_status(&mut self) -> Result<RxStatus, Sx127xError<SPI::Error>> {
+        let byte = RegModemStat::from_bits(self.read(RegModemStat::addr()).await?);
+        Ok(RxStatus::from(byte))
+    }
 
     /// Puts the device in sleep mode.
     pub async fn sleep(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
@@ -64,18 +57,7 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(RegOpMode::addr(), byte.into_bits()).await
     }
 
-    // SPI -----------------------------------------------------------------------------------------
-
-    /// Reads the byte from the register at `addr`.
-    async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
-        let mut read = [0u8; 2];
-        // other module: let write = [reg & 0x7f, 0]; 0x7f == 0111_1111 // TODO why?
-        let write = [addr, 0u8];
-        self.spi.transfer(&mut read, &write).await.map_err(Sx127xError::SPI)?;
-        Ok(read[1])
-    }
-
-    /// Writes a raw byte `data` to register at `addr`.
+    /// Writes the `data` raw byte to the register at `addr`.
     async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xError<SPI::Error>> {
         // other module: let buffer = [reg | 0x80, byte]; 0x80 == 1000_0000 // TODO why?
         let buf = [addr, data];

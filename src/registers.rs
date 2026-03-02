@@ -59,6 +59,21 @@ enum Reg {
 
 #[bitfield(u8)]
 #[derive(Copy, Clone)]
+pub(crate) struct RegModemStat {
+    #[bits(3)]
+    rx_coding_rate: u8,
+    modem_clear: bool,
+    header_info_valid: bool,
+    rx_on_going: bool,
+    signal_synchronized: bool,
+    signal_detected: bool
+}
+impl Register for RegModemStat {
+    fn addr() -> u8 { Reg::ModemStat as u8 }
+}
+
+#[bitfield(u8)]
+#[derive(Copy, Clone)]
 pub(crate) struct RegOpMode {
     long_range_mode: bool,
     access_shared_reg: bool,

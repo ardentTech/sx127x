@@ -1,3 +1,4 @@
+use crate::registers::RegModemStat;
 use crate::types::DeviceMode::{Cad, Fsrx, Fstx, RxContinuous, RxSingle, Sleep, Stdby, Tx};
 
 #[derive(PartialEq)]
@@ -21,7 +22,7 @@ pub enum CyclicErrorCoding {
     Rate4_8 = 0x4,
 }
 
-// see: Table 16
+// see: [table 16]
 pub(crate) enum DeviceMode {
     Sleep = 0x0,
     Stdby = 0x1,
@@ -47,6 +48,36 @@ impl DeviceMode {
         }
     }
     pub(crate) const fn into_bits(self) -> u8 { self as u8 }
+}
+
+
+// TODO make a struct and include coding rate of last header received?
+//see: [page 111]
+#[derive(Clone, Copy, PartialEq)]
+pub enum RxStatus {
+    ModemClear,
+    HeaderInfoValid,
+    RxOnGoing,
+    SignalSynchronized,
+    SignalDetected,
+    Unknown,
+}
+impl From<RegModemStat> for RxStatus {
+    fn from(value: RegModemStat) -> Self {
+        if value.modem_clear() {
+            RxStatus::ModemClear
+        } else if value.header_info_valid() {
+            RxStatus::HeaderInfoValid
+        } else if value.rx_on_going() {
+            RxStatus::RxOnGoing
+        } else if value.signal_synchronized() {
+            RxStatus::SignalSynchronized
+        } else if value.signal_detected() {
+            RxStatus::SignalDetected
+        } else {
+            RxStatus::Unknown
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]

@@ -1,5 +1,5 @@
 use bitfields::bitfield;
-use crate::types::DeviceMode;
+use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, SpreadingFactor};
 
 pub(crate) trait Register {
     fn addr() -> u8;
@@ -55,6 +55,32 @@ pub(crate) enum Reg {
     SyncWord = 0x39,
     HighBWOptimize2 = 0x3a,
     InvertIQ2 = 0x3b,
+}
+
+#[bitfield(u8)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegModemConfig1 {
+    #[bits(4)]
+    bandwidth: Bandwidth,
+    #[bits(3)]
+    coding_rate: CyclicErrorCoding,
+    implicit_header_mode_on: bool
+}
+impl Register for RegModemConfig1 {
+    fn addr() -> u8 { Reg::ModemConfig1 as u8 }
+}
+#[bitfield(u8)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegModemConfig2 {
+    #[bits(4)]
+    spreading_factor: SpreadingFactor,
+    tx_continuous_mode: bool,
+    rx_payload_crc_on: bool,
+    #[bits(2)]
+    symbol_timeout: u8
+}
+impl Register for RegModemConfig2 {
+    fn addr() -> u8 { Reg::ModemConfig2 as u8 }
 }
 
 #[bitfield(u8)]

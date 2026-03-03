@@ -1,7 +1,10 @@
 use crate::registers::RegModemStat;
+use crate::types::CyclicErrorCoding::{Rate4_5, Rate4_6, Rate4_7, Rate4_8};
 use crate::types::DeviceMode::{Cad, Fsrx, Fstx, RxContinuous, RxSingle, Sleep, Stdby, Tx};
+use crate::types::SpreadingFactor::{Sf10, Sf11, Sf12, Sf6, Sf7, Sf8, Sf9};
+// TODO should all `from_bits` use `try_from` instead?
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,
     Bw10_4kHz = 0x1,
@@ -14,16 +17,47 @@ pub enum Bandwidth {
     Bw250kHz = 0x8,
     Bw500kHz = 0x9,
 }
+impl Bandwidth {
+    pub(crate) const fn from_bits(bits: u8) -> Self {
+        match bits {
+            0x0 => Bandwidth::Bw7_8kHz,
+            0x1 => Bandwidth::Bw10_4kHz,
+            0x2 => Bandwidth::Bw15_6kHz,
+            0x3 => Bandwidth::Bw20_8kHz,
+            0x4 => Bandwidth::Bw31_25kHz,
+            0x5 => Bandwidth::Bw41_7kHz,
+            0x6 => Bandwidth::Bw62_5kHz,
+            0x7 => Bandwidth::Bw125kHz,
+            0x8 => Bandwidth::Bw250kHz,
+            0x9 => Bandwidth::Bw500kHz,
+            _ => unreachable!()
+        }
+    }
+    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
+}
 
+#[derive(Clone, Copy, PartialEq)]
 pub enum CyclicErrorCoding {
     Rate4_5 = 0x1,
     Rate4_6 = 0x2,
     Rate4_7 = 0x3,
     Rate4_8 = 0x4,
 }
+impl CyclicErrorCoding {
+    pub(crate) const fn from_bits(bits: u8) -> Self {
+        match bits {
+            0x1 => Rate4_5,
+            0x2 => Rate4_6,
+            0x3 => Rate4_7,
+            0x4 => Rate4_8,
+            _ => unreachable!()
+        }
+    }
+    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
+}
 
 // see: [table 16]
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub(crate) enum DeviceMode {
     Sleep = 0x0,
     Stdby = 0x1,
@@ -83,11 +117,26 @@ impl From<RegModemStat> for RxStatus {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum SpreadingFactor {
-    Factor6 = 0x6,
-    Factor7 = 0x7,
-    Factor8 = 0x8,
-    Factor9 = 0x9,
-    Factor10 = 0xa,
-    Factor11 = 0xb,
-    Factor12 = 0xc,
+    Sf6 = 0x6,
+    Sf7 = 0x7,
+    Sf8 = 0x8,
+    Sf9 = 0x9,
+    Sf10 = 0xa,
+    Sf11 = 0xb,
+    Sf12 = 0xc,
+}
+impl SpreadingFactor {
+    pub(crate) const fn from_bits(bits: u8) -> Self {
+        match bits {
+            0x6 => Sf6,
+            0x7 => Sf7,
+            0x8 => Sf8,
+            0x9 => Sf9,
+            0xa => Sf10,
+            0xb => Sf11,
+            0xc => Sf12,
+            _ => unreachable!()
+        }
+    }
+    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
 }

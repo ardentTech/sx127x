@@ -23,6 +23,7 @@ pub enum CyclicErrorCoding {
 }
 
 // see: [table 16]
+#[derive(PartialEq)]
 pub(crate) enum DeviceMode {
     Sleep = 0x0,
     Stdby = 0x1,

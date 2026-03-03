@@ -5,7 +5,7 @@ pub(crate) trait Register {
     fn addr() -> u8;
 }
 
-enum Reg {
+pub(crate) enum Reg {
     Fifo = 0x00,
     OpMode = 0x01,
     FrMsb = 0x06,

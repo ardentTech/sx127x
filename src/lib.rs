@@ -5,7 +5,7 @@ mod types;
 
 use embedded_hal_async::spi::SpiDevice;
 use crate::registers::*;
-use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, RxStatus, SpreadingFactor};
+use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Interrupt, RxStatus, SpreadingFactor};
 
 const FXOSC_HZ: u32 = 32_000_000;
 const FSTEP: f32 = (FXOSC_HZ as f32) / (2u32.pow(19) as f32);
@@ -27,11 +27,42 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Self { spi }
     }
 
+    /// Clears an interrupt.
+    pub async fn clear_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = RegIrqFlags::from_bits(self.read(RegIrqFlags::addr()).await?);
+        // TODO check triggered before proceeding
+        byte.clear_interrupt(interrupt);
+        self.write(RegIrqFlags::addr(), byte.into_bits()).await
+    }
+
+    /// Checks whether an interrupt was triggered.
+    pub async fn interrupt_triggered(&mut self, interrupt: Interrupt) -> Result<bool, Sx127xError<SPI::Error>> {
+        let byte = RegIrqFlags::from_bits(self.read(RegIrqFlags::addr()).await?);
+        Ok(byte.interrupt_triggered(interrupt))
+    }
+
+    // TODO mask_interrupt()
+
     /// Reads the byte from the register at `addr`.
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
         let mut read = [0u8; 2];
         self.spi.transfer(&mut read, &[addr, 0u8]).await.map_err(Sx127xError::SPI)?;
         Ok(read[1])
+    }
+
+    // TODO receive_continuous
+
+    // TODO timeout arg?
+    pub async fn receive_single_blocking(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.standby().await?;
+        self.write(Reg::FifoAddrPtr as u8, Reg::FifoRxBaseAddr as u8).await?;
+        self.set_device_mode(DeviceMode::RxSingle).await?;
+        // if explicit mode, ValidHeader interrupt will fire on reception of valid preamble
+        // wait for IRQ (RxTimeout, RxDone)
+        // chip will switch to standby
+        // check PayloadCrcError for packet payload integrity
+        // read rx data
+        Ok(())
     }
 
     /// Reads the RX modem status.

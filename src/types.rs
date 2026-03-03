@@ -86,6 +86,18 @@ impl DeviceMode {
 }
 
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum Interrupt {
+    CadDetected,
+    FhssChangeChannel,
+    CadDone,
+    TxDone,
+    ValidHeader,
+    PayloadCrcError,
+    RxDone,
+    RxTimeout,
+}
+
 // TODO make a struct and include coding rate of last header received?
 //see: [page 111]
 #[derive(Clone, Copy, PartialEq)]

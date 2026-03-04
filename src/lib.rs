@@ -3,9 +3,11 @@
 mod registers;
 mod types;
 
+pub use types::Dio0;
+
 use embedded_hal_async::spi::SpiDevice;
 use crate::registers::*;
-use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Interrupt, RxStatus, SpreadingFactor};
+use crate::types::*;
 
 const FXOSC_HZ: u32 = 32_000_000;
 const FSTEP: f32 = (FXOSC_HZ as f32) / (2u32.pow(19) as f32);
@@ -14,26 +16,49 @@ const FSTEP: f32 = (FXOSC_HZ as f32) / (2u32.pow(19) as f32);
 pub enum Sx127xError<SPI> {
     DeviceBusy,
     InvalidPayloadLength,
+    InvalidSymbolTimeout,
     SPI(SPI),
 }
 
+// TODO does this need a state machine? blegh. e.g. for async reads...
 /// LoRa driver.
 pub struct Sx127x<SPI> {
     spi: SPI
 }
 impl <SPI: SpiDevice>Sx127x<SPI> {
 
-    pub fn new(spi: SPI) -> Self {
-        Self { spi }
+    pub async fn new(spi: SPI) -> Result<Sx127x<SPI>, Sx127xError<SPI::Error>> {
+        let mut driver = Self { spi };
+        driver.sleep().await?;
+        let mut byte = RegOpMode::from_bits(driver.read(RegOpMode::addr()).await?);
+        byte.set_long_range_mode(true);
+        driver.write(RegOpMode::addr(), byte.into_bits()).await?;
+        driver.standby().await?; // TODO leave in Sleep?
+        Ok(driver)
     }
 
-    /// Clears an interrupt.
+    /// Clears an interrupt if it was triggered.
     pub async fn clear_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = RegIrqFlags::from_bits(self.read(RegIrqFlags::addr()).await?);
-        // TODO check triggered before proceeding
-        byte.clear_interrupt(interrupt);
-        self.write(RegIrqFlags::addr(), byte.into_bits()).await
+        if byte.interrupt_triggered(interrupt) {
+            byte.clear_interrupt(interrupt);
+            self.write(RegIrqFlags::addr(), byte.into_bits()).await
+        } else {
+            Ok(())
+        }
     }
+
+    /// Enables the DIO0 pin.
+    pub async fn enable_dio0(&mut self, dio: Dio0) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = RegDioMapping1::from_bits(self.read(RegDioMapping1::addr()).await?);
+        byte.set_dio0(dio as u8);
+        self.write(RegDioMapping1::addr(), byte.into_bits()).await
+    }
+    // TODO DIO1, 2, 3, 4, 5
+
+    // pub async fn enable_interrupt(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    //
+    // }
 
     /// Checks whether an interrupt was triggered.
     pub async fn interrupt_triggered(&mut self, interrupt: Interrupt) -> Result<bool, Sx127xError<SPI::Error>> {
@@ -45,23 +70,34 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
 
     /// Reads the byte from the register at `addr`.
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
-        let mut read = [0u8; 2];
-        self.spi.transfer(&mut read, &[addr, 0u8]).await.map_err(Sx127xError::SPI)?;
+        let mut read = [0; 2];
+        // 1 wnr bit (0 for read) + 7 bit addr
+        let write = [addr & 0x7f, 0];
+        self.spi.transfer(&mut read, &write).await.map_err(Sx127xError::SPI)?;
         Ok(read[1])
     }
 
-    // TODO receive_continuous
+    pub async fn read_rx_data(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        // TODO should NOT be in RxSingle or RxContinuous mode
+        // check PayloadCrcError for packet payload integrity
+        // read rx data
+        Ok(())
+    }
 
-    // TODO timeout arg?
-    pub async fn receive_single_blocking(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    // TODO receive_continuous
+    // pub async fn receive()
+
+    /// Searches for a preamble for `timeout` symbols.
+    pub async fn receive_single(&mut self, timeout: u16) -> Result<(), Sx127xError<SPI::Error>> {
+        // TODO unit test
+        // TODO make this a tuple struct and put validation on it? easier to test?
+        if timeout < 4 || timeout > 1023 {
+            return Err(Sx127xError::InvalidSymbolTimeout)
+        }
+
         self.standby().await?;
         self.write(Reg::FifoAddrPtr as u8, Reg::FifoRxBaseAddr as u8).await?;
         self.set_device_mode(DeviceMode::RxSingle).await?;
-        // if explicit mode, ValidHeader interrupt will fire on reception of valid preamble
-        // wait for IRQ (RxTimeout, RxDone)
-        // chip will switch to standby
-        // check PayloadCrcError for packet payload integrity
-        // read rx data
         Ok(())
     }
 
@@ -159,7 +195,8 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
 
     /// Writes the `data` raw byte to the register at `addr`.
     async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        let buf = [addr, data];
+        // 1 wnr bit (1 for write) + 7 bit addr
+        let buf = [addr | 0x80, data]; // 0x80 == 0b1000_0000
         self.spi.write(&buf).await.map_err(Sx127xError::SPI)
     }
 }

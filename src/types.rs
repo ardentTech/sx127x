@@ -2,6 +2,7 @@ use crate::registers::RegModemStat;
 use crate::types::CyclicErrorCoding::{Rate4_5, Rate4_6, Rate4_7, Rate4_8};
 use crate::types::DeviceMode::{Cad, Fsrx, Fstx, RxContinuous, RxSingle, Sleep, Stdby, Tx};
 use crate::types::SpreadingFactor::{Sf10, Sf11, Sf12, Sf6, Sf7, Sf8, Sf9};
+
 // TODO should all `from_bits` use `try_from` instead?
 
 #[derive(Clone, Copy, PartialEq)]
@@ -85,6 +86,13 @@ impl DeviceMode {
     pub(crate) const fn into_bits(self) -> u8 { self as u8 }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum Dio0 {
+    RxDone = 0x0,
+    TxDone = 0x1,
+    CadDone = 0x2,
+}
+// TODO DIO1, 2, 3, 4, 5
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Interrupt {

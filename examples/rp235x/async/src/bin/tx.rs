@@ -1,18 +1,21 @@
-//! This example shows how to use the Lorem modem to transmit a packet using the rp235x-hal.
-
+//! This async example shows how to use the LoRa modem to transmit a packet and handle the TxDone
+//! interrupt once triggered.
 #![no_std]
 #![no_main]
 
 use defmt::*;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
-use embassy_rp::gpio::{Level, Output};
+use embassy_rp::gpio::{Input, Level, Output, Pull};
 use embassy_rp::peripherals::SPI1;
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
+use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
-use sx127x::Sx127x;
+use sx127x::{Dio0, Sx127x};
+
+const FREQUENCY_HZ: u32 = 915_000_000;
 
 #[embassy_executor::main]
 async fn main(_task_spawner: Spawner) {
@@ -20,21 +23,27 @@ async fn main(_task_spawner: Spawner) {
     let miso = p.PIN_12;
     let mosi = p.PIN_11;
     let sck = p.PIN_10;
-    let cs = Output::new(p.PIN_9, Level::High);
+    let cs = Output::new(p.PIN_13, Level::High);
 
     let spi = Spi::new(p.SPI1, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Config::default());
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
-    let spi_device = SpiDevice::new(&spi_bus, cs);
+    let spi_dev = SpiDevice::new(&spi_bus, cs);
 
-    let mut sx1276 = Sx127x::new(spi_device);
-    sx1276.set_frequency(915_000_000).await.expect("set_frequency failed :(");
+    let mut dio0 = Input::new(p.PIN_15, Pull::Down);
+
+    let mut sx127x = Sx127x::new(spi_dev).await.expect("driver init failed :(");
+
+    sx127x.set_frequency(FREQUENCY_HZ).await.expect("set_frequency failed :(");
+    sx127x.enable_dio0(Dio0::TxDone).await.expect("enable_dio0 failed");
 
     loop {
-        match sx1276.transmit("howdy".as_bytes()).await {
-            Ok(_) => info!("transmit ok :)"),
-            Err(_) => error!("transmit failed:(")
+        match sx127x.transmit("howdy".as_bytes()).await {
+            Ok(_) => info!("transmit init :)"),
+            Err(_) => error!("transmit init failed :(")
         }
-        embassy_time::Timer::after(embassy_time::Duration::from_millis(3_000)).await;
+        dio0.wait_for_high().await;
+        info!("TxDone triggered!");
+        Timer::after(embassy_time::Duration::from_millis(3_000)).await;
         info!("looping around");
     }
 }

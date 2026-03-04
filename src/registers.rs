@@ -1,5 +1,5 @@
 use bitfields::bitfield;
-use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Interrupt, SpreadingFactor};
+use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Dio0, Interrupt, SpreadingFactor};
 
 pub(crate) trait Register {
     fn addr() -> u8;
@@ -55,6 +55,25 @@ pub(crate) enum Reg {
     SyncWord = 0x39,
     HighBWOptimize2 = 0x3a,
     InvertIQ2 = 0x3b,
+    //
+    DioMapping1 = 0x40,
+    DioMapping2 = 0x41,
+}
+
+#[bitfield(u8, order = msb)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegDioMapping1 { // I think this is the same between the two modems
+    #[bits(2)]
+    dio0: u8,
+    #[bits(2)]
+    dio1: u8,
+    #[bits(2)]
+    dio2: u8,
+    #[bits(2)]
+    dio3: u8,
+}
+impl Register for RegDioMapping1 {
+    fn addr() -> u8 { Reg::DioMapping1 as u8 }
 }
 
 #[bitfield(u8, order = msb)]
@@ -159,6 +178,13 @@ impl Register for RegOpMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_set_dio0() {
+        let mut byte = RegDioMapping1::from_bits(0b0);
+        byte.set_dio0(Dio0::TxDone as u8);
+        assert_eq!(byte.dio0(), Dio0::TxDone as u8);
+    }
 
     #[test]
     fn test_clear_interrupt_cad_detected() {

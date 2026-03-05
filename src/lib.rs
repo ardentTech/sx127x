@@ -17,6 +17,7 @@ pub enum Sx127xError<SPI> {
     DeviceBusy,
     InvalidPayloadLength,
     InvalidSymbolTimeout,
+    RxNotReady,
     SPI(SPI),
 }
 
@@ -66,7 +67,12 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Ok(byte.interrupt_triggered(interrupt))
     }
 
-    // TODO mask_interrupt()
+    /// Masks an interrupt.
+    pub async fn mask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = RegIrqFlagsMask::from_bits(self.read(RegIrqFlagsMask::addr()).await?);
+        byte.mask(interrupt);
+        self.write(RegIrqFlagsMask::addr(), byte.into_bits()).await
+    }
 
     /// Reads the byte from the register at `addr`.
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
@@ -78,26 +84,28 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     }
 
     pub async fn read_rx_data(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        // TODO should NOT be in RxSingle or RxContinuous mode
+        // TODO should NOT be in RxSingle or RxContinuous mode (RxNotReady)
         // check PayloadCrcError for packet payload integrity
         // read rx data
         Ok(())
     }
 
-    // TODO receive_continuous
-    // pub async fn receive()
+    /// Enables receive mode and Searches for a preamble until `timeout` symbols.
+    pub async fn receive(&mut self, timeout: Option<u16>) -> Result<(), Sx127xError<SPI::Error>> {
+        // TODO unit test  (make this a tuple struct and put validation on it? easier to test?)
+        if let Some(timeout) = timeout {
+            if timeout < 4 || timeout > 1023 {
+                return Err(Sx127xError::InvalidSymbolTimeout)
+            }
 
-    /// Searches for a preamble for `timeout` symbols.
-    pub async fn receive_single(&mut self, timeout: u16) -> Result<(), Sx127xError<SPI::Error>> {
-        // TODO unit test
-        // TODO make this a tuple struct and put validation on it? easier to test?
-        if timeout < 4 || timeout > 1023 {
-            return Err(Sx127xError::InvalidSymbolTimeout)
+            // TODO test this
+            self.write(RegModemConfig2::addr(), (timeout >> 8) as u8).await?;
+            self.write(RegSymbTimeoutLsb::addr(), (timeout & 0xff) as u8 ).await?;
+
+            self.standby().await?;
+            self.write(Reg::FifoAddrPtr as u8, Reg::FifoRxBaseAddr as u8).await?;
+            self.set_device_mode(DeviceMode::RxSingle).await?;
         }
-
-        self.standby().await?;
-        self.write(Reg::FifoAddrPtr as u8, Reg::FifoRxBaseAddr as u8).await?;
-        self.set_device_mode(DeviceMode::RxSingle).await?;
         Ok(())
     }
 
@@ -178,6 +186,13 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         }
         self.write(Reg::PayloadLength as u8, payload.len() as u8).await?;
         self.set_device_mode(DeviceMode::Tx).await
+    }
+    
+    /// Unmasks an interrupt.
+    pub async fn unmask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = RegIrqFlagsMask::from_bits(self.read(RegIrqFlagsMask::addr()).await?);
+        byte.unmask(interrupt);
+        self.write(RegIrqFlagsMask::addr(), byte.into_bits()).await
     }
 
     // PRIVATE -------------------------------------------------------------------------------------

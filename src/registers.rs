@@ -1,4 +1,5 @@
 use bitfields::bitfield;
+use crate::registers::Reg::SymbTimeoutLsb;
 use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Dio0, Interrupt, SpreadingFactor};
 
 pub(crate) trait Register {
@@ -78,6 +79,48 @@ impl Register for RegDioMapping1 {
 
 #[bitfield(u8, order = msb)]
 #[derive(Copy, Clone)]
+pub(crate) struct RegIrqFlagsMask {
+    rx_timeout_mask: bool,
+    rx_done_mask: bool,
+    payload_crc_error_mask: bool,
+    valid_header_mask: bool,
+    tx_done_mask: bool,
+    cad_done_mask: bool,
+    fhss_change_channel_mask: bool,
+    cad_detected_mask: bool,
+}
+impl Register for RegIrqFlagsMask {
+    fn addr() -> u8 { Reg::IrqFlagsMask as u8 }
+}
+impl RegIrqFlagsMask {
+    pub(crate) fn mask(&mut self, interrupt: Interrupt) {
+        match interrupt {
+            Interrupt::CadDetected => self.set_cad_detected_mask(true),
+            Interrupt::FhssChangeChannel => self.set_fhss_change_channel_mask(true),
+            Interrupt::CadDone => self.set_cad_done_mask(true),
+            Interrupt::TxDone => self.set_tx_done_mask(true),
+            Interrupt::ValidHeader => self.set_valid_header_mask(true),
+            Interrupt::PayloadCrcError => self.set_payload_crc_error_mask(true),
+            Interrupt::RxDone => self.set_rx_done_mask(true),
+            Interrupt::RxTimeout => self.set_rx_timeout_mask(true),
+        }
+    }
+    pub(crate) fn unmask(&mut self, interrupt: Interrupt) {
+        match interrupt {
+            Interrupt::CadDetected => self.set_cad_detected_mask(false),
+            Interrupt::FhssChangeChannel => self.set_fhss_change_channel_mask(false),
+            Interrupt::CadDone => self.set_cad_done_mask(false),
+            Interrupt::TxDone => self.set_tx_done_mask(false),
+            Interrupt::ValidHeader => self.set_valid_header_mask(false),
+            Interrupt::PayloadCrcError => self.set_payload_crc_error_mask(false),
+            Interrupt::RxDone => self.set_rx_done_mask(false),
+            Interrupt::RxTimeout => self.set_rx_timeout_mask(false),
+        }
+    }
+}
+
+#[bitfield(u8, order = msb)]
+#[derive(Copy, Clone)]
 pub(crate) struct RegIrqFlags {
     rx_timeout: bool,
     rx_done: bool,
@@ -139,7 +182,7 @@ pub(crate) struct RegModemConfig2 {
     tx_continuous_mode: bool,
     rx_payload_crc_on: bool,
     #[bits(2)]
-    symbol_timeout: u8
+    symbol_timeout_msb: u8
 }
 impl Register for RegModemConfig2 {
     fn addr() -> u8 { Reg::ModemConfig2 as u8 }
@@ -173,6 +216,15 @@ pub(crate) struct RegOpMode {
 }
 impl Register for RegOpMode {
     fn addr() -> u8 { Reg::OpMode as u8 }
+}
+
+#[bitfield(u8)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegSymbTimeoutLsb {
+    symb_timeout: u8
+}
+impl Register for RegSymbTimeoutLsb {
+    fn addr() -> u8 { SymbTimeoutLsb as u8 }
 }
 
 #[cfg(test)]

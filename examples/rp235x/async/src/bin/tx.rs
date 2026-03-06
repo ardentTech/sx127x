@@ -13,7 +13,7 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
-use sx127x::{Dio0, Sx127x};
+use sx127x::{Dio0, Sx127x, Sx127xConfig};
 
 const FREQUENCY_HZ: u32 = 915_000_000;
 
@@ -31,9 +31,10 @@ async fn main(_task_spawner: Spawner) {
 
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
 
-    let mut sx127x = Sx127x::new(spi_dev).await.expect("driver init failed :(");
+    let mut config = Sx127xConfig::default();
+    config.frequency = FREQUENCY_HZ;
+    let mut sx127x = Sx127x::new(spi_dev, config).await.expect("driver init failed :(");
 
-    sx127x.set_frequency(FREQUENCY_HZ).await.expect("set_frequency failed :(");
     sx127x.enable_dio0(Dio0::TxDone).await.expect("enable_dio0 failed");
 
     loop {

@@ -5,7 +5,7 @@ use crate::types::SpreadingFactor::{Sf10, Sf11, Sf12, Sf6, Sf7, Sf8, Sf9};
 
 // TODO should all `from_bits` use `try_from` instead?
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,
     Bw10_4kHz = 0x1,
@@ -14,6 +14,7 @@ pub enum Bandwidth {
     Bw31_25kHz = 0x4,
     Bw41_7kHz = 0x5,
     Bw62_5kHz = 0x6,
+    #[default]
     Bw125kHz = 0x7,
     Bw250kHz = 0x8,
     Bw500kHz = 0x9,
@@ -37,8 +38,9 @@ impl Bandwidth {
     pub(crate) const fn into_bits(self) -> u8 { self as u8 }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq)]
 pub enum CyclicErrorCoding {
+    #[default]
     Rate4_5 = 0x1,
     Rate4_6 = 0x2,
     Rate4_7 = 0x3,
@@ -92,7 +94,37 @@ pub enum Dio0 {
     TxDone = 0x1,
     CadDone = 0x2,
 }
-// TODO DIO1, 2, 3, 4, 5
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Dio1 {
+    RxTimeout = 0x0,
+    FhssChangeChannel = 0x1,
+    CadDetected = 0x2,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Dio2 {
+    FhssChangeChannel = 0x0,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Dio3 {
+    CadDone = 0x0,
+    ValidHeader = 0x1,
+    PayloadCrcError = 0x2,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Dio4 {
+    CadDetected = 0x0,
+    PllLock = 0x1,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Dio5 {
+    ModeReady = 0x0,
+    ClkOut = 0x1,
+}
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Interrupt {
@@ -135,9 +167,10 @@ impl From<RegModemStat> for RxStatus {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq)]
 pub enum SpreadingFactor {
     Sf6 = 0x6,
+    #[default]
     Sf7 = 0x7,
     Sf8 = 0x8,
     Sf9 = 0x9,

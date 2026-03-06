@@ -1,6 +1,6 @@
 use bitfields::bitfield;
 use crate::registers::Reg::SymbTimeoutLsb;
-use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Dio0, Interrupt, SpreadingFactor};
+use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Interrupt, SpreadingFactor};
 
 pub(crate) trait Register {
     fn addr() -> u8;
@@ -16,6 +16,7 @@ pub(crate) enum Reg {
     PaRamp = 0x0a,
     Ocp = 0x0b,
     Lna = 0x0c,
+    // TODO 0d..=3f require AccessSharedReg on RegOpMode to be set (see 4.4)
     FifoAddrPtr = 0x0d,
     FifoTxBaseAddr = 0x0e,
     FifoRxBaseAddr = 0x0f,
@@ -76,6 +77,34 @@ pub(crate) struct RegDioMapping1 { // I think this is the same between the two m
 impl Register for RegDioMapping1 {
     fn addr() -> u8 { Reg::DioMapping1 as u8 }
 }
+
+#[bitfield(u8, order = msb)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegDioMapping2 { // I think this is the same between the two modems
+    #[bits(2)]
+    dio4: u8,
+    #[bits(2)]
+    dio5: u8,
+    #[bits(3)]
+    _pad: u8,
+    map_preamble_detect: bool
+}
+impl Register for RegDioMapping2 {
+    fn addr() -> u8 { Reg::DioMapping2 as u8 }
+}
+
+#[bitfield(u8, order = msb)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegHopChannel {
+    pll_timeout: bool,
+    crc_on_payload: bool,
+    #[bits(6)]
+    _pad: u8,
+}
+impl Register for RegHopChannel {
+    fn addr() -> u8 { Reg::HopChannel as u8 }
+}
+
 
 #[bitfield(u8, order = msb)]
 #[derive(Copy, Clone)]
@@ -160,6 +189,17 @@ impl RegIrqFlags {
             Interrupt::RxTimeout => self.rx_timeout(),
         }
     }
+
+    // TODO unit test
+    // Checks if ValidHeader, PayloadCrcError, RxDone and RxTimeout interrupts are NOT asserted.
+    pub(crate) fn packet_rx_termination_ok(&self, crc_on_payload: bool) -> bool {
+        let bits = self.into_bits() >> 4;
+        if crc_on_payload {
+            bits & 0xf == 0
+        } else {
+            bits & 0xc == 0 && bits & 0x1 == 0
+        }
+    }
 }
 
 #[bitfield(u8, order = msb)]
@@ -229,6 +269,7 @@ impl Register for RegSymbTimeoutLsb {
 
 #[cfg(test)]
 mod tests {
+    use crate::Dio0;
     use super::*;
 
     #[test]

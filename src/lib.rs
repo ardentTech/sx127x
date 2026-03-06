@@ -145,7 +145,7 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Ok(read[1])
     }
 
-    /// TODO
+    /// Reads 255 bytes from the FIFO buffer.
     pub async fn read_rx_data(&mut self) -> Result<[u8; 255], Sx127xError<SPI::Error>> {
         let byte: RegOpMode = RegOpMode::from_bits(self.read(RegOpMode::addr()).await?);
         // TODO is this sufficient? MUST is be Standby?
@@ -232,11 +232,26 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     }
 
     /// Sets the spreading factor.
+    ///
+    /// See: page 27
     pub async fn set_spreading_factor(&mut self, spreading_factor: SpreadingFactor) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegModemConfig2::from_bits(self.read(RegModemConfig2::addr()).await?);
-        // TODO if 6 there are side effects (see p27)
-        byte.set_spreading_factor(spreading_factor);
-        self.write(RegModemConfig2::addr(), byte.into_bits()).await
+        let mut modem_config_2 = RegModemConfig2::from_bits(self.read(RegModemConfig2::addr()).await?);
+        modem_config_2.set_spreading_factor(spreading_factor);
+        self.write(RegModemConfig2::addr(), modem_config_2.into_bits()).await?;
+
+        if spreading_factor == SpreadingFactor::Sf6 {
+            self.set_header_mode(true).await?;
+        }
+        let mut detect_optimize = RegDetectOptimize::from_bits(self.read(RegDetectOptimize::addr()).await?);
+        detect_optimize.update(spreading_factor);
+        self.write(RegDetectOptimize::addr(), detect_optimize.into_bits()).await?;
+
+        // TODO this feels a bit heavy-handed
+        let mut detection_threshold = RegDetectionThreshold::from_bits(self.read(RegDetectionThreshold::addr()).await?);
+        detection_threshold.update(spreading_factor);
+        self.write(RegDetectionThreshold::addr(), detection_threshold.into_bits()).await?;
+
+        Ok(())
     }
 
     /// Puts the device in sleep mode, which clears the FIFO buffer.
@@ -295,7 +310,7 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     // Writes the `data` raw byte to the register at `addr`.
     async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xError<SPI::Error>> {
         // 1 wnr bit (1 for write) + 7 bit addr
-        let buf = [addr | 0x80, data]; // 0x80 == 0b1000_0000
+        let buf = [addr | 0x80, data];
         self.spi.write(&buf).await.map_err(Sx127xError::SPI)
     }
 }

@@ -2,6 +2,8 @@ use bitfields::bitfield;
 use crate::registers::Reg::SymbTimeoutLsb;
 use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Interrupt, SpreadingFactor};
 
+// TODO mark RO bitfields
+
 pub(crate) trait Register {
     fn addr() -> u8;
 }
@@ -60,6 +62,46 @@ pub(crate) enum Reg {
     //
     DioMapping1 = 0x40,
     DioMapping2 = 0x41,
+}
+
+#[bitfield(u8, order = msb)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegDetectOptimize {
+    automatic_if_on: bool,
+    #[bits(4)]
+    _pad: u8,
+    #[bits(3)]
+    detection_optimize: u8
+}
+impl Register for RegDetectOptimize {
+    fn addr() -> u8 { Reg::DetectOptimize as u8 }
+}
+impl RegDetectOptimize {
+    // TODO not happy with this name
+    pub(crate) fn update(&mut self, spreading_factor: SpreadingFactor) {
+        match spreading_factor {
+            SpreadingFactor::Sf6  => self.set_detection_optimize(0x05),
+            _ => self.set_detection_optimize(0x03),
+        }
+    }
+}
+
+#[bitfield(u8)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegDetectionThreshold {
+    detection_threshold: u8
+}
+impl Register for RegDetectionThreshold {
+    fn addr() -> u8 { Reg::DetectionThreshold as u8 }
+}
+impl RegDetectionThreshold {
+    // TODO not happy with this name
+    pub(crate) fn update(&mut self, spreading_factor: SpreadingFactor) {
+        match spreading_factor {
+            SpreadingFactor::Sf6 => self.set_detection_threshold(0x0c),
+            _ => self.set_detection_threshold(0x0a),
+        }
+    }
 }
 
 #[bitfield(u8, order = msb)]

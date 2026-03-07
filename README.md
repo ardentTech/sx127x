@@ -1,11 +1,6 @@
 # Sx127x
 `#![no_std]`, `async`-first driver for the Semtech SX127X transceiver built on top of Rust [embedded-hal](https://github.com/rust-embedded/embedded-hal).
 
-### Vs. sx127x_lora
-- single source of truth
-- async support
-- compile for LoRa or FSK/OOK
-
 ### Cargo Features
 - `lora` (default): compile the LoRa modem
 - `fsk`: compile the FSK/OOK modem

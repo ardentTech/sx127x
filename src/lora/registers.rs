@@ -1,7 +1,5 @@
 use bitfields::bitfield;
-use crate::registers::Reg::SymbTimeoutLsb;
-use crate::types::{Bandwidth, CyclicErrorCoding, DeviceMode, Interrupt, SpreadingFactor};
-
+use crate::lora::types::*;
 // TODO mark RO bitfields
 
 pub(crate) trait Register {
@@ -284,6 +282,23 @@ pub(crate) struct RegModemStat {
 impl Register for RegModemStat {
     fn addr() -> u8 { Reg::ModemStat as u8 }
 }
+impl Into<RxStatus> for RegModemStat {
+    fn into(self) -> RxStatus {
+        if self.modem_clear() {
+            RxStatus::ModemClear
+        } else if self.header_info_valid() {
+            RxStatus::HeaderInfoValid
+        } else if self.rx_on_going() {
+            RxStatus::RxOnGoing
+        } else if self.signal_synchronized() {
+            RxStatus::SignalSynchronized
+        } else if self.signal_detected() {
+            RxStatus::SignalDetected
+        } else {
+            RxStatus::Unknown
+        }
+    }
+}
 
 #[bitfield(u8, order = msb)]
 #[derive(Copy, Clone)]
@@ -306,12 +321,11 @@ pub(crate) struct RegSymbTimeoutLsb {
     symb_timeout: u8
 }
 impl Register for RegSymbTimeoutLsb {
-    fn addr() -> u8 { SymbTimeoutLsb as u8 }
+    fn addr() -> u8 { Reg::SymbTimeoutLsb as u8 }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::Dio0;
     use super::*;
 
     #[test]

@@ -1,8 +1,3 @@
-use crate::registers::RegModemStat;
-use crate::types::CyclicErrorCoding::{Rate4_5, Rate4_6, Rate4_7, Rate4_8};
-use crate::types::DeviceMode::{Cad, Fsrx, Fstx, RxContinuous, RxSingle, Sleep, Stdby, Tx};
-use crate::types::SpreadingFactor::{Sf10, Sf11, Sf12, Sf6, Sf7, Sf8, Sf9};
-
 // TODO should all `from_bits` use `try_from` instead?
 
 #[derive(Clone, Copy, Default, PartialEq)]
@@ -49,10 +44,10 @@ pub enum CyclicErrorCoding {
 impl CyclicErrorCoding {
     pub(crate) const fn from_bits(bits: u8) -> Self {
         match bits {
-            0x1 => Rate4_5,
-            0x2 => Rate4_6,
-            0x3 => Rate4_7,
-            0x4 => Rate4_8,
+            0x1 => Self::Rate4_5,
+            0x2 => Self::Rate4_6,
+            0x3 => Self::Rate4_7,
+            0x4 => Self::Rate4_8,
             _ => unreachable!()
         }
     }
@@ -74,14 +69,14 @@ pub(crate) enum DeviceMode {
 impl DeviceMode {
     pub(crate) const fn from_bits(bits: u8) -> Self {
         match bits {
-            0x0 => Sleep,
-            0x1 => Stdby,
-            0x2 => Fstx,
-            0x3 => Tx,
-            0x4 => Fsrx,
-            0x5 => RxContinuous,
-            0x6 => RxSingle,
-            0x7 => Cad,
+            0x0 => Self::Sleep,
+            0x1 => Self::Stdby,
+            0x2 => Self::Fstx,
+            0x3 => Self::Tx,
+            0x4 => Self::Fsrx,
+            0x5 => Self::RxContinuous,
+            0x6 => Self::RxSingle,
+            0x7 => Self::Cad,
             _ => unreachable!()
         }
     }
@@ -149,23 +144,6 @@ pub enum RxStatus {
     SignalDetected,
     Unknown,
 }
-impl From<RegModemStat> for RxStatus {
-    fn from(value: RegModemStat) -> Self {
-        if value.modem_clear() {
-            RxStatus::ModemClear
-        } else if value.header_info_valid() {
-            RxStatus::HeaderInfoValid
-        } else if value.rx_on_going() {
-            RxStatus::RxOnGoing
-        } else if value.signal_synchronized() {
-            RxStatus::SignalSynchronized
-        } else if value.signal_detected() {
-            RxStatus::SignalDetected
-        } else {
-            RxStatus::Unknown
-        }
-    }
-}
 
 #[derive(Clone, Copy, Default, PartialEq)]
 pub enum SpreadingFactor {
@@ -181,13 +159,13 @@ pub enum SpreadingFactor {
 impl SpreadingFactor {
     pub(crate) const fn from_bits(bits: u8) -> Self {
         match bits {
-            0x6 => Sf6,
-            0x7 => Sf7,
-            0x8 => Sf8,
-            0x9 => Sf9,
-            0xa => Sf10,
-            0xb => Sf11,
-            0xc => Sf12,
+            0x6 => Self::Sf6,
+            0x7 => Self::Sf7,
+            0x8 => Self::Sf8,
+            0x9 => Self::Sf9,
+            0xa => Self::Sf10,
+            0xb => Self::Sf11,
+            0xc => Self::Sf12,
             _ => unreachable!()
         }
     }

@@ -1,5 +1,5 @@
-//! This async example demonstrates the RxTimeout interrupt being triggered on DIO1 when a packet
-//! doesn't arrive before the user-defined timeout (in symbols).
+//! This async example shows how to use the LoRa modem to transmit a packet and then respond to the
+//! TxDone interrupt on DIO0 once triggered.
 #![no_std]
 #![no_main]
 
@@ -13,7 +13,8 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
-use sx127x::{Dio1, Interrupt, Sx127x, Sx127xConfig};
+use sx127x::lora::driver::{Sx127x, Sx127xConfig};
+use sx127x::lora::types::{Dio0, Interrupt};
 
 const FREQUENCY_HZ: u32 = 915_000_000;
 
@@ -29,19 +30,22 @@ async fn main(_task_spawner: Spawner) {
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 
-    let mut dio1 = Input::new(p.PIN_15, Pull::Down);
+    let mut dio0 = Input::new(p.PIN_15, Pull::Down);
 
     let mut config = Sx127xConfig::default();
     config.frequency = FREQUENCY_HZ;
     let mut sx127x = Sx127x::new(spi_dev, config).await.expect("driver init failed :(");
 
-    sx127x.enable_dio1(Dio1::RxTimeout).await.expect("enable_dio0 failed");
+    sx127x.enable_dio0(Dio0::TxDone).await.expect("enable_dio0 failed");
 
     loop {
-        sx127x.receive(Some(4)).await.expect("receive init failed :(");
-        dio1.wait_for_high().await;
-        info!("RxTimeout triggered!");
-        sx127x.clear_interrupt(Interrupt::RxTimeout).await.expect("clear interrupt RxTimeout failed :(");
+        match sx127x.transmit("howdy".as_bytes()).await {
+            Ok(_) => info!("transmit init :)"),
+            Err(_) => error!("transmit init failed :(")
+        }
+        dio0.wait_for_high().await;
+        info!("TxDone triggered!");
+        sx127x.clear_interrupt(Interrupt::TxDone).await.expect("clear interrupt TxDone failed :(");
         Timer::after(embassy_time::Duration::from_millis(3_000)).await;
         info!("looping around");
     }

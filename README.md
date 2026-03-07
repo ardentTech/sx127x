@@ -23,3 +23,4 @@
 - [ ] `async` FSK/OOK impl
 - [ ] `sync` FSK/OOK impl
 - [ ] RX, RX_TX, TX driver modes to customize FIFO buffer mem layout
+- [ ] set up `cargo-embed` for examples

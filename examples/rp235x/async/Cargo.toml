@@ -21,6 +21,20 @@ panic-probe = { version = "1.0.0", features = ["print-defmt"] }
 debug = true
 
 [[bin]]
+name = "rx_continuous"
+path = "src/bin/rx_continuous.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
+name = "rx_timeout"
+path = "src/bin/rx_timeout.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "tx"
 path = "src/bin/tx.rs"
 test = false

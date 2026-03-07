@@ -3,7 +3,8 @@
 mod registers;
 mod types;
 
-pub use types::Dio0;
+pub use types::{Dio0, Dio1};
+pub use types::Interrupt;
 
 use embedded_hal_async::spi::SpiDevice;
 use crate::registers::*;
@@ -147,12 +148,6 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
 
     /// Reads 255 bytes from the FIFO buffer.
     pub async fn read_rx_data(&mut self) -> Result<[u8; 255], Sx127xError<SPI::Error>> {
-        let byte: RegOpMode = RegOpMode::from_bits(self.read(RegOpMode::addr()).await?);
-        // TODO is this sufficient? MUST is be Standby?
-        if byte.mode() == RxContinuous || byte.mode() == RxSingle {
-            return Err(Sx127xError::InvalidState)
-        }
-
         let reg_hop_channel = RegHopChannel::from_bits(self.read(RegHopChannel::addr()).await?);
         let reg_irq_flags = RegIrqFlags::from_bits(self.read(RegIrqFlags::addr()).await?);
         if !reg_irq_flags.packet_rx_termination_ok(reg_hop_channel.crc_on_payload()) {
@@ -160,7 +155,8 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         }
 
         // read rx data
-        self.write(Reg::FifoAddrPtr as u8, Reg::FifoRxCurrentAddr as u8).await?;
+        let rx_fifo_addr = self.read(Reg::FifoRxCurrentAddr as u8).await?;
+        self.write(Reg::FifoAddrPtr as u8, rx_fifo_addr).await?;
         let num_bytes = self.read(Reg::RxNbBytes as u8).await?;
         let mut buffer = [0; 255];
         for i in 0..num_bytes {
@@ -179,6 +175,7 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         let mut mode = RxContinuous;
         if let Some(timeout) = timeout {
             // TODO unit test  (make this a tuple struct and put validation on it? easier to test?)s
+            // if a struct (or other) could have MIN, MAX helpers...
             if timeout < 4 || timeout > 1023 {
                 return Err(Sx127xError::InvalidSymbolTimeout)
             }

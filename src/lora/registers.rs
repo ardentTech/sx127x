@@ -2,7 +2,7 @@ use bitfields::bitfield;
 use crate::lora::types::*;
 // TODO mark RO bitfields
 
-pub(crate) trait Register {
+pub(crate) trait Addressable {
     fn addr() -> u8;
 }
 
@@ -71,7 +71,7 @@ pub(crate) struct RegDetectOptimize {
     #[bits(3)]
     detection_optimize: u8
 }
-impl Register for RegDetectOptimize {
+impl Addressable for RegDetectOptimize {
     fn addr() -> u8 { Reg::DetectOptimize as u8 }
 }
 impl RegDetectOptimize {
@@ -89,7 +89,7 @@ impl RegDetectOptimize {
 pub(crate) struct RegDetectionThreshold {
     detection_threshold: u8
 }
-impl Register for RegDetectionThreshold {
+impl Addressable for RegDetectionThreshold {
     fn addr() -> u8 { Reg::DetectionThreshold as u8 }
 }
 impl RegDetectionThreshold {
@@ -114,7 +114,7 @@ pub(crate) struct RegDioMapping1 { // I think this is the same between the two m
     #[bits(2)]
     dio3: u8,
 }
-impl Register for RegDioMapping1 {
+impl Addressable for RegDioMapping1 {
     fn addr() -> u8 { Reg::DioMapping1 as u8 }
 }
 
@@ -129,7 +129,7 @@ pub(crate) struct RegDioMapping2 { // I think this is the same between the two m
     _pad: u8,
     map_preamble_detect: bool
 }
-impl Register for RegDioMapping2 {
+impl Addressable for RegDioMapping2 {
     fn addr() -> u8 { Reg::DioMapping2 as u8 }
 }
 
@@ -141,7 +141,7 @@ pub(crate) struct RegHopChannel {
     #[bits(6)]
     _pad: u8,
 }
-impl Register for RegHopChannel {
+impl Addressable for RegHopChannel {
     fn addr() -> u8 { Reg::HopChannel as u8 }
 }
 
@@ -158,7 +158,7 @@ pub(crate) struct RegIrqFlagsMask {
     fhss_change_channel_mask: bool,
     cad_detected_mask: bool,
 }
-impl Register for RegIrqFlagsMask {
+impl Addressable for RegIrqFlagsMask {
     fn addr() -> u8 { Reg::IrqFlagsMask as u8 }
 }
 impl RegIrqFlagsMask {
@@ -200,7 +200,7 @@ pub(crate) struct RegIrqFlags {
     fhss_change_channel: bool,
     cad_detected: bool,
 }
-impl Register for RegIrqFlags {
+impl Addressable for RegIrqFlags {
     fn addr() -> u8 { Reg::IrqFlags as u8 }
 }
 impl RegIrqFlags {
@@ -230,8 +230,7 @@ impl RegIrqFlags {
         }
     }
 
-    // TODO unit test
-    // Checks if ValidHeader, PayloadCrcError, RxDone and RxTimeout interrupts are NOT asserted.
+    // Determines if a RX packet terminated successfully.
     pub(crate) fn packet_rx_termination_ok(&self, crc_on_payload: bool) -> bool {
         let bits = self.into_bits() >> 4;
         if crc_on_payload {
@@ -251,7 +250,7 @@ pub(crate) struct RegModemConfig1 {
     coding_rate: CyclicErrorCoding,
     implicit_header_mode_on: bool
 }
-impl Register for RegModemConfig1 {
+impl Addressable for RegModemConfig1 {
     fn addr() -> u8 { Reg::ModemConfig1 as u8 }
 }
 #[bitfield(u8, order = msb)]
@@ -264,7 +263,7 @@ pub(crate) struct RegModemConfig2 {
     #[bits(2)]
     symbol_timeout_msb: u8
 }
-impl Register for RegModemConfig2 {
+impl Addressable for RegModemConfig2 {
     fn addr() -> u8 { Reg::ModemConfig2 as u8 }
 }
 
@@ -279,7 +278,7 @@ pub(crate) struct RegModemStat {
     signal_synchronized: bool,
     signal_detected: bool
 }
-impl Register for RegModemStat {
+impl Addressable for RegModemStat {
     fn addr() -> u8 { Reg::ModemStat as u8 }
 }
 impl Into<RxStatus> for RegModemStat {
@@ -311,7 +310,7 @@ pub(crate) struct RegOpMode {
     #[bits(3)]
     mode: DeviceMode
 }
-impl Register for RegOpMode {
+impl Addressable for RegOpMode {
     fn addr() -> u8 { Reg::OpMode as u8 }
 }
 
@@ -320,7 +319,7 @@ impl Register for RegOpMode {
 pub(crate) struct RegSymbTimeoutLsb {
     symb_timeout: u8
 }
-impl Register for RegSymbTimeoutLsb {
+impl Addressable for RegSymbTimeoutLsb {
     fn addr() -> u8 { Reg::SymbTimeoutLsb as u8 }
 }
 
@@ -485,5 +484,29 @@ mod tests {
     fn test_interrupt_triggered_rx_timeout_true() {
         let byte = RegIrqFlags::from_bits(0b1000_0000);
         assert!(byte.interrupt_triggered(Interrupt::RxTimeout));
+    }
+
+    #[test]
+    fn test_packet_rx_termination_ok_true_crc_on_payload_true() {
+        let byte = RegIrqFlags::from_bits(0x0f);
+        assert!(byte.packet_rx_termination_ok(true))
+    }
+
+    #[test]
+    fn test_packet_rx_termination_ok_false_crc_on_payload_true() {
+        let byte = RegIrqFlags::from_bits(0xff);
+        assert!(!byte.packet_rx_termination_ok(true))
+    }
+
+    #[test]
+    fn test_packet_rx_termination_ok_false_crc_on_payload_false() {
+        let byte = RegIrqFlags::from_bits(0xff);
+        assert!(!byte.packet_rx_termination_ok(false))
+    }
+
+    #[test]
+    fn test_packet_rx_termination_ok_true_crc_on_payload_false() {
+        let byte = RegIrqFlags::from_bits(0xdd);
+        assert!(!byte.packet_rx_termination_ok(false))
     }
 }

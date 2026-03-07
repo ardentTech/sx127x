@@ -13,9 +13,18 @@
   the chip." [DS section 5.2.2]
 
 ### TODO
+- [ ] tx power
+- [ ] ocp
+- [ ] set preamble
+- [ ] set crc
+- [ ] invert iq
+- [ ] rssi
+- [ ] snr
+- [ ] frequency error
+- [ ] ldo
+- [ ] `rx_single` example
 - [ ] `async` LoRa impl
 - [ ] `sync` LoRa impl
 - [ ] `async` FSK/OOK impl
 - [ ] `sync` FSK/OOK impl
 - [ ] RX, RX_TX, TX driver modes to customize FIFO buffer mem layout
-- [ ] set up `cargo-embed` for examples

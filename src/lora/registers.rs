@@ -316,6 +316,19 @@ impl Addressable for RegOpMode {
 
 #[bitfield(u8)]
 #[derive(Copy, Clone)]
+pub(crate) struct RegPaConfig {
+    pa_select: bool,
+    #[bits(3)]
+    max_power: u8,
+    #[bits(4)]
+    output_power: u8
+}
+impl Addressable for RegPaConfig {
+    fn addr() -> u8 { Reg::PaConfig as u8 }
+}
+
+#[bitfield(u8)]
+#[derive(Copy, Clone)]
 pub(crate) struct RegSymbTimeoutLsb {
     symb_timeout: u8
 }

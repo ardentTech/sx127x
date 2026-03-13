@@ -218,6 +218,23 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(RegModemConfig1::addr(), byte.into_bits()).await
     }
 
+    /// Sets the power amplification.
+    pub async fn set_power_amplification(&mut self, pa_config: &PaConfig) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = RegPaConfig::from_bits(self.read(RegPaConfig::addr()).await?);
+        match pa_config.pa_select {
+            PaSelect::Boost => {
+                byte.set_pa_select(true);
+                byte.set_output_power(pa_config.power);
+            }
+            PaSelect::Rfo(max_power) => {
+                byte.set_pa_select(false);
+                byte.set_max_power(max_power);
+                byte.set_output_power(pa_config.power - max_power + 15);
+            }
+        }
+        Ok(())
+    }
+
     /// Sets the spreading factor.
     ///
     /// See: page 27

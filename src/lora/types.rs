@@ -171,3 +171,56 @@ impl SpreadingFactor {
     }
     pub(crate) const fn into_bits(self) -> u8 { self as u8 }
 }
+
+#[derive(Debug, Default, PartialEq)]
+pub enum PaSelect {
+    #[default]
+    Boost,
+    Rfo(u8)
+}
+
+#[derive(Debug, PartialEq)]
+pub enum PaConfigError {
+    InvalidPaBoostPower,
+    InvalidRfoPower
+}
+
+#[derive(Debug, PartialEq)]
+pub struct PaConfig {
+    /// Power amplifier.
+    pub(crate) pa_select: PaSelect,
+    /// Output power in dBm. If `pa_select` == `Boost`, `power` must be <= 20. If `pa_select` ==
+    /// `Rfo`, `power` must be <= 17.
+    pub(crate) power: u8,
+}
+
+impl PaConfig {
+    pub fn new(output: PaSelect, power: u8) -> Result<Self, PaConfigError> {
+        match output {
+            PaSelect::Boost => if power > 20 { return Err(PaConfigError::InvalidPaBoostPower) },
+            PaSelect::Rfo(_) => if power > 17 { return Err(PaConfigError::InvalidRfoPower) },
+        }
+        Ok(Self { pa_select: output, power })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lora::types::{PaConfig, PaConfigError, PaSelect};
+
+    #[test]
+    fn test_pa_config_new_invalid_boost_power() {
+        assert_eq!(
+            PaConfig::new(PaSelect::Boost, 21u8),
+            Err(PaConfigError::InvalidPaBoostPower)
+        );
+    }
+
+    #[test]
+    fn test_pa_config_new_invalid_rfo_power() {
+        assert_eq!(
+            PaConfig::new(PaSelect::Rfo(3u8), 18u8),
+            Err(PaConfigError::InvalidRfoPower)
+        );
+    }
+}

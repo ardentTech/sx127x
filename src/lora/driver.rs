@@ -218,6 +218,11 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(RegModemConfig1::addr(), byte.into_bits()).await
     }
 
+    /// Sets the power amplification ramp.
+    pub async fn set_pa_ramp(&mut self, pa_ramp: PaRamp) -> Result<(), Sx127xError<SPI::Error>> {
+        self.write(Reg::PaRamp as u8, pa_ramp as u8).await
+    }
+
     /// Sets the power amplification.
     pub async fn set_power_amplification(&mut self, pa_config: &PaConfig) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = RegPaConfig::from_bits(self.read(RegPaConfig::addr()).await?);

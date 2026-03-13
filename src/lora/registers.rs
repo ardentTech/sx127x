@@ -9,11 +9,12 @@ pub(crate) trait Addressable {
 pub(crate) enum Reg {
     Fifo = 0x00,
     OpMode = 0x01,
+    // 0x02..=0x05: reserved
     FrMsb = 0x06,
     FrMid = 0x07,
     FrLsb = 0x08,
     PaConfig = 0x09,
-    PaRamp = 0x0a,
+    PaRamp = 0x0a, // TODO
     Ocp = 0x0b,
     Lna = 0x0c,
     // TODO 0d..=3f require AccessSharedReg on RegOpMode to be set (see 4.4)

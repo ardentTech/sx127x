@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `lora` and `fsk` cargo features
+- `set_power_amplification` method
+- `set_pa_ramp` method
 
 ## [0.1.0] - 2026-03-07
 

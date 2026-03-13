@@ -1,5 +1,7 @@
 // TODO should all `from_bits` use `try_from` instead?
 
+use crate::lora::registers::Addressable;
+
 #[derive(Clone, Copy, Default, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,
@@ -131,6 +133,27 @@ pub enum Interrupt {
     PayloadCrcError,
     RxDone,
     RxTimeout,
+}
+
+#[derive(Clone, Copy, Default, PartialEq)]
+pub enum PaRamp {
+    Ms3_4 = 0x0,
+    Ms2 = 0x1,
+    Ms1 = 0x2,
+    Us500 = 0x3,
+    Us250 = 0x4,
+    Us125 = 0x5,
+    Us100 = 0x6,
+    Us62 = 0x7,
+    Us50 = 0x8,
+    #[default]
+    Us40 = 0x9,
+    Us31 = 0xa,
+    Us25 = 0xb,
+    Us20 = 0xc,
+    Us15 = 0xd,
+    Us12 = 0xe,
+    Us10 = 0xf,
 }
 
 // TODO make a struct and include coding rate of last header received?

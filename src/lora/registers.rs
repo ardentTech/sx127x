@@ -14,8 +14,8 @@ pub(crate) enum Reg {
     FrMid = 0x07,
     FrLsb = 0x08,
     PaConfig = 0x09,
-    PaRamp = 0x0a, // TODO
-    Ocp = 0x0b,
+    PaRamp = 0x0a,
+    Ocp = 0x0b, // TODO
     Lna = 0x0c,
     // TODO 0d..=3f require AccessSharedReg on RegOpMode to be set (see 4.4)
     FifoAddrPtr = 0x0d,
@@ -298,6 +298,19 @@ impl Into<RxStatus> for RegModemStat {
             RxStatus::Unknown
         }
     }
+}
+
+#[bitfield(u8, order = msb)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegOcp {
+    #[bits(2)]
+    _pad: u8,
+    ocp_on: bool,
+    #[bits(5)]
+    ocp_trim: u8
+}
+impl Addressable for RegOcp {
+    fn addr() -> u8 { Reg::Ocp as u8 }
 }
 
 #[bitfield(u8, order = msb)]

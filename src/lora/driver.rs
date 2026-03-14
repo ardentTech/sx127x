@@ -181,8 +181,8 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Ok(())
     }
 
-    /// Reads the RX modem status.
-    pub async fn rx_status(&mut self) -> Result<RxStatus, Sx127xError<SPI::Error>> {
+    /// Reads the modem status.
+    pub async fn modem_status(&mut self) -> Result<RxStatus, Sx127xError<SPI::Error>> {
         let byte = RegModemStat::from_bits(self.read(RegModemStat::addr()).await?);
         Ok(byte.into())
     }
@@ -311,6 +311,20 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         let mut byte = RegIrqFlagsMask::from_bits(self.read(RegIrqFlagsMask::addr()).await?);
         byte.unmask(interrupt);
         self.write(RegIrqFlagsMask::addr(), byte.into_bits()).await
+    }
+
+    /// Reads the number of valid headers received since last transition into Rx mode.
+    pub async fn valid_rx_headers(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
+        let msb = self.read(Reg::RxHeaderCntValueMsb as u8).await? as u16;
+        let lsb = self.read(Reg::RxHeaderCntValueLsb as u8).await? as u16;
+        Ok((msb << 8) | lsb)
+    }
+
+    /// Reads the number of valid packets received since last transition into Rx mode.
+    pub async fn valid_rx_packets(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
+        let msb = self.read(Reg::RxPacketCntValueMsb as u8).await? as u16;
+        let lsb = self.read(Reg::RxPacketCntValueLsb as u8).await? as u16;
+        Ok((msb << 8) | lsb)
     }
 
     // PRIVATE -------------------------------------------------------------------------------------

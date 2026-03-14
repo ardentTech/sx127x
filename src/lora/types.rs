@@ -1,7 +1,5 @@
 // TODO should all `from_bits` use `try_from` instead?
 
-use crate::lora::registers::Addressable;
-
 #[derive(Clone, Copy, Default, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,

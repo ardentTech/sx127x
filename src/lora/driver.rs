@@ -218,25 +218,14 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(RegModemConfig1::addr(), byte.into_bits()).await
     }
 
-    /// Sets overload current protection trim.
-    pub async fn set_ocp_trim(&mut self, trim: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.get_reg_ocp().await?;
-        byte.set_ocp_trim(trim);
-        self.write(RegOcp::addr(), byte.into_bits()).await
+    /// Configures the Low Noise Amplifier (LNA) gain settings.
+    pub async fn set_lna_gain(&mut self, config: &LnaGainConfig) -> Result<(), Sx127xError<SPI::Error>> {
+        self.write(RegLna::addr(), RegLna::from(config).into_bits()).await
     }
 
-    /// Sets overload current protection off.
-    pub async fn turn_ocp_off(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.get_reg_ocp().await?;
-        byte.set_ocp_on(false);
-        self.write(RegOcp::addr(), byte.into_bits()).await
-    }
-
-    /// Sets overload current protection on.
-    pub async fn turn_ocp_on(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.get_reg_ocp().await?;
-        byte.set_ocp_on(true);
-        self.write(RegOcp::addr(), byte.into_bits()).await
+    /// Configures the Overload Current Protection (OCP) settings.
+    pub async fn set_ocp(&mut self, config: &OcpConfig) -> Result<(), Sx127xError<SPI::Error>> {
+        self.write(RegOcp::addr(), RegOcp::from(config).into_bits()).await
     }
 
     /// Sets the power amplification ramp.
@@ -325,10 +314,6 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     }
 
     // PRIVATE -------------------------------------------------------------------------------------
-
-    async fn get_reg_ocp(&mut self) -> Result<RegOcp, Sx127xError<SPI::Error>> {
-        Ok(RegOcp::from_bits(self.read(RegOcp::addr()).await?))
-    }
 
     async fn get_reg_modem_config_1(&mut self) -> Result<RegModemConfig1, Sx127xError<SPI::Error>> {
         Ok(RegModemConfig1::from_bits(self.read(RegModemConfig1::addr()).await?))

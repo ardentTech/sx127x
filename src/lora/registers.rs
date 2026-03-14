@@ -244,6 +244,33 @@ impl RegIrqFlags {
 
 #[bitfield(u8, order = msb)]
 #[derive(Copy, Clone)]
+pub(crate) struct RegLna { // low-noise amplifier
+    #[bits(3)]
+    pub(crate) lna_gain: LnaGain,
+    #[bits(3)]
+    _pad: u8,
+    #[bits(2)]
+    pub(crate) lna_boost_hf: u8
+}
+impl Addressable for RegLna {
+    fn addr() -> u8 { Reg::Lna as u8 }
+}
+impl From<&LnaGainConfig> for RegLna {
+    fn from(value: &LnaGainConfig) -> Self {
+        RegLnaBuilder::new()
+            .with_lna_boost_hf(
+                match value.boost_hf {
+                    false => 0x0,
+                    _ => 0x3
+                }
+            )
+            .with_lna_gain(value.gain)
+            .build()
+    }
+}
+
+#[bitfield(u8, order = msb)]
+#[derive(Copy, Clone)]
 pub(crate) struct RegModemConfig1 {
     #[bits(4)]
     bandwidth: Bandwidth,
@@ -254,6 +281,7 @@ pub(crate) struct RegModemConfig1 {
 impl Addressable for RegModemConfig1 {
     fn addr() -> u8 { Reg::ModemConfig1 as u8 }
 }
+
 #[bitfield(u8, order = msb)]
 #[derive(Copy, Clone)]
 pub(crate) struct RegModemConfig2 {
@@ -305,12 +333,21 @@ impl Into<RxStatus> for RegModemStat {
 pub(crate) struct RegOcp {
     #[bits(2)]
     _pad: u8,
-    ocp_on: bool,
+    pub(crate) ocp_on: bool,
     #[bits(5)]
-    ocp_trim: u8
+    pub(crate) ocp_trim: u8
 }
 impl Addressable for RegOcp {
     fn addr() -> u8 { Reg::Ocp as u8 }
+}
+
+impl From<&OcpConfig> for RegOcp {
+    fn from(value: &OcpConfig) -> Self {
+        RegOcpBuilder::new()
+            .with_ocp_on(value.on)
+            .with_ocp_trim(value.trim)
+            .build()
+    }
 }
 
 #[bitfield(u8, order = msb)]

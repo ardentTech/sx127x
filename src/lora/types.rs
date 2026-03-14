@@ -135,6 +135,48 @@ pub enum Interrupt {
     RxTimeout,
 }
 
+// LNA gain ----------------------------------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum LnaGain {
+    G1 = 0x1,
+    G2 = 0x2,
+    G3 = 0x3,
+    G4 = 0x4,
+    G5 = 0x5,
+    G6 = 0x6,
+}
+impl LnaGain {
+    pub(crate) const fn from_bits(bits: u8) -> Self {
+        match bits {
+            0x1 => Self::G1,
+            0x2 => Self::G2,
+            0x3 => Self::G3,
+            0x4 => Self::G4,
+            0x5 => Self::G5,
+            0x6 => Self::G6,
+            _ => unreachable!()
+        }
+    }
+    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct LnaGainConfig {
+    pub boost_hf: bool,
+    pub gain: LnaGain,
+}
+
+// OCP ---------------------------------------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct OcpConfig {
+    pub on: bool,
+    pub trim: u8,
+}
+
+// PA ramp -----------------------------------------------------------------------------------------
+
 #[derive(Clone, Copy, Default, PartialEq)]
 pub enum PaRamp {
     Ms3_4 = 0x0,

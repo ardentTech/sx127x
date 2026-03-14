@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lora` and `fsk` cargo features
 - `set_power_amplification` method
 - `set_pa_ramp` method
-- `set_ocp_trim`, `turn_ocp_off` and `turn_ocp_on` methods
+- `set_ocp` method
+- `set_lna_gain` method
 
 ## [0.1.0] - 2026-03-07
 

@@ -380,6 +380,25 @@ impl Addressable for RegPaConfig {
 
 #[bitfield(u8)]
 #[derive(Copy, Clone)]
+pub(crate) struct RegPktSnrValue {
+    packet_snr: u8
+}
+impl Addressable for RegPktSnrValue {
+    fn addr() -> u8 { Reg::PktSnrValue as u8 }
+}
+impl RegPktSnrValue {
+    pub(crate) fn snr_db(&self) -> i16 {
+        let byte = self.into_bits() as i16;
+        if byte & 0x80 == 0 {
+            (byte & 0xff) >> 2
+        } else {
+            -(((!byte + 1) & 0xff) >> 2)
+        }
+    }
+}
+
+#[bitfield(u8)]
+#[derive(Copy, Clone)]
 pub(crate) struct RegSymbTimeoutLsb {
     symb_timeout: u8
 }
@@ -390,6 +409,18 @@ impl Addressable for RegSymbTimeoutLsb {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_reg_pkt_snr_value_to_snr_db_negative() {
+        let byte = RegPktSnrValue::from_bits(0b1110_0000); // -32
+        assert_eq!(byte.snr_db(), -8);
+    }
+
+    #[test]
+    fn test_reg_pkt_snr_value_to_snr_db_positive() {
+        let byte = RegPktSnrValue::from_bits(0b1_1000); // 24
+        assert_eq!(byte.snr_db(), 6);
+    }
 
     #[test]
     fn test_set_dio0() {

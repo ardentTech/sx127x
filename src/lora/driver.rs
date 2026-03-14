@@ -121,11 +121,23 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Ok(byte.interrupt_triggered(interrupt))
     }
 
+    /// Reads estimation of signal-to-noise ratio (SNR) in dB on last packet received.
+    pub async fn last_packet_snr(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
+        let byte = RegPktSnrValue::from_bits(self.read(RegPktSnrValue::addr()).await?);
+        Ok(byte.snr_db())
+    }
+
     /// Masks an interrupt.
     pub async fn mask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = RegIrqFlagsMask::from_bits(self.read(RegIrqFlagsMask::addr()).await?);
         byte.mask(interrupt);
         self.write(RegIrqFlagsMask::addr(), byte.into_bits()).await
+    }
+
+    /// Reads the modem status.
+    pub async fn modem_status(&mut self) -> Result<RxStatus, Sx127xError<SPI::Error>> {
+        let byte = RegModemStat::from_bits(self.read(RegModemStat::addr()).await?);
+        Ok(byte.into())
     }
 
     /// Reads the byte from the register at `addr`.
@@ -179,12 +191,6 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(Reg::FifoAddrPtr as u8, Reg::FifoRxBaseAddr as u8).await?;
         self.set_device_mode(mode).await?;
         Ok(())
-    }
-
-    /// Reads the modem status.
-    pub async fn modem_status(&mut self) -> Result<RxStatus, Sx127xError<SPI::Error>> {
-        let byte = RegModemStat::from_bits(self.read(RegModemStat::addr()).await?);
-        Ok(byte.into())
     }
 
     /// Sets the signal bandwidth.

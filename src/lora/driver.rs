@@ -49,13 +49,14 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         }
         if config.frequency != DEFAULT_FREQUENCY_HZ {
             driver.set_frequency(config.frequency).await?;
+            // TODO calibrate (see 2.1.3.8)
         }
         if config.spreading_factor != SpreadingFactor::default() {
             driver.set_spreading_factor(config.spreading_factor).await?;
         }
 
         driver.sleep().await?;
-        let mut byte = RegOpMode::from_bits(driver.read(RegOpMode::addr()).await?);
+        let mut byte = driver.get_reg_op_mode().await?;
         byte.set_long_range_mode(true);
         driver.write(RegOpMode::addr(), byte.into_bits()).await?;
         driver.standby().await?; // TODO leave in Sleep?
@@ -122,9 +123,9 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     }
 
     /// Reads estimation of signal-to-noise ratio (SNR) in dB on last packet received.
-    pub async fn last_packet_snr(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
+    pub async fn last_packet_snr(&mut self) -> Result<i8, Sx127xError<SPI::Error>> {
         let byte = RegPktSnrValue::from_bits(self.read(RegPktSnrValue::addr()).await?);
-        Ok(byte.snr_db())
+        Ok(byte.packet_snr() >> 2)
     }
 
     /// Masks an interrupt.
@@ -207,6 +208,14 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(RegModemConfig1::addr(), byte.into_bits()).await
     }
 
+    /// Reads the carrier frequency.
+    pub async fn frequency(&mut self) -> Result<u32, Sx127xError<SPI::Error>> {
+        let msb = self.read(Reg::FrMsb as u8).await? as u32;
+        let mid = self.read(Reg::FrMid as u8).await? as u32;
+        let lsb = self.read(Reg::FrLsb as u8).await? as u32;
+        Ok((msb << 16) | (mid << 8) | lsb)
+    }
+
     /// Sets the carrier frequency.
     ///
     /// Important: check regulations for your area (e.g. 902-928 MHz for the United States)
@@ -224,6 +233,20 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(RegModemConfig1::addr(), byte.into_bits()).await
     }
 
+    /// Inverts IQ signals in the RX or TX path.
+    pub async fn set_invert_iq(&mut self, config: &InvertIQConfig) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = RegInvertIQ::from_bits(self.read(RegInvertIQ::addr()).await?);
+        byte.set_rx_path(config.rx_path);
+        byte.set_tx_path(config.tx_path);
+        self.write(RegInvertIQ::addr(), byte.into_bits()).await?;
+
+        self.write(
+            Reg::InvertIQ2 as u8,
+            // TODO encode these values on register
+       if config.rx_path || config.tx_path { 0x19 } else { 0x1d }
+        ).await
+    }
+
     /// Configures the Low Noise Amplifier (LNA) gain settings.
     pub async fn set_lna_gain(&mut self, config: &LnaGainConfig) -> Result<(), Sx127xError<SPI::Error>> {
         self.write(RegLna::addr(), RegLna::from(config).into_bits()).await
@@ -234,26 +257,21 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(RegOcp::addr(), RegOcp::from(config).into_bits()).await
     }
 
-    /// Sets the power amplification ramp.
+    /// Sets the power amplification (PA) ramp.
     pub async fn set_pa_ramp(&mut self, pa_ramp: PaRamp) -> Result<(), Sx127xError<SPI::Error>> {
         self.write(Reg::PaRamp as u8, pa_ramp as u8).await
     }
 
-    /// Sets the power amplification.
-    pub async fn set_power_amplification(&mut self, pa_config: &PaConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegPaConfig::from_bits(self.read(RegPaConfig::addr()).await?);
-        match pa_config.pa_select {
-            PaSelect::Boost => {
-                byte.set_pa_select(true);
-                byte.set_output_power(pa_config.power);
-            }
-            PaSelect::Rfo(max_power) => {
-                byte.set_pa_select(false);
-                byte.set_max_power(max_power);
-                byte.set_output_power(pa_config.power - max_power + 15);
-            }
-        }
-        Ok(())
+    /// Reads the power amplification (PA).
+    pub async fn pa(&mut self) -> Result<PaConfig, Sx127xError<SPI::Error>> {
+        let byte = RegPaConfig::from_bits(self.read(RegPaConfig::addr()).await?);
+        Ok(byte.into())
+    }
+
+    /// Sets the power amplification (PA).
+    pub async fn set_pa(&mut self, pa_config: &PaConfig) -> Result<(), Sx127xError<SPI::Error>> {
+        let byte = RegPaConfig::from(pa_config);
+        self.write(Reg::PaConfig as u8, byte.into_bits()).await
     }
 
     /// Sets the spreading factor.
@@ -297,9 +315,8 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         }
 
         // The chip will automatically transition the state to Stdby when done.
-        let device_mode = RegOpMode::from_bits(self.read(RegOpMode::addr()).await?).mode();
         // TODO is this sufficient? MUST is be Standby?
-        if device_mode == DeviceMode::Tx {
+        if self.get_reg_op_mode().await?.mode() == DeviceMode::Tx {
             return Err(Sx127xError::InvalidState)
         }
 
@@ -335,13 +352,17 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
 
     // PRIVATE -------------------------------------------------------------------------------------
 
+    async fn get_reg_op_mode(&mut self) -> Result<RegOpMode, Sx127xError<SPI::Error>> {
+        Ok(RegOpMode::from_bits(self.read(RegOpMode::addr()).await?))
+    }
+
     async fn get_reg_modem_config_1(&mut self) -> Result<RegModemConfig1, Sx127xError<SPI::Error>> {
         Ok(RegModemConfig1::from_bits(self.read(RegModemConfig1::addr()).await?))
     }
 
     // Sets `device_mode` on RegOpMode.
     async fn set_device_mode(&mut self, device_mode: DeviceMode) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte: RegOpMode = RegOpMode::from_bits(self.read(RegOpMode::addr()).await?);
+        let mut byte = self.get_reg_op_mode().await?;
         byte.set_mode(device_mode);
         self.write(RegOpMode::addr(), byte.into_bits()).await
     }

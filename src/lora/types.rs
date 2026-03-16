@@ -133,6 +133,12 @@ pub enum Interrupt {
     RxTimeout,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct InvertIQConfig {
+    pub rx_path: bool,
+    pub tx_path: bool,
+}
+
 // LNA gain ----------------------------------------------------------------------------------------
 
 #[derive(Clone, Copy, PartialEq)]
@@ -254,16 +260,17 @@ pub struct PaConfig {
     pub(crate) pa_select: PaSelect,
     /// Output power in dBm. If `pa_select` == `Boost`, `power` must be <= 20. If `pa_select` ==
     /// `Rfo`, `power` must be <= 17.
-    pub(crate) power: u8,
+    pub(crate) output_power: u8,
+    // TODO max_power? Option?
 }
 
 impl PaConfig {
-    pub fn new(output: PaSelect, power: u8) -> Result<Self, PaConfigError> {
-        match output {
-            PaSelect::Boost => if power > 20 { return Err(PaConfigError::InvalidPaBoostPower) },
-            PaSelect::Rfo(_) => if power > 17 { return Err(PaConfigError::InvalidRfoPower) },
+    pub fn new(pa_select: PaSelect, output_power: u8) -> Result<Self, PaConfigError> {
+        match pa_select {
+            PaSelect::Boost => if output_power > 20 { return Err(PaConfigError::InvalidPaBoostPower) },
+            PaSelect::Rfo(_) => if output_power > 17 { return Err(PaConfigError::InvalidRfoPower) },
         }
-        Ok(Self { pa_select: output, power })
+        Ok(Self { pa_select, output_power })
     }
 }
 

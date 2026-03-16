@@ -15,9 +15,8 @@ pub(crate) enum Reg {
     FrLsb = 0x08,
     PaConfig = 0x09,
     PaRamp = 0x0a,
-    Ocp = 0x0b, // TODO
+    Ocp = 0x0b,
     Lna = 0x0c,
-    // TODO 0d..=3f require AccessSharedReg on RegOpMode to be set (see 4.4)
     FifoAddrPtr = 0x0d,
     FifoTxBaseAddr = 0x0e,
     FifoRxBaseAddr = 0x0f,
@@ -52,7 +51,7 @@ pub(crate) enum Reg {
     // IfFreq2 ?
     // IfFreq1 ?
     DetectOptimize = 0x31,
-    InvertIQ1 = 0x33,
+    InvertIQ = 0x33,
     HighBWOptimize1 = 0x36,
     DetectionThreshold = 0x37,
     SyncWord = 0x39,
@@ -146,6 +145,18 @@ impl Addressable for RegHopChannel {
     fn addr() -> u8 { Reg::HopChannel as u8 }
 }
 
+#[bitfield(u8, order = msb)]
+#[derive(Copy, Clone)]
+pub(crate) struct RegInvertIQ {
+    _pad: bool,
+    rx_path: bool,
+    #[bits(5)]
+    _pad: u8,
+    tx_path: bool,
+}
+impl Addressable for RegInvertIQ {
+    fn addr() -> u8 { Reg::InvertIQ as u8 }
+}
 
 #[bitfield(u8, order = msb)]
 #[derive(Copy, Clone)]
@@ -377,24 +388,52 @@ pub(crate) struct RegPaConfig {
 impl Addressable for RegPaConfig {
     fn addr() -> u8 { Reg::PaConfig as u8 }
 }
+impl From<&PaConfig> for RegPaConfig {
+    fn from(value: &PaConfig) -> Self {
+        // TODO unit test
+        match value.pa_select {
+            PaSelect::Boost => RegPaConfig::from_pa_config_boost(value.output_power),
+            PaSelect::Rfo(max_power) => RegPaConfig::from_pa_config_rfo(value.output_power, max_power),
+        }
+    }
+}
+
+impl Into<PaConfig> for RegPaConfig {
+    // TODO unit test
+    fn into(self) -> PaConfig {
+        PaConfig {
+            pa_select: if self.pa_select() { PaSelect::Boost } else { PaSelect::Rfo(self.max_power()) },
+            output_power: self.output_power()
+        }
+    }
+}
+
+impl RegPaConfig {
+    // TODO unit test
+    fn from_pa_config_boost(output_power: u8) -> Self {
+        RegPaConfigBuilder::new()
+            .with_pa_select(true)
+            .with_output_power(output_power)
+            .build()
+    }
+
+    // TODO unit test
+    fn from_pa_config_rfo(output_power: u8, max_power: u8) -> Self {
+        RegPaConfigBuilder::new()
+            .with_pa_select(false)
+            .with_max_power(max_power)
+            .with_output_power(output_power - max_power + 15)
+            .build()
+    }
+}
 
 #[bitfield(u8)]
 #[derive(Copy, Clone)]
 pub(crate) struct RegPktSnrValue {
-    packet_snr: u8
+    packet_snr: i8
 }
 impl Addressable for RegPktSnrValue {
     fn addr() -> u8 { Reg::PktSnrValue as u8 }
-}
-impl RegPktSnrValue {
-    pub(crate) fn snr_db(&self) -> i16 {
-        let byte = self.into_bits() as i16;
-        if byte & 0x80 == 0 {
-            (byte & 0xff) >> 2
-        } else {
-            -(((!byte + 1) & 0xff) >> 2)
-        }
-    }
 }
 
 #[bitfield(u8)]
@@ -409,18 +448,6 @@ impl Addressable for RegSymbTimeoutLsb {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_reg_pkt_snr_value_to_snr_db_negative() {
-        let byte = RegPktSnrValue::from_bits(0b1110_0000); // -32
-        assert_eq!(byte.snr_db(), -8);
-    }
-
-    #[test]
-    fn test_reg_pkt_snr_value_to_snr_db_positive() {
-        let byte = RegPktSnrValue::from_bits(0b1_1000); // 24
-        assert_eq!(byte.snr_db(), 6);
-    }
 
     #[test]
     fn test_set_dio0() {

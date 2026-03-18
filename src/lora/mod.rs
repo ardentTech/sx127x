@@ -1,3 +1,2 @@
-pub mod driver;
-pub mod types;
-pub(crate) mod registers;
+mod registers;
+mod driver;

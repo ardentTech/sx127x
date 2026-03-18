@@ -12,7 +12,6 @@ exclude = ["CHANGELOG.md", "examples/*"]
 readme = "README.md"
 
 [dependencies]
-bitfields = "1.0.2"
 embedded-hal-async = "1.0.0"
 
 [features]

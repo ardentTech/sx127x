@@ -1,11 +1,17 @@
 # Sx127x
 `#![no_std]`, `async`-first driver for the Semtech SX127X transceiver built on top of Rust [embedded-hal](https://github.com/rust-embedded/embedded-hal).
 
+### Architecture
+#### Layer 0: Core
+A bare-bones sync or async driver with a read+write SPI interface.
+
+### Layer 1: LoRa|FSK Modem
+
 ### Cargo Features
 - `lora` (default): compile the LoRa modem
 - `fsk`: compile the FSK/OOK modem
-- `async` (default): compile the async library
-- `sync`: compile the sync library
+- `async` (default): compile async impls
+- `sync`: compile sync impls
 
 ### Reset
 - "A power-on reset of the SX1276/77/78/79 is triggered at power up." [DS section 5.2]

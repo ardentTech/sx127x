@@ -1,6 +1,6 @@
 #![no_std]
 
-pub mod core;
+pub mod common;
 
 #[cfg(feature = "fsk")]
 pub mod fsk;

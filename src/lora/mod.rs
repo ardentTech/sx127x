@@ -1,2 +1,3 @@
-mod registers;
-mod driver;
+pub mod registers;
+pub mod driver;
+pub mod types;

@@ -3,10 +3,10 @@
 /// See: Table 41
 pub enum LoraReg {
     Fifo = 0x00,
-    OpMode = 0x01,
-    FrfMsb = 0x06,
-    FrfMid = 0x07,
-    FrfLsb = 0x08,
+    // OpMode = 0x01,
+    // FrfMsb = 0x06,
+    // FrfMid = 0x07,
+    // FrfLsb = 0x08,
     PaConfig = 0x09,
     PaRamp = 0x0a,
     Ocp = 0x0b,
@@ -62,3 +62,19 @@ pub enum LoraReg {
     AgcThresh3 = 0x64,
     Pll = 0x70
 }
+
+// RegOpMode
+pub const OP_MODE: u8 = 0x01;
+pub const OP_MODE_LONG_RANGE_MODE_MASK: u8 = 0x80;
+pub const OP_MODE_ACCESS_SHARED_REG_MASK: u8 = 0x40;
+pub const OP_MODE_LOW_FREQUENCY_MODE_ON_MASK: u8 = 0x08;
+pub const OP_MODE_MODE_MASK: u8 = 0x07;
+
+// RegFrfMsb..Lsb
+pub const FRF_MSB: u8 = 0x06;
+pub const FRF_MID: u8 = 0x07;
+pub const FRF_LSB: u8 = 0x08;
+
+// RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
+// TODO find a way to avoid duplicating this...
+pub(crate) const IMAGE_CAL: u8 = 0x3b;

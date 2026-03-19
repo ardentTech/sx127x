@@ -10,11 +10,21 @@ pub enum DeviceMode {
     CAD = 0x7
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Dio0Signal {
+    #[default]
     RxDone = 0x0,
     TxDone = 0x1,
     CadDone = 0x2,
+    None = 0x3,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Dio1Signal {
+    #[default]
+    RxTimeout = 0x0,
+    FhssChangeChannel = 0x1,
+    CadDetected = 0x2,
     None = 0x3,
 }
 

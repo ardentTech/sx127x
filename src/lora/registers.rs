@@ -84,8 +84,25 @@ pub const FIFO_ADDR_PTR: u8 = 0x0d;
 // RegFifoTxBaseAddr
 pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;
 
+// RegFifoRxBaseAddr
+pub const FIFO_RX_BASE_ADDR: u8 = 0x0f;
+
+pub const FIFO_RX_CURRENT_ADDR: u8 = 0x10;
+
 // RegIrqFlags
 pub const IRQ_FLAGS: u8 = 0x12;
+
+pub const RX_NB_BYTES: u8 = 0x13;
+
+// RegHopChannel
+pub const HOP_CHANNEL: u8 = 0x1c;
+pub const HOP_CHANNEL_CRC_ON_PAYLOAD_MASK: u8 = 0x40;
+
+// RegModemConfig2
+pub const MODEM_CONFIG_2: u8 = 0x1e;
+
+// RegSymbTimeoutLsb
+pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 
 // RegPayloadLength
 pub const PAYLOAD_LENGTH: u8 = 0x22;
@@ -98,3 +115,5 @@ pub(crate) const IMAGE_CAL: u8 = 0x3b;
 pub const DIO_MAPPING_1: u8 = 0x40;
 pub const DIO_MAPPING_1_DIO0_MASK: u8 = 0xc0;
 pub const DIO_MAPPING_1_DIO0_SHIFT: u8 = 0x6;
+pub const DIO_MAPPING_1_DIO1_MASK: u8 = 0x30;
+pub const DIO_MAPPING_1_DIO1_SHIFT: u8 = 0x4;

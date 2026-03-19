@@ -1,15 +1,17 @@
 use embedded_hal_async::spi::SpiDevice;
 use crate::common::{calculate_frf, Sx127xSpi};
 use crate::lora::registers::*;
-use crate::lora::types::{DeviceMode, Dio0Signal, Interrupt};
+use crate::lora::types::{DeviceMode, Dio0Signal, Dio1Signal, Interrupt};
 
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
-const MAX_TX_PAYLOAD_BYTES: usize = 255;
+const BUFFER_SIZE: usize = 255;
 
 #[derive(Debug)]
 pub enum Sx127xLoraError<SPI> {
     InvalidPayloadLength,
     InvalidState,
+    InvalidTimeout,
+    PacketTermination,
     SPI(SPI),
 }
 
@@ -55,12 +57,56 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS, byte | interrupt as u8).await
     }
 
+    /// Reads 255 bytes from the FIFO buffer.
+    pub async fn read_rx_data(&mut self) -> Result<[u8; BUFFER_SIZE], Sx127xLoraError<SPI::Error>> {
+        let reg_hop_channel = self.read(HOP_CHANNEL).await?;
+        if !self.rx_packet_termination_ok((reg_hop_channel & HOP_CHANNEL_CRC_ON_PAYLOAD_MASK) != 0).await? {
+            return Err(Sx127xLoraError::PacketTermination)
+        }
+
+        // read rx data
+        let rx_fifo_addr = self.read(FIFO_RX_CURRENT_ADDR).await?;
+        self.write(FIFO_ADDR_PTR as u8, rx_fifo_addr).await?;
+        let num_bytes = self.read(RX_NB_BYTES).await?;
+        let mut buffer = [0; 255];
+        for i in 0..num_bytes {
+            let byte = self.read(FIFO).await?;
+            buffer[i as usize] = byte;
+        }
+        Ok(buffer)
+    }
+
+    /// Enables receive mode and searches for a preamble.
+    ///
+    /// If `timeout` is not None, enters `RxSingle` device mode. Otherwise, enters `RxContinuous`
+    /// device mode.
+    pub async fn receive(&mut self, timeout: Option<u16>) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut mode = DeviceMode::RXCONTINUOUS;
+        if let Some(timeout) = timeout {
+        //     // TODO unit test  (make this a tuple struct and put validation on it? easier to test?)s
+        //     // if a struct (or other) could have MIN, MAX helpers...
+            if timeout < 4 || timeout > 1023 {
+                return Err(Sx127xLoraError::InvalidTimeout)
+            }
+
+            // TODO test this
+            self.write(MODEM_CONFIG_2, (timeout >> 8) as u8).await?;
+            self.write(SYMB_TIMEOUT_LSB, (timeout & 0xff) as u8 ).await?;
+            mode = DeviceMode::RXSINGLE;
+        }
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR).await?;
+        self.set_device_mode(mode).await
+    }
+
     /// Sets the DIO0 pin signal source.
     pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        let mut byte = self.read(DIO_MAPPING_1).await?;
-        byte &= !DIO_MAPPING_1_DIO0_MASK;
-        byte |= ((signal as u8) << DIO_MAPPING_1_DIO0_SHIFT) & DIO_MAPPING_1_DIO0_MASK;
-        self.write(DIO_MAPPING_1, byte).await
+        self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
+    }
+
+    /// Sets the DIO1 pin signal source.
+    pub async fn set_dio1(&mut self, signal: Dio1Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
     }
 
     /// Sets the device mode.
@@ -84,7 +130,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Transmits a `payload` of up to 255 bytes.
     pub async fn transmit(&mut self, payload: &[u8]) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let payload_len = payload.len();
-        if payload_len > MAX_TX_PAYLOAD_BYTES {
+        if payload_len > BUFFER_SIZE {
             return Err(Sx127xLoraError::InvalidPayloadLength);
         }
 
@@ -131,9 +177,26 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(())
     }
 
+    // Determines if a RX packet terminated successfully.
+    async fn rx_packet_termination_ok(&mut self, crc_on_payload: bool) -> Result<bool, Sx127xLoraError<SPI::Error>> {
+        let bits = self.read(IRQ_FLAGS).await? >> 4;
+        Ok(if crc_on_payload {
+            bits & 0xf == 0
+        } else {
+            bits & 0xc == 0 && bits & 0x1 == 0
+        })
+    }
+
     // Reads from register `addr` over SPI.
     async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         self.spi.read(addr).await.map_err(Sx127xLoraError::SPI)
+    }
+
+    async fn set_dio_mapping1(&mut self, value: u8, mask: u8, left_shift: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(DIO_MAPPING_1).await?;
+        byte &= !mask;
+        byte |= (value << left_shift) & mask;
+        self.write(DIO_MAPPING_1, byte).await
     }
 
     // Selects the LoRa modem when `on` == true, and the FSK/OOK modem when `on` == false.

@@ -1,12 +1,15 @@
 use embedded_hal_async::spi::SpiDevice;
 use crate::common::{calculate_frf, Sx127xSpi};
 use crate::lora::registers::*;
-use crate::lora::types::DeviceMode;
+use crate::lora::types::{DeviceMode, Dio0Signal, Interrupt};
 
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
+const MAX_TX_PAYLOAD_BYTES: usize = 255;
 
 #[derive(Debug)]
 pub enum Sx127xLoraError<SPI> {
+    InvalidPayloadLength,
+    InvalidState,
     SPI(SPI),
 }
 
@@ -46,6 +49,20 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(driver)
     }
 
+    /// Clears an interrupt.
+    pub async fn clear_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(IRQ_FLAGS).await?;
+        self.write(IRQ_FLAGS, byte | interrupt as u8).await
+    }
+
+    /// Sets the DIO0 pin signal source.
+    pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(DIO_MAPPING_1).await?;
+        byte &= !DIO_MAPPING_1_DIO0_MASK;
+        byte |= ((signal as u8) << DIO_MAPPING_1_DIO0_SHIFT) & DIO_MAPPING_1_DIO0_MASK;
+        self.write(DIO_MAPPING_1, byte).await
+    }
+
     /// Sets the device mode.
     pub async fn set_device_mode(&mut self, device_mode: DeviceMode) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut byte = self.read(OP_MODE).await?;
@@ -62,6 +79,27 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(FRF_MSB, (frf >> 16) as u8).await?;
         self.write(FRF_MID, (frf >> 8) as u8).await?;
         self.write(FRF_LSB, frf as u8).await
+    }
+
+    /// Transmits a `payload` of up to 255 bytes.
+    pub async fn transmit(&mut self, payload: &[u8]) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let payload_len = payload.len();
+        if payload_len > MAX_TX_PAYLOAD_BYTES {
+            return Err(Sx127xLoraError::InvalidPayloadLength);
+        }
+
+        let op_mode = self.read(OP_MODE).await?;
+        if op_mode & OP_MODE_MODE_MASK == DeviceMode::TX as u8 {
+            return Err(Sx127xLoraError::InvalidState)
+        }
+
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        self.write(FIFO_ADDR_PTR, FIFO_TX_BASE_ADDR).await?;
+        for &byte in payload.iter().take(255) {
+            self.write(FIFO, byte).await?;
+        }
+        self.write(PAYLOAD_LENGTH, payload.len() as u8).await?;
+        self.set_device_mode(DeviceMode::TX).await
     }
 
     // PRIVATE -------------------------------------------------------------------------------------

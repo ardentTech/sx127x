@@ -63,6 +63,9 @@ pub enum LoraReg {
     Pll = 0x70
 }
 
+// RegFifo
+pub const FIFO: u8 = 0x0;
+
 // RegOpMode
 pub const OP_MODE: u8 = 0x01;
 pub const OP_MODE_LONG_RANGE_MODE_MASK: u8 = 0x80;
@@ -75,6 +78,23 @@ pub const FRF_MSB: u8 = 0x06;
 pub const FRF_MID: u8 = 0x07;
 pub const FRF_LSB: u8 = 0x08;
 
+// RegFifoAddrPtr
+pub const FIFO_ADDR_PTR: u8 = 0x0d;
+
+// RegFifoTxBaseAddr
+pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;
+
+// RegIrqFlags
+pub const IRQ_FLAGS: u8 = 0x12;
+
+// RegPayloadLength
+pub const PAYLOAD_LENGTH: u8 = 0x22;
+
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
 // TODO find a way to avoid duplicating this...
 pub(crate) const IMAGE_CAL: u8 = 0x3b;
+
+// RegDioMapping1
+pub const DIO_MAPPING_1: u8 = 0x40;
+pub const DIO_MAPPING_1_DIO0_MASK: u8 = 0xc0;
+pub const DIO_MAPPING_1_DIO0_SHIFT: u8 = 0x6;

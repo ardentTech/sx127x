@@ -72,12 +72,17 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS, byte | interrupt as u8).await
     }
 
-    /// Calculates the current data rate.
+    /// Calculates the current data rate in bits/s.
     pub async fn data_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let coding_rate: f32 = self.coding_rate().await?.into();
         let symbol_rate = self.symbol_rate().await? as f32;
         let spreading_factor = (self.spreading_factor().await? as u8) as f32;
         Ok(calculate_data_rate(symbol_rate, spreading_factor, coding_rate))
+    }
+
+    /// Reads the byte from register `addr` over SPI.
+    pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
+        self.spi.read(addr).await.map_err(Sx127xLoraError::SPI)
     }
 
     /// Reads 255 bytes from the FIFO buffer.
@@ -190,7 +195,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(())
     }
 
-    /// Calculates the current symbol rate.
+    /// Calculates the current symbol rate in chips/s.
     pub async fn symbol_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
         let bandwidth = Bandwidth::from((modem_config_1 & MODEM_CONFIG_1_BW_MASK) >> 4).hz();
@@ -265,11 +270,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         })
     }
 
-    // Reads from register `addr` over SPI.
-    async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
-        self.spi.read(addr).await.map_err(Sx127xLoraError::SPI)
-    }
-
     async fn set_dio_mapping1(&mut self, value: u8, mask: u8, left_shift: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut byte = self.read(DIO_MAPPING_1).await?;
         byte &= !mask;
@@ -297,6 +297,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_device_mode(DeviceMode::STDBY).await
     }
 
+    // Gets the spreading factor.
     async fn spreading_factor(&mut self) -> Result<SpreadingFactor, Sx127xLoraError<SPI::Error>> {
         let modem_config_2 = self.read(MODEM_CONFIG_2).await?;
         Ok(SpreadingFactor::from((modem_config_2 & MODEM_CONFIG_2_SPREADING_FACTOR_MASK) >> 4))

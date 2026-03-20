@@ -1,5 +1,4 @@
 use embedded_hal_async::spi::SpiDevice;
-use crate::lora::types::SpreadingFactor;
 
 const FXOSC_HZ: u32 = 32_000_000;
 const FSTEP: f32 = (FXOSC_HZ as f32) / (2u32.pow(19) as f32);

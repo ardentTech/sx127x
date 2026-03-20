@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `valid_rx_packets` method
 - `last_packet_snr` method
 - `set_invert_iq` method
+- `data_rate` and `symbol_rate` calculations
 
 ## [0.1.0] - 2026-03-07
 

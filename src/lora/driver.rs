@@ -1,5 +1,5 @@
 use embedded_hal_async::spi::SpiDevice;
-use crate::common::{calculate_frf, calculate_symbol_rate, Sx127xSpi};
+use crate::common::{calculate_data_rate, calculate_frf, calculate_symbol_rate, Sx127xSpi};
 use crate::lora::registers::*;
 use crate::lora::types::{Bandwidth, CodingRate, DeviceMode, Dio0Signal, Dio1Signal, Interrupt, SpreadingFactor};
 
@@ -72,6 +72,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS, byte | interrupt as u8).await
     }
 
+    /// Calculates the current data rate.
+    pub async fn data_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let coding_rate: f32 = self.coding_rate().await?.into();
+        let symbol_rate = self.symbol_rate().await? as f32;
+        let spreading_factor = (self.spreading_factor().await? as u8) as f32;
+        Ok(calculate_data_rate(symbol_rate, spreading_factor, coding_rate))
+    }
+
     /// Reads 255 bytes from the FIFO buffer.
     pub async fn read_rx_data(&mut self) -> Result<[u8; BUFFER_SIZE], Sx127xLoraError<SPI::Error>> {
         let reg_hop_channel = self.read(HOP_CHANNEL).await?;
@@ -79,7 +87,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             return Err(Sx127xLoraError::PacketTermination)
         }
 
-        // read rx data
         let rx_fifo_addr = self.read(FIFO_RX_CURRENT_ADDR).await?;
         self.write(FIFO_ADDR_PTR as u8, rx_fifo_addr).await?;
         let num_bytes = self.read(RX_NB_BYTES).await?;
@@ -173,13 +180,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(())
     }
 
-    /// Calculates the symbol rate (Rs).
+    /// Calculates the current symbol rate.
     pub async fn symbol_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
         let bandwidth = Bandwidth::from((modem_config_1 & MODEM_CONFIG_1_BW_MASK) >> 4).hz();
 
-        let modem_config_2 = self.read(MODEM_CONFIG_2).await?;
-        let spreading_factor = SpreadingFactor::from((modem_config_2 & MODEM_CONFIG_2_SPREADING_FACTOR_MASK) >> 4);
+        let spreading_factor = self.spreading_factor().await?;
 
         Ok(calculate_symbol_rate(bandwidth, spreading_factor as u32) as u16)
     }
@@ -234,6 +240,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(())
     }
 
+    async fn coding_rate(&mut self) -> Result<CodingRate, Sx127xLoraError<SPI::Error>> {
+        let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
+        Ok(CodingRate::from((modem_config_1 & MODEM_CONFIG_1_CODING_RATE_MASK) >> 1))
+    }
+
     // Determines if a RX packet terminated successfully.
     async fn rx_packet_termination_ok(&mut self, crc_on_payload: bool) -> Result<bool, Sx127xLoraError<SPI::Error>> {
         let bits = self.read(IRQ_FLAGS).await? >> 4;
@@ -267,6 +278,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(OP_MODE, op_mode).await?;
 
         self.set_device_mode(DeviceMode::STDBY).await
+    }
+
+    async fn spreading_factor(&mut self) -> Result<SpreadingFactor, Sx127xLoraError<SPI::Error>> {
+        let modem_config_2 = self.read(MODEM_CONFIG_2).await?;
+        Ok(SpreadingFactor::from((modem_config_2 & MODEM_CONFIG_2_SPREADING_FACTOR_MASK) >> 4))
     }
 
     // Writes `data` to register `addr` over SPI.

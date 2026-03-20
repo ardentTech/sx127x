@@ -1,4 +1,5 @@
 use embedded_hal_async::spi::SpiDevice;
+use crate::lora::types::SpreadingFactor;
 
 const FXOSC_HZ: u32 = 32_000_000;
 const FSTEP: f32 = (FXOSC_HZ as f32) / (2u32.pow(19) as f32);
@@ -29,6 +30,16 @@ impl <SPI: SpiDevice> Sx127xSpi<SPI> {
     }
 }
 
+// TODO this might be LoRa only...
+pub(crate) fn calculate_data_rate(
+    symbol_rate: f32,
+    spreading_factor: f32,
+    coding_rate: f32,
+) -> u16 {
+    (symbol_rate * spreading_factor * coding_rate) as u16
+}
+
+// TODO this might be LoRa only...
 pub(crate) fn calculate_frf(hz: u32) -> u32 {
     ((hz as f32) / FSTEP) as u32
 }
@@ -42,6 +53,13 @@ pub(crate) fn calculate_symbol_rate(bandwidth: u32, spreading_factor: u32) -> u3
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn calculate_data_rate_ok() {
+        let data_rate = calculate_data_rate(1953f32, 6f32, 0.8f32);
+        assert_eq!(data_rate, 9374u16);
+    }
+
     #[test]
     fn calculate_frf_ok() {
         let frf = calculate_frf(434_000_000);

@@ -53,6 +53,26 @@ pub enum CodingRate {
     Cr4_7 = 0x3,
     Cr4_8 = 0x4,
 }
+impl From<u8> for CodingRate {
+    fn from(value: u8) -> Self {
+        match value {
+            0x1 => CodingRate::Cr4_5,
+            0x2 => CodingRate::Cr4_6,
+            0x3 => CodingRate::Cr4_7,
+            _ => CodingRate::Cr4_8,
+        }
+    }
+}
+impl Into<f32> for CodingRate {
+    fn into(self) -> f32 {
+        4f32 / (match self {
+            CodingRate::Cr4_5 => 5f32,
+            CodingRate::Cr4_6 => 6f32,
+            CodingRate::Cr4_7 => 7f32,
+            CodingRate::Cr4_8 => 8f32,
+        })
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DeviceMode {

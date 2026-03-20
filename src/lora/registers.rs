@@ -86,6 +86,7 @@ pub const HOP_CHANNEL_CRC_ON_PAYLOAD_MASK: u8 = 0x40;
 
 pub const MODEM_CONFIG_1: u8 = 0x1d;
 pub const MODEM_CONFIG_1_BW_MASK: u8 = 0xf0;
+pub const MODEM_CONFIG_1_CODING_RATE_MASK: u8 = 0xe;
 
 pub const MODEM_CONFIG_2: u8 = 0x1e;
 pub const MODEM_CONFIG_2_SPREADING_FACTOR_MASK: u8 = 0xf0;

@@ -63,55 +63,40 @@ pub enum LoraReg {
     Pll = 0x70
 }
 
-// RegFifo
 pub const FIFO: u8 = 0x0;
 
-// RegOpMode
 pub const OP_MODE: u8 = 0x01;
 pub const OP_MODE_LONG_RANGE_MODE_MASK: u8 = 0x80;
 pub const OP_MODE_ACCESS_SHARED_REG_MASK: u8 = 0x40;
 pub const OP_MODE_LOW_FREQUENCY_MODE_ON_MASK: u8 = 0x08;
 pub const OP_MODE_MODE_MASK: u8 = 0x07;
 
-// RegFrfMsb..Lsb
 pub const FRF_MSB: u8 = 0x06;
 pub const FRF_MID: u8 = 0x07;
 pub const FRF_LSB: u8 = 0x08;
-
-// RegFifoAddrPtr
 pub const FIFO_ADDR_PTR: u8 = 0x0d;
-
-// RegFifoTxBaseAddr
 pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;
-
-// RegFifoRxBaseAddr
 pub const FIFO_RX_BASE_ADDR: u8 = 0x0f;
-
 pub const FIFO_RX_CURRENT_ADDR: u8 = 0x10;
-
-// RegIrqFlags
 pub const IRQ_FLAGS: u8 = 0x12;
-
 pub const RX_NB_BYTES: u8 = 0x13;
 
-// RegHopChannel
 pub const HOP_CHANNEL: u8 = 0x1c;
 pub const HOP_CHANNEL_CRC_ON_PAYLOAD_MASK: u8 = 0x40;
 
-// RegModemConfig2
+pub const MODEM_CONFIG_1: u8 = 0x1d;
+pub const MODEM_CONFIG_1_BW_MASK: u8 = 0xf0;
+
 pub const MODEM_CONFIG_2: u8 = 0x1e;
+pub const MODEM_CONFIG_2_SPREADING_FACTOR_MASK: u8 = 0xf0;
 
-// RegSymbTimeoutLsb
 pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
-
-// RegPayloadLength
 pub const PAYLOAD_LENGTH: u8 = 0x22;
 
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
 // TODO find a way to avoid duplicating this...
 pub(crate) const IMAGE_CAL: u8 = 0x3b;
 
-// RegDioMapping1
 pub const DIO_MAPPING_1: u8 = 0x40;
 pub const DIO_MAPPING_1_DIO0_MASK: u8 = 0xc0;
 pub const DIO_MAPPING_1_DIO0_SHIFT: u8 = 0x6;

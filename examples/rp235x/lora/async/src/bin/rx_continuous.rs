@@ -12,6 +12,7 @@ use embassy_rp::peripherals::SPI1;
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
+use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 use sx127x::lora::driver::{Sx127xConfig, Sx127xLora};
 use sx127x::lora::types::{Dio0Signal, Interrupt};
@@ -49,6 +50,7 @@ async fn main(_task_spawner: Spawner) {
             },
             Err(_) => error!("read_rx_data failed :(")
         }
+        Timer::after(embassy_time::Duration::from_millis(3_000)).await;
         info!("looping around");
     }
 }

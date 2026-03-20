@@ -28,6 +28,7 @@ A bare-bones sync or async driver with a read+write SPI interface.
 - [ ] snr
 - [ ] frequency error
 - [ ] ldo
+- [ ] reg hopping example
 - [ ] `rx_single` example
 - [ ] `async` LoRa impl
 - [ ] `sync` LoRa impl

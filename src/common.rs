@@ -33,6 +33,11 @@ pub(crate) fn calculate_frf(hz: u32) -> u32 {
     ((hz as f32) / FSTEP) as u32
 }
 
+// TODO this might be LoRa only...
+pub(crate) fn calculate_symbol_rate(bandwidth: u32, spreading_factor: u32) -> u32 {
+    bandwidth / 2u32.pow(spreading_factor)
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -41,5 +46,13 @@ mod tests {
     fn calculate_frf_ok() {
         let frf = calculate_frf(434_000_000);
         assert_eq!(frf, 0x6c8000);
+    }
+
+    #[test]
+    fn calculate_symbol_rate_ok() {
+        let bandwidth = 125_000u32;
+        let spreading_factor = 7u32;
+        let symbol_rate = calculate_symbol_rate(bandwidth, spreading_factor);
+        assert_eq!(symbol_rate, 976u32);
     }
 }

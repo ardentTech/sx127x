@@ -1,7 +1,7 @@
 use embedded_hal_async::spi::SpiDevice;
-use crate::common::{calculate_frf, Sx127xSpi};
+use crate::common::{calculate_frf, calculate_symbol_rate, Sx127xSpi};
 use crate::lora::registers::*;
-use crate::lora::types::{DeviceMode, Dio0Signal, Dio1Signal, Interrupt};
+use crate::lora::types::{Bandwidth, CodingRate, DeviceMode, Dio0Signal, Dio1Signal, Interrupt, SpreadingFactor};
 
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
 const BUFFER_SIZE: usize = 255;
@@ -16,18 +16,29 @@ pub enum Sx127xLoraError<SPI> {
 }
 
 pub struct Sx127xConfig {
-    pub frequency: u32, // Hz
+    pub bandwidth: Bandwidth,
+    pub coding_rate: CodingRate,
+    pub frequency: u32,
+    pub spreading_factor: SpreadingFactor,
 }
 impl Default for Sx127xConfig {
     fn default() -> Self {
         Self {
+            bandwidth: Bandwidth::default(),
+            coding_rate: CodingRate::default(),
             frequency: DEFAULT_FREQUENCY_HZ,
+            spreading_factor: SpreadingFactor::default(),
         }
     }
 }
 impl Sx127xConfig {
-    pub fn new(frequency: u32) -> Self {
-        Self { frequency }
+    pub fn new(
+        bandwidth: Bandwidth,
+        coding_rate: CodingRate,
+        frequency: u32,
+        spreading_factor: SpreadingFactor
+    ) -> Self {
+        Self { bandwidth, coding_rate, frequency, spreading_factor }
     }
 }
 
@@ -45,6 +56,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             driver.set_frequency(config.frequency).await?;
             driver.calibrate().await?;
         }
+
+        driver.set_bandwidth(config.bandwidth).await?;
+        //driver.set_coding_rate(config.coding_rate).await?;
+        //driver.set_spreading_factor(config.spreading_factor).await?;
 
         driver.disable_temp_monitor().await?;
         driver.set_long_range_mode(true).await?;
@@ -99,6 +114,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_device_mode(mode).await
     }
 
+    /// Sets the bandwidth.
+    pub async fn set_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_1).await?;
+        byte &= !MODEM_CONFIG_1_BW_MASK;
+        byte |= ((bandwidth as u8) << 4) & MODEM_CONFIG_1_BW_MASK;
+        self.write(MODEM_CONFIG_1, byte).await
+    }
+
     /// Sets the DIO0 pin signal source.
     pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
@@ -125,6 +148,40 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(FRF_MSB, (frf >> 16) as u8).await?;
         self.write(FRF_MID, (frf >> 8) as u8).await?;
         self.write(FRF_LSB, frf as u8).await
+    }
+
+    /// Sets the spreading factor.
+    ///
+    /// See: page 27
+    pub async fn set_spreading_factor(&mut self, spreading_factor: SpreadingFactor) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        //let mut modem_config_2 = self.read(MODEM_CONFIG_2).await?;
+        // modem_config_2.set_spreading_factor(spreading_factor);
+        // self.write(RegModemConfig2::addr(), modem_config_2.into_bits()).await?;
+        //
+        // if spreading_factor == SpreadingFactor::Sf6 {
+        //     self.set_header_mode(true).await?;
+        // }
+        // let mut detect_optimize = RegDetectOptimize::from_bits(self.read(RegDetectOptimize::addr()).await?);
+        // detect_optimize.update(spreading_factor);
+        // self.write(RegDetectOptimize::addr(), detect_optimize.into_bits()).await?;
+        //
+        // // TODO this feels a bit heavy-handed
+        // let mut detection_threshold = RegDetectionThreshold::from_bits(self.read(RegDetectionThreshold::addr()).await?);
+        // detection_threshold.update(spreading_factor);
+        // self.write(RegDetectionThreshold::addr(), detection_threshold.into_bits()).await?;
+
+        Ok(())
+    }
+
+    /// Calculates the symbol rate (Rs).
+    pub async fn symbol_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
+        let bandwidth = Bandwidth::from((modem_config_1 & MODEM_CONFIG_1_BW_MASK) >> 4).hz();
+
+        let modem_config_2 = self.read(MODEM_CONFIG_2).await?;
+        let spreading_factor = SpreadingFactor::from((modem_config_2 & MODEM_CONFIG_2_SPREADING_FACTOR_MASK) >> 4);
+
+        Ok(calculate_symbol_rate(bandwidth, spreading_factor as u32) as u16)
     }
 
     /// Transmits a `payload` of up to 255 bytes.

@@ -33,7 +33,8 @@ async fn main(_task_spawner: Spawner) {
 
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
 
-    let config = Sx127xConfig::new(FREQUENCY_HZ);
+    let mut config = Sx127xConfig::default();
+    config.frequency = FREQUENCY_HZ;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.expect("driver init failed :(");
 
     sx127x.set_dio0(Dio0Signal::RxDone).await.expect("enable_dio0 failed :(");

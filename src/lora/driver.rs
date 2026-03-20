@@ -58,8 +58,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
 
         driver.set_bandwidth(config.bandwidth).await?;
-        //driver.set_coding_rate(config.coding_rate).await?;
-        //driver.set_spreading_factor(config.spreading_factor).await?;
+        driver.set_coding_rate(config.coding_rate).await?;
+        driver.set_spreading_factor(config.spreading_factor).await?;
 
         driver.disable_temp_monitor().await?;
         driver.set_long_range_mode(true).await?;
@@ -98,7 +98,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(buffer)
     }
 
-    /// Enables receive mode and searches for a preamble.
+    /// Enables receive mode and searches for a preamble with an optional timeout (in symbols).
     ///
     /// If `timeout` is not None, enters `RxSingle` device mode. Otherwise, enters `RxContinuous`
     /// device mode.
@@ -126,6 +126,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         byte &= !MODEM_CONFIG_1_BW_MASK;
         byte |= ((bandwidth as u8) << 4) & MODEM_CONFIG_1_BW_MASK;
+        self.write(MODEM_CONFIG_1, byte).await
+    }
+
+    /// Sets the coding rate.
+    pub async fn set_coding_rate(&mut self, coding_rate: CodingRate) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_1).await?;
+        byte &= !MODEM_CONFIG_1_CODING_RATE_MASK;
+        byte |= ((coding_rate as u8) << 1) & MODEM_CONFIG_1_CODING_RATE_MASK;
         self.write(MODEM_CONFIG_1, byte).await
     }
 
@@ -161,21 +169,23 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: page 27
     pub async fn set_spreading_factor(&mut self, spreading_factor: SpreadingFactor) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        //let mut modem_config_2 = self.read(MODEM_CONFIG_2).await?;
-        // modem_config_2.set_spreading_factor(spreading_factor);
-        // self.write(RegModemConfig2::addr(), modem_config_2.into_bits()).await?;
-        //
-        // if spreading_factor == SpreadingFactor::Sf6 {
-        //     self.set_header_mode(true).await?;
-        // }
-        // let mut detect_optimize = RegDetectOptimize::from_bits(self.read(RegDetectOptimize::addr()).await?);
-        // detect_optimize.update(spreading_factor);
-        // self.write(RegDetectOptimize::addr(), detect_optimize.into_bits()).await?;
-        //
-        // // TODO this feels a bit heavy-handed
-        // let mut detection_threshold = RegDetectionThreshold::from_bits(self.read(RegDetectionThreshold::addr()).await?);
-        // detection_threshold.update(spreading_factor);
-        // self.write(RegDetectionThreshold::addr(), detection_threshold.into_bits()).await?;
+        let mut modem_config_2 = self.read(MODEM_CONFIG_2).await?;
+        modem_config_2 &= !MODEM_CONFIG_2_SPREADING_FACTOR_MASK;
+        modem_config_2 |= ((spreading_factor as u8) << 4) & MODEM_CONFIG_2_SPREADING_FACTOR_MASK;
+        self.write(MODEM_CONFIG_2, modem_config_2).await?;
+
+        let mut detect_optimize = self.read(DETECT_OPTIMIZE).await?;
+        detect_optimize &= !DETECT_OPTIMIZE_DETECTION_OPTIMIZE_MASK;
+
+        if spreading_factor == SpreadingFactor::Sf6 {
+            self.set_header_mode(true).await?;
+            detect_optimize |= 0x5;
+            self.write(DETECTION_THRESHOLD, 0x0c).await?;
+        } else {
+            detect_optimize |= 0x3;
+            self.write(DETECTION_THRESHOLD, 0x0a).await?;
+        }
+        self.write(DETECT_OPTIMIZE, detect_optimize).await?;
 
         Ok(())
     }
@@ -241,8 +251,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     async fn coding_rate(&mut self) -> Result<CodingRate, Sx127xLoraError<SPI::Error>> {
-        let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
-        Ok(CodingRate::from((modem_config_1 & MODEM_CONFIG_1_CODING_RATE_MASK) >> 1))
+        let byte = self.read(MODEM_CONFIG_1).await?;
+        Ok(CodingRate::from((byte & MODEM_CONFIG_1_CODING_RATE_MASK) >> 1))
     }
 
     // Determines if a RX packet terminated successfully.
@@ -265,6 +275,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         byte &= !mask;
         byte |= (value << left_shift) & mask;
         self.write(DIO_MAPPING_1, byte).await
+    }
+
+    async fn set_header_mode(&mut self, implicit: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_1).await?;
+        byte &= !MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK;
+        byte |= (implicit as u8) & MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK;
+        self.write(MODEM_CONFIG_1, byte).await
     }
 
     // Selects the LoRa modem when `on` == true, and the FSK/OOK modem when `on` == false.

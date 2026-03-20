@@ -87,6 +87,7 @@ pub const HOP_CHANNEL_CRC_ON_PAYLOAD_MASK: u8 = 0x40;
 pub const MODEM_CONFIG_1: u8 = 0x1d;
 pub const MODEM_CONFIG_1_BW_MASK: u8 = 0xf0;
 pub const MODEM_CONFIG_1_CODING_RATE_MASK: u8 = 0xe;
+pub const MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK: u8 = 0x1;
 
 pub const MODEM_CONFIG_2: u8 = 0x1e;
 pub const MODEM_CONFIG_2_SPREADING_FACTOR_MASK: u8 = 0xf0;
@@ -102,4 +103,10 @@ pub const DIO_MAPPING_1: u8 = 0x40;
 pub const DIO_MAPPING_1_DIO0_MASK: u8 = 0xc0;
 pub const DIO_MAPPING_1_DIO0_SHIFT: u8 = 0x6;
 pub const DIO_MAPPING_1_DIO1_MASK: u8 = 0x30;
+
+pub const DETECT_OPTIMIZE: u8 = 0x31;
+pub const DETECT_OPTIMIZE_DETECTION_OPTIMIZE_MASK: u8 = 0x7;
+
+pub const DETECTION_THRESHOLD: u8 = 0x37;
+
 pub const DIO_MAPPING_1_DIO1_SHIFT: u8 = 0x4;

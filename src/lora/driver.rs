@@ -3,8 +3,10 @@ use crate::common::{calculate_data_rate, calculate_frf, calculate_symbol_rate, S
 use crate::lora::registers::*;
 use crate::lora::types::{Bandwidth, CodingRate, DeviceMode, Dio0Signal, Dio1Signal, Interrupt, SpreadingFactor};
 
-const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
 const BUFFER_SIZE: usize = 255;
+const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
+// identifies silicon Version 1b, which applies to errata
+const PRODUCTION_VERSION: u8 = 0x12;
 
 #[derive(Debug)]
 pub enum Sx127xLoraError<SPI> {
@@ -126,11 +128,16 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_device_mode(mode).await
     }
 
-    /// Sets the bandwidth.
+    /// Sets the modem bandwidth.
     pub async fn set_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         byte &= !MODEM_CONFIG_1_BW_MASK;
         byte |= ((bandwidth as u8) << 4) & MODEM_CONFIG_1_BW_MASK;
+
+        if bandwidth == Bandwidth::Bw500kHz {
+            self.optimize_500khz_bandwidth().await?;
+        }
+
         self.write(MODEM_CONFIG_1, byte).await
     }
 
@@ -258,6 +265,33 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     async fn coding_rate(&mut self) -> Result<CodingRate, Sx127xLoraError<SPI::Error>> {
         let byte = self.read(MODEM_CONFIG_1).await?;
         Ok(CodingRate::from((byte & MODEM_CONFIG_1_CODING_RATE_MASK) >> 1))
+    }
+
+    async fn frequency(&mut self) -> Result<u32, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(FRF_MSB).await?;
+        let mid = self.read(FRF_MID).await?;
+        let lsb = self.read(FRF_LSB).await?;
+        Ok(((msb as u32) << 16) | (mid as u32) << 8 | lsb as u32)
+    }
+
+    // see: errata section 2.1
+    async fn optimize_500khz_bandwidth(&mut self) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        if self.read(VERSION).await? != PRODUCTION_VERSION { return Ok(()) } // noop for engineering samples
+
+        match self.frequency().await? {
+            410_000_000..=525_000_000 => {
+                self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
+                self.write(HIGH_BW_OPTIMIZE_2, 0x7f).await?;
+            }
+            862_000_000..=1_020_000_000 => {
+                self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
+                self.write(HIGH_BW_OPTIMIZE_2, 0x64).await?;
+            }
+            _ => {
+                self.write(HIGH_BW_OPTIMIZE_1, 0x03).await?;
+            }
+        }
+        Ok(())
     }
 
     // Determines if a RX packet terminated successfully.

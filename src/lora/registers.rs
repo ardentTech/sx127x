@@ -107,6 +107,9 @@ pub const DIO_MAPPING_1_DIO1_MASK: u8 = 0x30;
 pub const DETECT_OPTIMIZE: u8 = 0x31;
 pub const DETECT_OPTIMIZE_DETECTION_OPTIMIZE_MASK: u8 = 0x7;
 
+pub const HIGH_BW_OPTIMIZE_1: u8 = 0x36;
 pub const DETECTION_THRESHOLD: u8 = 0x37;
+pub const HIGH_BW_OPTIMIZE_2: u8 = 0x3a;
 
 pub const DIO_MAPPING_1_DIO1_SHIFT: u8 = 0x4;
+pub const VERSION: u8 = 0x42;

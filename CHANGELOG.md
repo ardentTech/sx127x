@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `lora` and `fsk` cargo features
+- `data_rate` and `symbol_rate` calculations
+- `crc_generation` method
+
 - `set_power_amplification` method
 - `set_pa_ramp` method
 - `set_ocp` method
@@ -17,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `valid_rx_packets` method
 - `last_packet_snr` method
 - `set_invert_iq` method
-- `data_rate` and `symbol_rate` calculations
 
 ## [0.1.0] - 2026-03-07
 
@@ -25,4 +27,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - async lora tx example
 - async lora rx timeout example
 - async lora rx continuous example
-- async lora driver
+- async lora driver shell

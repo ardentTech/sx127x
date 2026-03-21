@@ -3,8 +3,12 @@ use crate::common::{calculate_data_rate, calculate_frf, calculate_symbol_rate, S
 use crate::lora::registers::*;
 use crate::lora::types::{Bandwidth, CodingRate, DeviceMode, Dio0Signal, Dio1Signal, Interrupt, SpreadingFactor};
 
+// TODO: datasheet section 4.1.1.6 "Where the preamble length is not known, or can vary, the maximum preamble length should be programmed on the receiver side"
+
 const BUFFER_SIZE: usize = 255;
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
+const MIN_RX_TIMEOUT: u8 = 4; // symbols
+const MAX_RX_TIMEOUT: u16 = 1023; // symbols
 // identifies silicon Version 1b, which applies to errata
 const PRODUCTION_VERSION: u8 = 0x12;
 
@@ -71,7 +75,21 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Clears an interrupt.
     pub async fn clear_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let byte = self.read(IRQ_FLAGS).await?;
+        // TODO should this ONLY clear if the bit is 1? Otherwise it's signalling an interrupt?
         self.write(IRQ_FLAGS, byte | interrupt as u8).await
+    }
+
+    /// Enables/disables CRC generation and check on packet payload.
+    ///
+    /// In implicit header mode, if CRC generation is needed it must be set on both TX and RX.
+    ///
+    /// In explicit header mode, if CRC generation is needed it must be set on the TX side only. The
+    /// CRC will be recovered from the packet header on the RX side.
+    pub async fn crc_generation(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_2).await?;
+        byte &= !MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK;
+        byte |= ((on as u8) << 2) & MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK;
+        self.write(MODEM_CONFIG_2, byte).await
     }
 
     /// Calculates the current data rate in bits/s.
@@ -82,12 +100,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(calculate_data_rate(symbol_rate, spreading_factor, coding_rate))
     }
 
-    /// Reads the byte from register `addr` over SPI.
+    /// Reads the byte from register `addr`.
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         self.spi.read(addr).await.map_err(Sx127xLoraError::SPI)
     }
 
     /// Reads 255 bytes from the FIFO buffer.
+    // TODO should this return an object with Rx metadata in addition to data?
     pub async fn read_rx_data(&mut self) -> Result<[u8; BUFFER_SIZE], Sx127xLoraError<SPI::Error>> {
         let reg_hop_channel = self.read(HOP_CHANNEL).await?;
         if !self.rx_packet_termination_ok((reg_hop_channel & HOP_CHANNEL_CRC_ON_PAYLOAD_MASK) != 0).await? {
@@ -95,7 +114,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
 
         let rx_fifo_addr = self.read(FIFO_RX_CURRENT_ADDR).await?;
-        self.write(FIFO_ADDR_PTR as u8, rx_fifo_addr).await?;
+        self.write(FIFO_ADDR_PTR, rx_fifo_addr).await?;
         let num_bytes = self.read(RX_NB_BYTES).await?;
         let mut buffer = [0; 255];
         for i in 0..num_bytes {
@@ -112,13 +131,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn receive(&mut self, timeout: Option<u16>) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut mode = DeviceMode::RXCONTINUOUS;
         if let Some(timeout) = timeout {
-        //     // TODO unit test  (make this a tuple struct and put validation on it? easier to test?)s
-        //     // if a struct (or other) could have MIN, MAX helpers...
-            if timeout < 4 || timeout > 1023 {
+            if timeout < (MIN_RX_TIMEOUT as u16) || timeout > MAX_RX_TIMEOUT {
                 return Err(Sx127xLoraError::InvalidTimeout)
             }
 
-            // TODO test this
             self.write(MODEM_CONFIG_2, (timeout >> 8) as u8).await?;
             self.write(SYMB_TIMEOUT_LSB, (timeout & 0xff) as u8 ).await?;
             mode = DeviceMode::RXSINGLE;
@@ -167,9 +183,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(OP_MODE, byte).await
     }
 
-    /// Sets the carrier frequency.
-    ///
-    /// Important: check regulations for your area (e.g. 902-928 MHz for the United States)
+    /// Sets the carrier frequency. It's critical that you check regulations for your area (e.g.
+    /// 902-928 MHz for the United States)
     pub async fn set_frequency(&mut self, hz: u32) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let frf = calculate_frf(hz);
         self.write(FRF_MSB, (frf >> 16) as u8).await?;
@@ -177,9 +192,19 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(FRF_LSB, frf as u8).await
     }
 
+    /// Sets the header mode to explicit or implicit.
+    ///
+    /// See: datasheet section 4.1.1.6
+    pub async fn set_header_mode(&mut self, implicit: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_1).await?;
+        byte &= !MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK;
+        byte |= (implicit as u8) & MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK;
+        self.write(MODEM_CONFIG_1, byte).await
+    }
+
     /// Sets the spreading factor.
     ///
-    /// See: page 27
+    /// See: datasheet page 27
     pub async fn set_spreading_factor(&mut self, spreading_factor: SpreadingFactor) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut modem_config_2 = self.read(MODEM_CONFIG_2).await?;
         modem_config_2 &= !MODEM_CONFIG_2_SPREADING_FACTOR_MASK;
@@ -206,7 +231,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn symbol_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
         let bandwidth = Bandwidth::from((modem_config_1 & MODEM_CONFIG_1_BW_MASK) >> 4).hz();
-
         let spreading_factor = self.spreading_factor().await?;
 
         Ok(calculate_symbol_rate(bandwidth, spreading_factor as u32) as u16)
@@ -309,13 +333,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         byte &= !mask;
         byte |= (value << left_shift) & mask;
         self.write(DIO_MAPPING_1, byte).await
-    }
-
-    async fn set_header_mode(&mut self, implicit: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        let mut byte = self.read(MODEM_CONFIG_1).await?;
-        byte &= !MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK;
-        byte |= (implicit as u8) & MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK;
-        self.write(MODEM_CONFIG_1, byte).await
     }
 
     // Selects the LoRa modem when `on` == true, and the FSK/OOK modem when `on` == false.

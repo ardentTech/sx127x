@@ -91,6 +91,7 @@ pub const MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK: u8 = 0x1;
 
 pub const MODEM_CONFIG_2: u8 = 0x1e;
 pub const MODEM_CONFIG_2_SPREADING_FACTOR_MASK: u8 = 0xf0;
+pub const MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK: u8 = 0x4;
 
 pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 pub const PAYLOAD_LENGTH: u8 = 0x22;

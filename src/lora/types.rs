@@ -118,6 +118,7 @@ pub enum Interrupt {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum SpreadingFactor {
+    /// Only implicit header mode is possible with Sf6.
     Sf6 = 0x6,
     #[default]
     Sf7 = 0x7,

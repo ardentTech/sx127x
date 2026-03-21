@@ -16,23 +16,12 @@ TODO describe modems
   the chip." [datasheet section 5.2.2]
 
 ### TODO
-- [ ] lora errata 2.3
-- [ ] lora errata 2.4
-- [ ] fsk errata 3.1
-- [ ] fsk errata 3.2
-- [ ] tx power
-- [ ] ocp
-- [ ] set preamble
-- [ ] set crc
-- [ ] invert iq
-- [ ] rssi
-- [ ] snr
-- [ ] frequency error
-- [ ] ldo
-- [ ] reg hopping example
-- [ ] `rx_single` example
 - [ ] `async` LoRa impl
 - [ ] `sync` LoRa impl
 - [ ] `async` FSK/OOK impl
 - [ ] `sync` FSK/OOK impl
+- [ ] lora errata 2.3
+- [ ] lora errata 2.4
+- [ ] fsk errata 3.1
+- [ ] fsk errata 3.2
 - [ ] RX, RX_TX, TX driver modes to customize FIFO buffer mem layout

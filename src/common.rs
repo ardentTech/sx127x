@@ -48,6 +48,15 @@ pub(crate) fn calculate_symbol_rate(bandwidth: u32, spreading_factor: u32) -> u3
     bandwidth / 2u32.pow(spreading_factor)
 }
 
+pub(crate) const fn get_bits(byte: u8, mask: u8, lsb_offset: u8) -> u8 {
+    (byte & mask) >> lsb_offset
+}
+
+pub(crate) const fn set_bits(byte: &mut u8, bits: u8, mask: u8, lsb_offset: u8) {
+    *byte &= !mask;
+    *byte |= (bits << lsb_offset) & mask
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -71,5 +80,18 @@ mod tests {
         let spreading_factor = 7u32;
         let symbol_rate = calculate_symbol_rate(bandwidth, spreading_factor);
         assert_eq!(symbol_rate, 976u32);
+    }
+
+    #[test]
+    fn get_bits_ok() {
+        let byte = 0b1010_0011;
+        assert_eq!(get_bits(byte, 0b111_0000, 4), 0b010);
+    }
+
+    #[test]
+    fn set_bits_ok() {
+        let mut byte = 0b0011_0101;
+        set_bits(&mut byte, 0b101, 0b1110, 1);
+        assert_eq!(byte, 0b0011_1011);
     }
 }

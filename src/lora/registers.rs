@@ -89,6 +89,8 @@ pub const MODEM_CONFIG_1_BW_MASK: u8 = 0xf0;
 pub const MODEM_CONFIG_1_CODING_RATE_MASK: u8 = 0xe;
 pub const MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK: u8 = 0x1;
 
+pub const MODEM_STAT: u8 = 0x18;
+
 pub const MODEM_CONFIG_2: u8 = 0x1e;
 pub const MODEM_CONFIG_2_SPREADING_FACTOR_MASK: u8 = 0xf0;
 pub const MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK: u8 = 0x4;

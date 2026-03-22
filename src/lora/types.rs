@@ -1,3 +1,5 @@
+use crate::lora::types::ModemStatus::{HeaderInfoValid, ModemClear, RxOnGoing, SignalDetected, SignalSynchronized};
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,
@@ -114,6 +116,27 @@ pub enum Interrupt {
     PayloadCrcError = 0x5,
     RxDone = 0x6,
     RxTimeout = 0x7,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ModemStatus {
+    SignalDetected = 0x0,
+    SignalSynchronized = 0x1,
+    RxOnGoing = 0x4,
+    HeaderInfoValid = 0x8,
+    ModemClear = 0x16,
+}
+impl From<u8> for ModemStatus {
+    fn from(value: u8) -> Self {
+        match value {
+            0x0 => SignalDetected,
+            0x1 => SignalSynchronized,
+            0x4 => RxOnGoing,
+            0x8 => HeaderInfoValid,
+            _ => ModemClear,
+        }
+    }
+
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

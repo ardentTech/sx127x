@@ -1,9 +1,7 @@
 use embedded_hal_async::spi::SpiDevice;
-use crate::common::{calculate_data_rate, calculate_frf, calculate_symbol_rate, get_bits, set_bits, Sx127xSpi};
+use crate::common::*;
 use crate::lora::registers::*;
 use crate::lora::types::*;
-
-// TODO: datasheet section 4.1.1.6 "Where the preamble length is not known, or can vary, the maximum preamble length should be programmed on the receiver side"
 
 const BUFFER_SIZE: usize = 255;
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
@@ -58,16 +56,19 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn new(spi: SPI, config: Sx127xConfig) -> Result<Sx127xLora<SPI>, Sx127xLoraError<SPI::Error>> {
         let mut driver = Sx127xLora { spi: Sx127xSpi::new(spi) };
 
-        if config.frequency != DEFAULT_FREQUENCY_HZ {
-            driver.set_frequency(config.frequency).await?;
-        }
-
+        driver.set_frequency(config.frequency).await?;
         driver.set_bandwidth(config.bandwidth).await?;
         driver.set_coding_rate(config.coding_rate).await?;
         driver.set_spreading_factor(config.spreading_factor).await?;
-
+        // this will put the modem into long range mode
         driver.set_temp_monitor(false).await?;
         Ok(driver)
+    }
+
+    /// Gets the bandwidth.
+    pub async fn bandwidth(&mut self) -> Result<Bandwidth, Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(MODEM_CONFIG_1).await?;
+        Ok(Bandwidth::from(get_bits(byte, MODEM_CONFIG_1_BW_MASK, 4)))
     }
 
     /// Triggers the IQ and RSSI calibration when set in Standby mode. Takes ~10ms.
@@ -82,8 +83,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Clears an interrupt.
     pub async fn clear_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let byte = self.read(IRQ_FLAGS).await?;
-        // TODO should this ONLY clear if the bit is 1? Otherwise it's signalling an interrupt?
         self.write(IRQ_FLAGS, byte | interrupt as u8).await
+    }
+
+    /// Gets the cyclic error coding rate.
+    async fn coding_rate(&mut self) -> Result<CodingRate, Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(MODEM_CONFIG_1).await?;
+        Ok(CodingRate::from(get_bits(byte, MODEM_CONFIG_1_CODING_RATE_MASK, 1)))
     }
 
     /// Enables/disables CRC generation and check on packet payload.
@@ -104,6 +110,32 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let symbol_rate = self.symbol_rate().await? as f32;
         let spreading_factor = (self.spreading_factor().await? as u8) as f32;
         Ok(calculate_data_rate(symbol_rate, spreading_factor, coding_rate))
+    }
+
+    /// Gets the device mode.
+    pub async fn device_mode(&mut self) -> Result<DeviceMode, Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(OP_MODE).await?;
+        Ok(DeviceMode::from(get_bits(byte, OP_MODE_MODE_MASK, 0)))
+    }
+
+    /// Gets the carrier frequency.
+    pub async fn frequency(&mut self) -> Result<u32, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(FRF_MSB).await?;
+        let mid = self.read(FRF_MID).await?;
+        let lsb = self.read(FRF_LSB).await?;
+        Ok(((msb as u32) << 16) | (mid as u32) << 8 | lsb as u32)
+    }
+
+    /// Gets the header mode.
+    pub async fn header_mode(&mut self) -> Result<HeaderMode, Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(MODEM_CONFIG_1).await?;
+        Ok(HeaderMode::from(get_bits(byte, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, 0)))
+    }
+
+    /// Masks an interrupt.
+    pub async fn mask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(IRQ_FLAGS_MASK).await?;
+        self.write(IRQ_FLAGS_MASK, byte | interrupt as u8).await
     }
 
     /// Gets the current modem status.
@@ -206,9 +238,9 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Sets the header mode to explicit or implicit.
     ///
     /// See: datasheet section 4.1.1.6
-    pub async fn set_header_mode(&mut self, implicit: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+    pub async fn set_header_mode(&mut self, mode: HeaderMode) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
-        set_bits(&mut byte, implicit as u8, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, 0);
+        set_bits(&mut byte, mode as u8, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, 0);
         self.write(MODEM_CONFIG_1, byte).await
     }
 
@@ -224,7 +256,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         detect_optimize &= !DETECT_OPTIMIZE_DETECTION_OPTIMIZE_MASK;
 
         if spreading_factor == SpreadingFactor::Sf6 {
-            self.set_header_mode(true).await?;
+            self.set_header_mode(HeaderMode::Implicit).await?;
             detect_optimize |= 0x5;
             self.write(DETECTION_THRESHOLD, 0x0c).await?;
         } else {
@@ -290,18 +322,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     // PRIVATE -------------------------------------------------------------------------------------
-
-    async fn coding_rate(&mut self) -> Result<CodingRate, Sx127xLoraError<SPI::Error>> {
-        let byte = self.read(MODEM_CONFIG_1).await?;
-        Ok(CodingRate::from((byte & MODEM_CONFIG_1_CODING_RATE_MASK) >> 1))
-    }
-
-    async fn frequency(&mut self) -> Result<u32, Sx127xLoraError<SPI::Error>> {
-        let msb = self.read(FRF_MSB).await?;
-        let mid = self.read(FRF_MID).await?;
-        let lsb = self.read(FRF_LSB).await?;
-        Ok(((msb as u32) << 16) | (mid as u32) << 8 | lsb as u32)
-    }
 
     // see: errata section 2.1
     async fn optimize_500khz_bandwidth(&mut self) -> Result<(), Sx127xLoraError<SPI::Error>> {

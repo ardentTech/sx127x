@@ -87,6 +87,20 @@ pub enum DeviceMode {
     RXSINGLE = 0x6,
     CAD = 0x7
 }
+impl From<u8> for DeviceMode {
+    fn from(value: u8) -> Self {
+        match value {
+            0x0 => DeviceMode::SLEEP,
+            0x1 => DeviceMode::STDBY,
+            0x2 => DeviceMode::FSTX,
+            0x3 => DeviceMode::TX,
+            0x4 => DeviceMode::FSRX,
+            0x5 => DeviceMode::RXCONTINUOUS,
+            0x6 => DeviceMode::RXSINGLE,
+            _ => DeviceMode::CAD,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Dio0Signal {
@@ -104,6 +118,21 @@ pub enum Dio1Signal {
     FhssChangeChannel = 0x1,
     CadDetected = 0x2,
     None = 0x3,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum HeaderMode {
+    #[default]
+    Explicit = 0x0,
+    Implicit = 0x1,
+}
+impl From<u8> for HeaderMode {
+    fn from(value: u8) -> Self {
+        match value {
+            0x0 => HeaderMode::Explicit,
+            _ => HeaderMode::Implicit,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -78,6 +78,7 @@ pub const FIFO_ADDR_PTR: u8 = 0x0d;
 pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;
 pub const FIFO_RX_BASE_ADDR: u8 = 0x0f;
 pub const FIFO_RX_CURRENT_ADDR: u8 = 0x10;
+pub const IRQ_FLAGS_MASK: u8 = 0x11;
 pub const IRQ_FLAGS: u8 = 0x12;
 pub const RX_NB_BYTES: u8 = 0x13;
 
@@ -99,7 +100,6 @@ pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
 
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
-// TODO find a way to avoid duplicating this...
 pub(crate) const IMAGE_CAL: u8 = 0x3b;
 
 pub const DIO_MAPPING_1: u8 = 0x40;

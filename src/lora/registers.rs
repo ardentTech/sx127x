@@ -102,6 +102,9 @@ pub const PREAMBLE_LSB: u8 = 0x21;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
 
 pub const MODEM_CONFIG_3: u8 = 0x26;
+pub const FEI_MSB: u8 = 0x28;
+pub const FEI_MID: u8 = 0x29;
+pub const FEI_LSB: u8 = 0x2a;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_FLAG: u8 = 0x8;
 
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))

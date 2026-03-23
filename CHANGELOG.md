@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `spreading_factor`, `set_spreading_factor` methods and `SpreadingFactor` enum
 - `preamble_length`, `set_preamble_length` methods
 - `low_data_rate_optimize`, `set_low_data_rate_optimize` methods
+- `frequency_error_indication` `fei` methods, and `FEI` struct
 
 ## [0.1.0] - 2026-03-07
 

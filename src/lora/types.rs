@@ -1,5 +1,3 @@
-use crate::lora::types::ModemStatus::{HeaderInfoValid, ModemClear, RxOnGoing, SignalDetected, SignalSynchronized};
-
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,
@@ -43,6 +41,21 @@ impl Bandwidth {
             Bandwidth::Bw125kHz => 125_000,
             Bandwidth::Bw250kHz => 250_000,
             _ => 500_000
+        }
+    }
+
+    pub(crate) fn khz(&self) -> f32 {
+        match self {
+            Bandwidth::Bw7_8kHz => 7.8,
+            Bandwidth::Bw10_4kHz => 10.4,
+            Bandwidth::Bw15_6kHz => 15.6,
+            Bandwidth::Bw20_8kHz => 20.8,
+            Bandwidth::Bw31_25kHz => 31.25,
+            Bandwidth::Bw41_7kHz => 41.7,
+            Bandwidth::Bw62_5kHz => 62.5,
+            Bandwidth::Bw125kHz => 125.0,
+            Bandwidth::Bw250kHz => 250.0,
+            _ => 500.0
         }
     }
 }
@@ -120,6 +133,17 @@ pub enum Dio1Signal {
     None = 0x3,
 }
 
+pub struct FEI {
+    hz: f64,
+    ppm: f64,
+}
+impl FEI {
+    pub(crate) fn new(fei: i32, bandwidth_khz: f32, frf: u32) -> Self {
+        let hz: f64 = ((fei * 2i32.pow(24) / (32 * 10i32.pow(6))) as f64) * ((bandwidth_khz / 500f32) as f64);
+        Self { hz, ppm: hz * (10u32.pow(6) / frf) as f64 }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum HeaderMode {
     #[default]
@@ -158,11 +182,11 @@ pub enum ModemStatus {
 impl From<u8> for ModemStatus {
     fn from(value: u8) -> Self {
         match value {
-            0x0 => SignalDetected,
-            0x1 => SignalSynchronized,
-            0x4 => RxOnGoing,
-            0x8 => HeaderInfoValid,
-            _ => ModemClear,
+            0x0 => ModemStatus::SignalDetected,
+            0x1 => ModemStatus::SignalSynchronized,
+            0x4 => ModemStatus::RxOnGoing,
+            0x8 => ModemStatus::HeaderInfoValid,
+            _ => ModemStatus::ModemClear,
         }
     }
 
@@ -191,5 +215,35 @@ impl From<u8> for SpreadingFactor {
             0xb => SpreadingFactor::Sf11,
             _ => SpreadingFactor::Sf12,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+    use crate::lora::types::FEI;
+
+    #[test]
+    fn fei_new_neg_fei_hz_ok() {
+        let fei = FEI::new(-2i32, 16f32, 32u32);
+        assert_relative_eq!(fei.hz, -0.032, epsilon=1e-3);
+    }
+
+    #[test]
+    fn fei_new_pos_fei_hz_ok() {
+        let fei = FEI::new(8i32, 16f32, 32u32);
+        assert_relative_eq!(fei.hz, 0.128, epsilon=1e-3);
+    }
+
+    #[test]
+    fn fei_new_neg_fei_ppm_ok() {
+        let fei = FEI::new(-4i32, 16f32, 32u32);
+        assert_relative_eq!(fei.ppm, -2000.0, epsilon=1e-3);
+    }
+
+    #[test]
+    fn fei_new_pos_fei_ppm_ok() {
+        let fei = FEI::new(8i32, 16f32, 32u32);
+        assert_relative_eq!(fei.ppm, 4000.0, epsilon=1e-3);
     }
 }

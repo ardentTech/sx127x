@@ -126,6 +126,23 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(((msb as u32) << 16) | (mid as u32) << 8 | lsb as u32)
     }
 
+    /// Calculates the frequency error indication (FEI) in hz and ppm.
+    pub async fn frequency_error_indication(&mut self) -> Result<FEI, Sx127xLoraError<SPI::Error>> {
+        let bandwidth = self.bandwidth().await?;
+        let msb = self.read(FEI_MSB).await?;
+        let mid = self.read(FEI_MID).await?;
+        let lsb = self.read(FEI_LSB).await?;
+        let fei= (((msb as u32) << 16) | ((mid as u32) << 8) | (lsb as u32)) as i32;
+        let frf = self.frequency().await?;
+
+        Ok(FEI::new(fei, bandwidth.khz(), frf))
+    }
+
+    /// Alias for `frequency_error_indication` method.
+    pub async fn fei(&mut self) -> Result<FEI, Sx127xLoraError<SPI::Error>> {
+        self.frequency_error_indication().await
+    }
+
     /// Gets the header mode.
     pub async fn header_mode(&mut self) -> Result<HeaderMode, Sx127xLoraError<SPI::Error>> {
         let byte = self.read(MODEM_CONFIG_1).await?;

@@ -97,6 +97,8 @@ pub const MODEM_CONFIG_2_SPREADING_FACTOR_MASK: u8 = 0xf0;
 pub const MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK: u8 = 0x4;
 
 pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
+pub const PREAMBLE_MSB: u8 = 0x20;
+pub const PREAMBLE_LSB: u8 = 0x21;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
 
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))

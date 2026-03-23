@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_dio0`, `set_dio1` methods and `Dio0Signal`, `Dio1Signal` enums
 - `set_temp_monitor` method
 - `spreading_factor`, `set_spreading_factor` methods and `SpreadingFactor` enum
+- `preamble_length`, `set_preamble_length` methods
 
 ## [0.1.0] - 2026-03-07
 

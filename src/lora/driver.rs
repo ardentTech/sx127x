@@ -144,6 +144,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(ModemStatus::from(byte))
     }
 
+    /// Gets the packet preamble length.
+    pub async fn preamble_length(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(PREAMBLE_MSB).await?;
+        let lsb = self.read(PREAMBLE_LSB).await?;
+        Ok(((msb as u16) << 8) | lsb as u16)
+    }
+
     /// Gets the byte from register `addr`.
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         self.spi.read(addr).await.map_err(Sx127xLoraError::SPI)
@@ -242,6 +249,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         set_bits(&mut byte, mode as u8, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, 0);
         self.write(MODEM_CONFIG_1, byte).await
+    }
+
+    /// Sets the packet preamble length.
+    pub async fn set_preamble_length(&mut self, preamble_length: u16) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.write(PREAMBLE_MSB, (preamble_length >> 8) as u8).await?;
+        self.write(PREAMBLE_LSB, preamble_length as u8).await
     }
 
     /// Sets the spreading factor.

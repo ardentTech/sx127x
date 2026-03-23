@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_temp_monitor` method
 - `spreading_factor`, `set_spreading_factor` methods and `SpreadingFactor` enum
 - `preamble_length`, `set_preamble_length` methods
+- `low_data_rate_optimize`, `set_low_data_rate_optimize` methods
 
 ## [0.1.0] - 2026-03-07
 

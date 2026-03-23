@@ -132,6 +132,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(HeaderMode::from(get_bits(byte, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, 0)))
     }
 
+    /// Gets the low data rate optimize flag.
+    pub async fn low_data_rate_optimize(&mut self) -> Result<bool, Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(MODEM_CONFIG_3).await?;
+        Ok(get_bits(byte, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_FLAG, 3) == 1)
+    }
+
     /// Masks an interrupt.
     pub async fn mask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let byte = self.read(IRQ_FLAGS_MASK).await?;
@@ -249,6 +255,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         set_bits(&mut byte, mode as u8, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, 0);
         self.write(MODEM_CONFIG_1, byte).await
+    }
+
+    /// Sets the low data rate optimize flag.
+    pub async fn set_low_data_rate_optimize(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_3).await?;
+        set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_FLAG, 3);
+        self.write(MODEM_CONFIG_3, byte).await
     }
 
     /// Sets the packet preamble length.

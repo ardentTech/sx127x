@@ -175,8 +175,8 @@ pub enum Interrupt {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InvertIQ {
-    rx_path: bool,
-    tx_path: bool,
+    pub rx_path: bool,
+    pub tx_path: bool,
 }
 impl From<u8> for InvertIQ {
     fn from(value: u8) -> Self {

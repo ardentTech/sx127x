@@ -302,6 +302,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_1, byte).await
     }
 
+    /// Sets invert IQ config for the rx_path and tx_path.
+    pub async fn set_invert_iq(&mut self, config: InvertIQ) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(INVERT_IQ).await?;
+        set_bits(&mut byte, config.rx_path as u8, INVERT_IQ_RX_MASK, 6);
+        set_bits(&mut byte, config.tx_path as u8, INVERT_IQ_TX_MASK, 0);
+        self.write(INVERT_IQ, byte).await
+    }
+
     /// Sets the low data rate optimize flag.
     pub async fn set_low_data_rate_optimize(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut byte = self.read(MODEM_CONFIG_3).await?;

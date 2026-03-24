@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `invert_iq` method and `InvertIQ` struct
 - `set_invert_iq` method
 - `last_rx_packet_snr` method
+- `lna_gain`, `set_lna_gain` methods
 
 ## [0.1.0] - 2026-03-07
 

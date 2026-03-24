@@ -1,4 +1,4 @@
-use crate::lora::registers::{INVERT_IQ_RX_MASK, INVERT_IQ_TX_MASK, OCP_ON_MASK, OCP_TRIM_MASK};
+use crate::lora::registers::{INVERT_IQ_RX_MASK, INVERT_IQ_TX_MASK, LNA_BOOST_HF_MASK, LNA_GAIN_MASK, OCP_ON_MASK, OCP_TRIM_MASK};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bandwidth {
@@ -183,6 +183,43 @@ impl From<u8> for InvertIQ {
         Self {
             rx_path: ((value & INVERT_IQ_RX_MASK) >> 6) == 1,
             tx_path: (value & INVERT_IQ_TX_MASK) == 1,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum LnaGain {
+    #[default]
+    G1 = 0x1,
+    G2 = 0x2,
+    G3 = 0x3,
+    G4 = 0x4,
+    G5 = 0x5,
+    G6 = 0x6,
+}
+impl From<u8> for LnaGain {
+    fn from(value: u8) -> Self {
+        match value {
+            0x1 => LnaGain::G1,
+            0x2 => LnaGain::G2,
+            0x3 => LnaGain::G3,
+            0x4 => LnaGain::G4,
+            0x5 => LnaGain::G5,
+            _ => LnaGain::G6,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LnaGainConfig {
+    pub boost_hf: bool,
+    pub gain: LnaGain,
+}
+impl From<u8> for LnaGainConfig {
+    fn from(value: u8) -> Self {
+        Self {
+            boost_hf: (value & LNA_BOOST_HF_MASK) == 0x3,
+            gain: LnaGain::from((value & LNA_GAIN_MASK) >> 5)
         }
     }
 }

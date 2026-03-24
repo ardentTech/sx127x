@@ -32,6 +32,11 @@ pub const RX_PACKET_CNT_VALUE_LSB: u8 = 0x17;
 pub const HOP_CHANNEL: u8 = 0x1c;
 pub const HOP_CHANNEL_CRC_ON_PAYLOAD_MASK: u8 = 0x40;
 
+pub const LNA: u8 = 0x0c;
+pub const LNA_GAIN_MASK: u8 = 0xe0;
+pub const LNA_BOOST_HF_MASK: u8 = 0x3;
+
+
 pub const MODEM_CONFIG_1: u8 = 0x1d;
 pub const MODEM_CONFIG_1_BW_MASK: u8 = 0xf0;
 pub const MODEM_CONFIG_1_CODING_RATE_MASK: u8 = 0xe;

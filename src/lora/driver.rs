@@ -160,6 +160,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok((byte as i8) >> 2)
     }
 
+    /// Gets the LNA gain configuration.
+    pub async fn lna_gain(&mut self) -> Result<LnaGainConfig, Sx127xLoraError<SPI::Error>> {
+        Ok(LnaGainConfig::from(self.read(LNA).await?))
+    }
+
     /// Gets the low data rate optimize flag.
     pub async fn low_data_rate_optimize(&mut self) -> Result<bool, Sx127xLoraError<SPI::Error>> {
         let byte = self.read(MODEM_CONFIG_3).await?;
@@ -314,6 +319,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         set_bits(&mut byte, config.rx_path as u8, INVERT_IQ_RX_MASK, 6);
         set_bits(&mut byte, config.tx_path as u8, INVERT_IQ_TX_MASK, 0);
         self.write(INVERT_IQ, byte).await
+    }
+
+    /// Sets the LNA gain configuration.
+    pub async fn set_lna_gain(&mut self, config: &LnaGainConfig) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(LNA).await?;
+        set_bits(&mut byte, config.boost_hf as u8, LNA_BOOST_HF_MASK, 0);
+        set_bits(&mut byte, config.gain as u8, LNA_GAIN_MASK, 5);
+        self.write(LNA, byte).await
     }
 
     /// Sets the low data rate optimize flag.

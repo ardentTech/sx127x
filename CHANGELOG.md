@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_over_current_protection`, `set_ocp` methods and `OverCurrentProtection` struct
 - `over_current_protection`, `ocp` methods
 - `power_amplification_ramp`, `pa_ramp` methods and `PARamp` struct
+- `set_power_amplification_ramp`, `set_pa_ramp` methods
 
 ## [0.1.0] - 2026-03-07
 

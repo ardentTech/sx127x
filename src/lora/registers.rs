@@ -75,6 +75,7 @@ pub const FRF_MSB: u8 = 0x06;
 pub const FRF_MID: u8 = 0x07;
 pub const FRF_LSB: u8 = 0x08;
 pub const PA_RAMP: u8 = 0x0a;
+pub const PA_RAMP_MASK: u8 = 0xf;
 
 pub const OCP: u8 = 0x0b;
 // begin lora page registers (0x0d) ----------------------------------------------------------------

@@ -181,7 +181,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 2.1.2.3
     pub async fn power_amplification_ramp(&mut self) -> Result<PARamp, Sx127xLoraError<SPI::Error>> {
-        Ok(PARamp::from(self.read(PA_RAMP).await?))
+        let byte = self.read(PA_RAMP).await?;
+        Ok(PARamp::from(byte & PA_RAMP_MASK))
     }
 
     /// Alias for the `power_amplification_ramp` method.
@@ -318,7 +319,21 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_over_current_protection(config).await
     }
 
-    /// Sets the packet preamble length.
+    /// GSts the rise/fall time of ramp up/down in FSK.
+    ///
+    /// See: datasheet section 2.1.2.3
+    pub async fn set_power_amplification_ramp(&mut self, pa_ramp: PARamp) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(PA_RAMP).await?;
+        set_bits(&mut byte, pa_ramp as u8, PA_RAMP_MASK, 0);
+        self.write(PA_RAMP, byte).await
+    }
+
+    /// Alias for the `set_power_amplification_ramp` method.
+    pub async fn set_pa_ramp(&mut self, pa_ramp: PARamp) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_power_amplification_ramp(pa_ramp).await
+    }
+
+        /// Sets the packet preamble length.
     pub async fn set_preamble_length(&mut self, preamble_length: u16) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.write(PREAMBLE_MSB, (preamble_length >> 8) as u8).await?;
         self.write(PREAMBLE_LSB, preamble_length as u8).await

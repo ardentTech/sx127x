@@ -1,68 +1,3 @@
-/// Register mappings for the LoRa modem.
-///
-/// See: Table 41
-pub enum LoraReg {
-    Fifo = 0x00,
-    // OpMode = 0x01,
-    // FrfMsb = 0x06,
-    // FrfMid = 0x07,
-    // FrfLsb = 0x08,
-    PaConfig = 0x09,
-    PaRamp = 0x0a,
-    Ocp = 0x0b,
-    Lna = 0x0c,
-    FifoAddrPtr = 0x0d,
-    FifoTxBaseAddr = 0x0e,
-    FifoRxBaseAddr = 0x0f,
-    FifoRxCurrentAddr = 0x10,
-    IrqFlagsMask = 0x11,
-    IrqFlags = 0x12,
-    RxNbBytes = 0x13,
-    RxHeaderCntValueMsb = 0x14,
-    RxHeaderCntValueLsb = 0x15,
-    RxPacketCntValueMsb = 0x16,
-    RxPacketCntValueLsb = 0x17,
-    ModemStat = 0x18,
-    PktSnrValue = 0x19,
-    PktRssiValue = 0x1a,
-    RssiValue = 0x1b,
-    HopChannel = 0x1c,
-    ModemConfig1 = 0x1d,
-    ModemConfig2 = 0x1e,
-    SymbTimeoutLsb = 0x1f,
-    PreambleMsb = 0x20,
-    PreambleLsb = 0x21,
-    PayloadLength = 0x22,
-    MaxPayloadLength = 0x23,
-    HopPeriod = 0x24,
-    FifoRxByteAddr = 0x25,
-    ModemConfig3 = 0x26,
-    FeiMsb = 0x28,
-    FeiMid = 0x29,
-    FeiLsb = 0x2a,
-    RssiWideband = 0x2c,
-    IfFreq1 = 0x2f,
-    IfFreq2 = 0x30,
-    DetectOptimize = 0x31,
-    InvertIQ = 0x33,
-    HighBwOptimize1 = 0x36,
-    DetectionThreshold = 0x37,
-    SyncWord = 0x39,
-    HighBwOptimize2 = 0x3a,
-    InvertIQ2 = 0x3b,
-    DioMapping1 = 0x40,
-    DioMapping2 = 0x41,
-    Version = 0x42,
-    Tcxo = 0x4b,
-    PaDac = 0x4d,
-    FormerTemp = 0x5b,
-    AgcRef = 0x61,
-    AgcThresh1 = 0x62,
-    AgcThresh2 = 0x63,
-    AgcThresh3 = 0x64,
-    Pll = 0x70
-}
-
 pub const FIFO: u8 = 0x0;
 
 pub const OP_MODE: u8 = 0x01;
@@ -78,10 +13,10 @@ pub const PA_RAMP: u8 = 0x0a;
 pub const PA_RAMP_MASK: u8 = 0xf;
 
 pub const OCP: u8 = 0x0b;
-// begin lora page registers (0x0d) ----------------------------------------------------------------
 pub const OCP_ON_MASK: u8 = 0x20;
 pub const OCP_TRIM_MASK: u8 = 0x1f;
 
+// begin lora page registers (0x0d) ----------------------------------------------------------------
 pub const FIFO_ADDR_PTR: u8 = 0x0d;
 pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;
 pub const FIFO_RX_BASE_ADDR: u8 = 0x0f;
@@ -89,6 +24,10 @@ pub const FIFO_RX_CURRENT_ADDR: u8 = 0x10;
 pub const IRQ_FLAGS_MASK: u8 = 0x11;
 pub const IRQ_FLAGS: u8 = 0x12;
 pub const RX_NB_BYTES: u8 = 0x13;
+pub const RX_HEADER_CNT_VALUE_MSB: u8 = 0x14;
+pub const RX_HEADER_CNT_VALUE_LSB: u8 = 0x15;
+pub const RX_PACKET_CNT_VALUE_MSB: u8 = 0x16;
+pub const RX_PACKET_CNT_VALUE_LSB: u8 = 0x17;
 
 pub const HOP_CHANNEL: u8 = 0x1c;
 pub const HOP_CHANNEL_CRC_ON_PAYLOAD_MASK: u8 = 0x40;

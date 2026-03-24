@@ -416,6 +416,22 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_device_mode(DeviceMode::TX).await
     }
 
+    /// Reads the number of valid headers received since last transition into Rx mode. Reset in
+    /// SLEEP mode.
+    pub async fn valid_rx_headers(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(RX_HEADER_CNT_VALUE_MSB).await? as u16;
+        let lsb = self.read(RX_HEADER_CNT_VALUE_LSB).await? as u16;
+        Ok((msb << 8) | lsb)
+    }
+
+    /// Reads the number of valid packets received since last transition into Rx mode. Reset in
+    /// SLEEP mode.
+    pub async fn valid_rx_packets(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(RX_PACKET_CNT_VALUE_MSB).await? as u16;
+        let lsb = self.read(RX_PACKET_CNT_VALUE_LSB).await? as u16;
+        Ok((msb << 8) | lsb)
+    }
+
     // PRIVATE -------------------------------------------------------------------------------------
 
     // see: errata section 2.1

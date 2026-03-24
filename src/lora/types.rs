@@ -1,3 +1,5 @@
+use crate::lora::registers::{OCP_ON_MASK, OCP_TRIM_MASK};
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,
@@ -195,7 +197,15 @@ impl From<u8> for ModemStatus {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OverCurrentProtection {
     pub on: bool,
-    pub trim: u8
+    pub trim: u8 // mA
+}
+impl From<u8> for OverCurrentProtection {
+    fn from(value: u8) -> Self {
+        Self {
+            on: (value & OCP_ON_MASK) >> 5 == 1,
+            trim: value & OCP_TRIM_MASK
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -227,7 +237,7 @@ impl From<u8> for SpreadingFactor {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use crate::lora::types::FEI;
+    use crate::lora::types::{OverCurrentProtection, FEI};
 
     #[test]
     fn fei_new_neg_fei_hz_ok() {
@@ -251,5 +261,13 @@ mod tests {
     fn fei_new_pos_fei_ppm_ok() {
         let fei = FEI::new(8i32, 16f32, 32u32);
         assert_relative_eq!(fei.ppm, 4000.0, epsilon=1e-3);
+    }
+
+    #[test]
+    fn over_current_protection_from_u8_ok() {
+        let byte = 0b11_0000;
+        let ocp = OverCurrentProtection::from(byte);
+        assert_eq!(true, ocp.on);
+        assert_eq!(0x10, ocp.trim);
     }
 }

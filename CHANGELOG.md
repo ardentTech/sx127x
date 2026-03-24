@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `low_data_rate_optimize`, `set_low_data_rate_optimize` methods
 - `frequency_error_indication` `fei` methods, and `FEI` struct
 - `set_over_current_protection`, `set_ocp` methods and `OverCurrentProtection` struct
+- `over_current_protection`, `ocp` methods
 
 ## [0.1.0] - 2026-03-07
 

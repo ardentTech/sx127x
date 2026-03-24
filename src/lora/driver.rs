@@ -161,10 +161,20 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS_MASK, byte | interrupt as u8).await
     }
 
-    /// Gets the current modem status.
+    /// Gets the modem status.
     pub async fn modem_status(&mut self) -> Result<ModemStatus, Sx127xLoraError<SPI::Error>> {
         let byte = self.read(MODEM_STAT).await?;
         Ok(ModemStatus::from(byte))
+    }
+
+    /// Gets the over-current protection configuration.
+    pub async fn over_current_protection(&mut self) -> Result<OverCurrentProtection, Sx127xLoraError<SPI::Error>> {
+        Ok(OverCurrentProtection::from(self.read(OCP).await?))
+    }
+
+    /// Alias for the `over_current_protection` method.
+    pub async fn ocp(&mut self) -> Result<OverCurrentProtection, Sx127xLoraError<SPI::Error>> {
+        Ok(self.over_current_protection().await?)
     }
 
     /// Gets the packet preamble length.
@@ -281,17 +291,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_3, byte).await
     }
 
-    /// Sets the packet preamble length.
-    pub async fn set_preamble_length(&mut self, preamble_length: u16) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        self.write(PREAMBLE_MSB, (preamble_length >> 8) as u8).await?;
-        self.write(PREAMBLE_LSB, preamble_length as u8).await
-    }
-
-    /// Alias for the `set_over_current_protection` method.
-    pub async fn set_ocp(&mut self, config: &OverCurrentProtection) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        self.set_over_current_protection(config).await
-    }
-
     /// Sets the over-current protection for the power amplifiers.
     ///
     /// See: datasheet section 3.4.4
@@ -300,6 +299,17 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         set_bits(&mut byte, config.on as u8, OCP_ON_MASK, 5);
         set_bits(&mut byte, config.trim, OCP_TRIM_MASK, 0);
         self.write(OCP, byte).await
+    }
+
+    /// Alias for the `set_over_current_protection` method.
+    pub async fn set_ocp(&mut self, config: &OverCurrentProtection) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_over_current_protection(config).await
+    }
+
+    /// Sets the packet preamble length.
+    pub async fn set_preamble_length(&mut self, preamble_length: u16) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.write(PREAMBLE_MSB, (preamble_length >> 8) as u8).await?;
+        self.write(PREAMBLE_LSB, preamble_length as u8).await
     }
 
     /// Sets the spreading factor.
@@ -349,7 +359,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(SpreadingFactor::from(get_bits(modem_config_2, MODEM_CONFIG_2_SPREADING_FACTOR_MASK, 4)))
     }
 
-    /// Calculates the current symbol rate in chips/s.
+    /// Calculates the symbol rate in chips/s.
     pub async fn symbol_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
         let bandwidth = Bandwidth::from((modem_config_1 & MODEM_CONFIG_1_BW_MASK) >> 4).hz();

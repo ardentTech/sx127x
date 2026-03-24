@@ -192,6 +192,12 @@ impl From<u8> for ModemStatus {
 
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OverCurrentProtection {
+    pub on: bool,
+    pub trim: u8
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum SpreadingFactor {
     /// Only implicit header mode is possible with Sf6.

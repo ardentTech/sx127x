@@ -74,6 +74,11 @@ pub const OP_MODE_MODE_MASK: u8 = 0x07;
 pub const FRF_MSB: u8 = 0x06;
 pub const FRF_MID: u8 = 0x07;
 pub const FRF_LSB: u8 = 0x08;
+
+pub const OCP: u8 = 0x0b;
+pub const OCP_ON_MASK: u8 = 0x20;
+pub const OCP_TRIM_MASK: u8 = 0x1f;
+
 pub const FIFO_ADDR_PTR: u8 = 0x0d;
 pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;
 pub const FIFO_RX_BASE_ADDR: u8 = 0x0f;

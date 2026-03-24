@@ -5,8 +5,8 @@ use crate::lora::types::*;
 
 const BUFFER_SIZE: usize = 255;
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
-const MIN_RX_TIMEOUT: u8 = 4; // symbols
-const MAX_RX_TIMEOUT: u16 = 1023; // symbols
+const MIN_RX_TIMEOUT_SYMBOLS: u8 = 4;
+const MAX_RX_TIMEOUT_SYMBOLS: u16 = 1023;
 // identifies silicon Version 1b, which applies to errata
 const PRODUCTION_VERSION: u8 = 0x12;
 
@@ -138,7 +138,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(FEI::new(fei, bandwidth.khz(), frf))
     }
 
-    /// Alias for `frequency_error_indication` method.
+    /// Alias for the `frequency_error_indication` method.
     pub async fn fei(&mut self) -> Result<FEI, Sx127xLoraError<SPI::Error>> {
         self.frequency_error_indication().await
     }
@@ -205,7 +205,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn receive(&mut self, timeout: Option<u16>) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut mode = DeviceMode::RXCONTINUOUS;
         if let Some(timeout) = timeout {
-            if timeout < (MIN_RX_TIMEOUT as u16) || timeout > MAX_RX_TIMEOUT {
+            if timeout < (MIN_RX_TIMEOUT_SYMBOLS as u16) || timeout > MAX_RX_TIMEOUT_SYMBOLS {
                 return Err(Sx127xLoraError::InvalidTimeout)
             }
 
@@ -285,6 +285,21 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn set_preamble_length(&mut self, preamble_length: u16) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.write(PREAMBLE_MSB, (preamble_length >> 8) as u8).await?;
         self.write(PREAMBLE_LSB, preamble_length as u8).await
+    }
+
+    /// Alias for the `set_over_current_protection` method.
+    pub async fn set_ocp(&mut self, config: &OverCurrentProtection) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_over_current_protection(config).await
+    }
+
+    /// Sets the over-current protection for the power amplifiers.
+    ///
+    /// See: datasheet section 3.4.4
+    pub async fn set_over_current_protection(&mut self, config: &OverCurrentProtection) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(OCP).await?;
+        set_bits(&mut byte, config.on as u8, OCP_ON_MASK, 5);
+        set_bits(&mut byte, config.trim, OCP_TRIM_MASK, 0);
+        self.write(OCP, byte).await
     }
 
     /// Sets the spreading factor.

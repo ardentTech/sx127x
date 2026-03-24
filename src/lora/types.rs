@@ -1,4 +1,4 @@
-use crate::lora::registers::{OCP_ON_MASK, OCP_TRIM_MASK};
+use crate::lora::registers::{INVERT_IQ_RX_MASK, INVERT_IQ_TX_MASK, OCP_ON_MASK, OCP_TRIM_MASK};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bandwidth {
@@ -174,6 +174,20 @@ pub enum Interrupt {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InvertIQ {
+    rx_path: bool,
+    tx_path: bool,
+}
+impl From<u8> for InvertIQ {
+    fn from(value: u8) -> Self {
+        Self {
+            rx_path: ((value & INVERT_IQ_RX_MASK) >> 6) == 1,
+            tx_path: (value & INVERT_IQ_TX_MASK) == 1,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ModemStatus {
     SignalDetected = 0x0,
     SignalSynchronized = 0x1,
@@ -280,7 +294,7 @@ impl From<u8> for SpreadingFactor {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use crate::lora::types::{OverCurrentProtection, FEI};
+    use crate::lora::types::{InvertIQ, OverCurrentProtection, FEI};
 
     #[test]
     fn fei_new_neg_fei_hz_ok() {
@@ -304,6 +318,14 @@ mod tests {
     fn fei_new_pos_fei_ppm_ok() {
         let fei = FEI::new(8i32, 16f32, 32u32);
         assert_relative_eq!(fei.ppm, 4000.0, epsilon=1e-3);
+    }
+
+    #[test]
+    fn invert_iq_from_u8_ok() {
+        let byte = 0b100_0000;
+        let invert_iq = InvertIQ::from(byte);
+        assert!(invert_iq.rx_path);
+        assert!(!invert_iq.tx_path);
     }
 
     #[test]

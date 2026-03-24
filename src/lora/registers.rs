@@ -53,6 +53,10 @@ pub const FEI_MSB: u8 = 0x28;
 pub const FEI_MID: u8 = 0x29;
 pub const FEI_LSB: u8 = 0x2a;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_FLAG: u8 = 0x8;
+pub const INVERT_IQ: u8 = 0x33;
+pub const INVERT_IQ_RX_MASK: u8 = 0x40;
+pub const INVERT_IQ_TX_MASK: u8 = 0x1;
+pub const INVERT_IQ_2: u8 = 0x3b;
 
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
 pub(crate) const IMAGE_CAL: u8 = 0x3b;

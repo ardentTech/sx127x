@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `power_amplification_ramp`, `pa_ramp` methods and `PARamp` struct
 - `set_power_amplification_ramp`, `set_pa_ramp` methods
 - `valid_rx_headers`, `valid_rx_packets` methods
+- `invert_iq` method and `InvertIQ` struct
 
 ## [0.1.0] - 2026-03-07
 

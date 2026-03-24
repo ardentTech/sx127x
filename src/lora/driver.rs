@@ -149,6 +149,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(HeaderMode::from(get_bits(byte, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, 0)))
     }
 
+    /// Gets the invert IQ configuration.
+    pub async fn invert_iq(&mut self) -> Result<InvertIQ, Sx127xLoraError<SPI::Error>> {
+        Ok(InvertIQ::from(self.read(INVERT_IQ).await?))
+    }
+
     /// Gets the low data rate optimize flag.
     pub async fn low_data_rate_optimize(&mut self) -> Result<bool, Sx127xLoraError<SPI::Error>> {
         let byte = self.read(MODEM_CONFIG_3).await?;

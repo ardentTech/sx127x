@@ -44,6 +44,7 @@ pub const MODEM_CONFIG_2_SPREADING_FACTOR_MASK: u8 = 0xf0;
 pub const MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK: u8 = 0x4;
 
 pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
+pub const PKT_SNR_VALUE: u8 = 0x19;
 pub const PREAMBLE_MSB: u8 = 0x20;
 pub const PREAMBLE_LSB: u8 = 0x21;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
@@ -53,9 +54,11 @@ pub const FEI_MSB: u8 = 0x28;
 pub const FEI_MID: u8 = 0x29;
 pub const FEI_LSB: u8 = 0x2a;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_FLAG: u8 = 0x8;
+
 pub const INVERT_IQ: u8 = 0x33;
 pub const INVERT_IQ_RX_MASK: u8 = 0x40;
 pub const INVERT_IQ_TX_MASK: u8 = 0x1;
+
 pub const INVERT_IQ_2: u8 = 0x3b;
 
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))

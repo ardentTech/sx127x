@@ -154,6 +154,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(InvertIQ::from(self.read(INVERT_IQ).await?))
     }
 
+    /// Gets an estimation of SNR on last packet received.
+    pub async fn last_rx_packet_snr(&mut self) -> Result<i8, Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(PKT_SNR_VALUE).await?;
+        Ok((byte as i8) >> 2)
+    }
+
     /// Gets the low data rate optimize flag.
     pub async fn low_data_rate_optimize(&mut self) -> Result<bool, Sx127xLoraError<SPI::Error>> {
         let byte = self.read(MODEM_CONFIG_3).await?;

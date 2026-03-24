@@ -25,3 +25,5 @@ TODO describe modems
 - [ ] fsk errata 3.1
 - [ ] fsk errata 3.2
 - [ ] RX, RX_TX, TX driver modes to customize FIFO buffer mem layout
+- [ ] check values of shared access registers in lora mode
+- [ ] consistency with acronyms in `types.rs`

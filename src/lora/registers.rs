@@ -74,8 +74,10 @@ pub const OP_MODE_MODE_MASK: u8 = 0x07;
 pub const FRF_MSB: u8 = 0x06;
 pub const FRF_MID: u8 = 0x07;
 pub const FRF_LSB: u8 = 0x08;
+pub const PA_RAMP: u8 = 0x0a;
 
 pub const OCP: u8 = 0x0b;
+// begin lora page registers (0x0d) ----------------------------------------------------------------
 pub const OCP_ON_MASK: u8 = 0x20;
 pub const OCP_TRIM_MASK: u8 = 0x1f;
 
@@ -114,6 +116,8 @@ pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_FLAG: u8 = 0x8;
 
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
 pub(crate) const IMAGE_CAL: u8 = 0x3b;
+
+// end lora page registers (0x3f) ------------------------------------------------------------------
 
 pub const DIO_MAPPING_1: u8 = 0x40;
 pub const DIO_MAPPING_1_DIO0_MASK: u8 = 0xc0;

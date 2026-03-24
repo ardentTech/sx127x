@@ -177,6 +177,18 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(self.over_current_protection().await?)
     }
 
+    /// Gets the rise/fall time of ramp up/down in FSK.
+    ///
+    /// See: datasheet section 2.1.2.3
+    pub async fn power_amplification_ramp(&mut self) -> Result<PARamp, Sx127xLoraError<SPI::Error>> {
+        Ok(PARamp::from(self.read(PA_RAMP).await?))
+    }
+
+    /// Alias for the `power_amplification_ramp` method.
+    pub async fn pa_ramp(&mut self) -> Result<PARamp, Sx127xLoraError<SPI::Error>> {
+        Ok(self.power_amplification_ramp().await?)
+    }
+
     /// Gets the packet preamble length.
     pub async fn preamble_length(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let msb = self.read(PREAMBLE_MSB).await?;

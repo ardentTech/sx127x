@@ -242,20 +242,19 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// If `timeout` is not None, enters `RxSingle` device mode. Otherwise, enters `RxContinuous`
     /// device mode.
     pub async fn receive(&mut self, timeout: Option<u16>) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        // let mut mode = DeviceMode::RXCONTINUOUS;
-        // if let Some(timeout) = timeout {
-        //     if timeout < (MIN_RX_TIMEOUT_SYMBOLS as u16) || timeout > MAX_RX_TIMEOUT_SYMBOLS {
-        //         return Err(Sx127xLoraError::InvalidTimeout)
-        //     }
-        //
-        //     self.write(MODEM_CONFIG_2, (timeout >> 8) as u8).await?;
-        //     self.write(SYMB_TIMEOUT_LSB, (timeout & 0xff) as u8 ).await?;
-        //     mode = DeviceMode::RXSINGLE;
-        // }
-        // self.set_device_mode(DeviceMode::STDBY).await?;
-        // self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR).await?;
-        // self.set_device_mode(mode).await
-        Ok(())
+        let mut mode = DeviceMode::RXCONTINUOUS;
+        if let Some(timeout) = timeout {
+            if timeout < (MIN_RX_TIMEOUT_SYMBOLS as u16) || timeout > MAX_RX_TIMEOUT_SYMBOLS {
+                return Err(Sx127xLoraError::InvalidTimeout)
+            }
+
+            self.write(MODEM_CONFIG_2, (timeout >> 8) as u8).await?;
+            self.write(SYMB_TIMEOUT_LSB, (timeout & 0xff) as u8 ).await?;
+            mode = DeviceMode::RXSINGLE;
+        }
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR).await?;
+        self.set_device_mode(mode).await
     }
 
     /// Sets the modem bandwidth.

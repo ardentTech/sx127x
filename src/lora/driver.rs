@@ -1,13 +1,20 @@
+#[cfg(feature = "defmt")]
+use defmt::debug;
+
 use embedded_hal_async::spi::SpiDevice;
+use crate::lora::bits::{get_bits, set_bits};
 use crate::lora::registers::*;
 use crate::lora::types::*;
 
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
 const FXOSC_HZ: u32 = 32_000_000;
 const FSTEP: f32 = (FXOSC_HZ as f32) / (2u32.pow(19) as f32);
+const PAYLOAD_SIZE: usize = 255;
+pub const RX_TIMEOUT_MIN_SYMBOLS: u16 = 4;
+pub const RX_TIMEOUT_MAX_SYMBOLS: u16 = 1023;
 
 #[derive(Debug)]
-pub enum Sx127xError<SPI> {
+pub enum Sx127xLoraError<SPI> {
     InvalidPayloadLength,
     InvalidState,
     InvalidSymbolTimeout,
@@ -17,7 +24,7 @@ pub enum Sx127xError<SPI> {
 
 pub struct Sx127xConfig {
     pub bandwidth: Bandwidth,
-    pub coding_rate: CyclicErrorCoding,
+    pub coding_rate: CodingRate,
     pub frequency: u32, // Hz
     pub spreading_factor: SpreadingFactor,
 }
@@ -25,7 +32,7 @@ impl Default for Sx127xConfig {
     fn default() -> Self {
         Self {
             bandwidth: Bandwidth::default(),
-            coding_rate: CyclicErrorCoding::default(),
+            coding_rate: CodingRate::default(),
             frequency: DEFAULT_FREQUENCY_HZ,
             spreading_factor: SpreadingFactor::default(),
         }
@@ -38,340 +45,295 @@ pub struct Sx127x<SPI> {
 }
 impl <SPI: SpiDevice>Sx127x<SPI> {
 
-    pub async fn new(spi: SPI, config: Sx127xConfig) -> Result<Sx127x<SPI>, Sx127xError<SPI::Error>> {
+    pub async fn new(spi: SPI, config: Sx127xConfig) -> Result<Sx127x<SPI>, Sx127xLoraError<SPI::Error>> {
         let mut driver = Self { spi };
+        driver.set_long_range_mode(true).await?;
 
-        if config.bandwidth != Bandwidth::default() {
-            driver.set_bandwidth(config.bandwidth).await?;
-        }
-        if config.coding_rate != CyclicErrorCoding::default() {
-            driver.set_coding_rate(config.coding_rate).await?;
-        }
-        if config.frequency != DEFAULT_FREQUENCY_HZ {
-            driver.set_frequency(config.frequency).await?;
-            // TODO calibrate (see 2.1.3.8)
-        }
-        if config.spreading_factor != SpreadingFactor::default() {
-            driver.set_spreading_factor(config.spreading_factor).await?;
-        }
-
-        driver.sleep().await?;
-        let mut byte = driver.get_reg_op_mode().await?;
-        byte.set_long_range_mode(true);
-        driver.write(RegOpMode::addr(), byte.into_bits()).await?;
-        driver.standby().await?; // TODO leave in Sleep?
+        driver.set_bandwidth(config.bandwidth).await?;
+        driver.set_coding_rate(config.coding_rate).await?;
+        driver.set_frequency(config.frequency).await?;
+        driver.set_spreading_factor(config.spreading_factor).await?;
+        // TODO disable temp cal?
         Ok(driver)
     }
 
-    /// Clears an interrupt if it was triggered.
-    pub async fn clear_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegIrqFlags::from_bits(self.read(RegIrqFlags::addr()).await?);
-        if byte.interrupt_triggered(interrupt) {
-            byte.clear_interrupt(interrupt);
-            self.write(RegIrqFlags::addr(), byte.into_bits()).await
-        } else {
-            Ok(())
-        }
+    /// Triggers the IQ and RSSI calibration when set in Standby mode. Takes ~10ms.
+    pub async fn calibrate(&mut self) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        let mut image_cal = self.read(IMAGE_CAL).await?;
+        image_cal |= 0x40;
+        self.write(IMAGE_CAL, image_cal).await
     }
 
-    /// Enables the DIO0 pin.
-    pub async fn enable_dio0(&mut self, dio: Dio0) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegDioMapping1::from_bits(self.read(RegDioMapping1::addr()).await?);
-        byte.set_dio0(dio as u8);
-        self.write(RegDioMapping1::addr(), byte.into_bits()).await
+    /// Clears an interrupt.
+    pub async fn clear_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(IRQ_FLAGS).await?;
+        self.write(IRQ_FLAGS, byte | interrupt.mask()).await
     }
 
-    /// Enables the DIO1 pin.
-    pub async fn enable_dio1(&mut self, dio: Dio1) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegDioMapping1::from_bits(self.read(RegDioMapping1::addr()).await?);
-        byte.set_dio1(dio as u8);
-        self.write(RegDioMapping1::addr(), byte.into_bits()).await
+
+    /// Enables the DIO0 pin signal source.
+    pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
     }
 
-    /// Enables the DIO2 pin.
-    pub async fn enable_dio2(&mut self, dio: Dio2) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegDioMapping1::from_bits(self.read(RegDioMapping1::addr()).await?);
-        byte.set_dio2(dio as u8);
-        self.write(RegDioMapping1::addr(), byte.into_bits()).await
-    }
-
-    /// Enables the DIO3 pin.
-    pub async fn enable_dio3(&mut self, dio: Dio3) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegDioMapping1::from_bits(self.read(RegDioMapping1::addr()).await?);
-        byte.set_dio3(dio as u8);
-        self.write(RegDioMapping1::addr(), byte.into_bits()).await
-    }
-
-    /// Enables the DIO4 pin.
-    pub async fn enable_dio4(&mut self, dio: Dio4) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegDioMapping2::from_bits(self.read(RegDioMapping2::addr()).await?);
-        byte.set_dio4(dio as u8);
-        self.write(RegDioMapping2::addr(), byte.into_bits()).await
-    }
-
-    /// Enables the DIO5 pin.
-    pub async fn enable_dio5(&mut self, dio: Dio4) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegDioMapping2::from_bits(self.read(RegDioMapping2::addr()).await?);
-        byte.set_dio5(dio as u8);
-        self.write(RegDioMapping2::addr(), byte.into_bits()).await
-    }
-
-    /// Checks whether an interrupt was triggered.
-    pub async fn interrupt_triggered(&mut self, interrupt: Interrupt) -> Result<bool, Sx127xError<SPI::Error>> {
-        let byte = RegIrqFlags::from_bits(self.read(RegIrqFlags::addr()).await?);
-        Ok(byte.interrupt_triggered(interrupt))
+    /// Enables the DIO1 pin signal source.
+    pub async fn set_dio1(&mut self, signal: Dio1Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
     }
 
     /// Reads estimation of signal-to-noise ratio (SNR) in dB on last packet received.
-    pub async fn last_packet_snr(&mut self) -> Result<i8, Sx127xError<SPI::Error>> {
-        let byte = RegPktSnrValue::from_bits(self.read(RegPktSnrValue::addr()).await?);
-        Ok(byte.packet_snr() >> 2)
+    ///
+    /// See: datasheet section 3.5.5
+    pub async fn last_packet_snr(&mut self) -> Result<i8, Sx127xLoraError<SPI::Error>> {
+        Ok(self.read(PKT_SNR_VALUE).await? as i8 >> 2)
     }
 
     /// Masks an interrupt.
-    pub async fn mask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegIrqFlagsMask::from_bits(self.read(RegIrqFlagsMask::addr()).await?);
-        byte.mask(interrupt);
-        self.write(RegIrqFlagsMask::addr(), byte.into_bits()).await
+    pub async fn mask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(IRQ_FLAGS_MASK).await?;
+        self.write(IRQ_FLAGS_MASK, byte | interrupt.mask()).await
     }
 
-    /// Reads the modem status.
-    pub async fn modem_status(&mut self) -> Result<RxStatus, Sx127xError<SPI::Error>> {
-        let byte = RegModemStat::from_bits(self.read(RegModemStat::addr()).await?);
-        Ok(byte.into())
+    /// Gets the modem status.
+    ///
+    /// See: datasheet section 2.0.2
+    pub async fn modem_status(&mut self) -> Result<ModemStatus, Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(MODEM_STAT).await?;
+        Ok(ModemStatus::from(byte))
     }
 
     /// Reads the byte from the register at `addr`.
-    pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
+    pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         let mut read = [0; 2];
         // 1 wnr bit (0 for read) + 7 bit addr
         let write = [addr & 0x7f, 0];
-        self.spi.transfer(&mut read, &write).await.map_err(Sx127xError::SPI)?;
+        self.spi.transfer(&mut read, &write).await.map_err(Sx127xLoraError::SPI)?;
         Ok(read[1])
     }
 
     /// Reads 255 bytes from the FIFO buffer.
-    pub async fn read_rx_data(&mut self) -> Result<[u8; 255], Sx127xError<SPI::Error>> {
-        let reg_hop_channel = RegHopChannel::from_bits(self.read(RegHopChannel::addr()).await?);
-        let reg_irq_flags = RegIrqFlags::from_bits(self.read(RegIrqFlags::addr()).await?);
-        if !reg_irq_flags.packet_rx_termination_ok(reg_hop_channel.crc_on_payload()) {
-            return Err(Sx127xError::PacketTermination)
+    pub async fn read_rx_data(&mut self) -> Result<[u8; PAYLOAD_SIZE], Sx127xLoraError<SPI::Error>> {
+        let reg_hop_channel = self.read(HOP_CHANNEL).await?;
+        let crc_on_payload = get_bits(reg_hop_channel, HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, 6) == 1;
+
+        let irq_flags_bits = self.read(IRQ_FLAGS).await? >> 4;
+        let rx_packet_termination_ok = if crc_on_payload {
+            irq_flags_bits & 0xf == 0
+        } else {
+            irq_flags_bits & 0xc == 0 && irq_flags_bits & 0x1 == 0
+        };
+        if !rx_packet_termination_ok {
+            return Err(Sx127xLoraError::PacketTermination)
         }
 
-        // read rx data
-        let rx_fifo_addr = self.read(Reg::FifoRxCurrentAddr as u8).await?;
-        self.write(Reg::FifoAddrPtr as u8, rx_fifo_addr).await?;
-        let num_bytes = self.read(Reg::RxNbBytes as u8).await?;
-        let mut buffer = [0; 255];
+        let rx_fifo_addr = self.read(FIFO_RX_CURRENT_ADDR).await?;
+        self.write(FIFO_ADDR_PTR, rx_fifo_addr).await?;
+        let num_bytes = self.read(RX_NB_BYTES).await?;
+        let mut buffer = [0; PAYLOAD_SIZE];
         for i in 0..num_bytes {
-            let byte = self.read(Reg::Fifo as u8).await?;
+            let byte = self.read(FIFO).await?;
             buffer[i as usize] = byte;
         }
         Ok(buffer)
     }
 
-    /// Enables receive mode and searches for a preamble.
+    /// Enables receive mode and searches for a preamble. If a `timeout` is specified, the device
+    /// enter RXSINGLE mode, else RXCONTINUOUS mode.
     ///
-    /// If `timeout` is not None, enters `RxSingle` device mode. Otherwise, enters `RxContinuous`
-    /// device mode.
-    pub async fn receive(&mut self, timeout: Option<u16>) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut mode = DeviceMode::RxContinuous;
-        if let Some(timeout) = timeout {
-            // TODO unit test  (make this a tuple struct and put validation on it? easier to test?)s
-            // if a struct (or other) could have MIN, MAX helpers...
-            if timeout < 4 || timeout > 1023 {
-                return Err(Sx127xError::InvalidSymbolTimeout)
-            }
+    /// See: datasheet pages 40-42
+    pub async fn receive(&mut self, timeout: Option<u16>) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        let mut mode = DeviceMode::RXCONTINUOUS;
 
-            // TODO test this
-            self.write(RegModemConfig2::addr(), (timeout >> 8) as u8).await?;
-            self.write(RegSymbTimeoutLsb::addr(), (timeout & 0xff) as u8 ).await?;
-            mode = DeviceMode::RxSingle;
+        if let Some(timeout) = timeout {
+            if timeout < RX_TIMEOUT_MIN_SYMBOLS || timeout > RX_TIMEOUT_MAX_SYMBOLS {
+                return Err(Sx127xLoraError::InvalidSymbolTimeout)
+            }
+            mode = DeviceMode::RXSINGLE;
+
+            let mut modem_config_2 = self.read(MODEM_CONFIG_2).await?;
+            set_bits(&mut modem_config_2, (timeout >> 8) as u8, MODEM_CONFIG_2_SYMB_TIMEOUT_MASK, 0);
+            self.write(MODEM_CONFIG_2, modem_config_2).await?;
+
+            self.write(SYMB_TIMEOUT_LSB, (timeout & 0xff) as u8).await?;
         }
-        self.standby().await?;
-        self.write(Reg::FifoAddrPtr as u8, Reg::FifoRxBaseAddr as u8).await?;
-        self.set_device_mode(mode).await?;
-        Ok(())
+
+        self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR).await?;
+        self.set_device_mode(mode).await
     }
 
-    /// Sets the signal bandwidth.
-    pub async fn set_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.get_reg_modem_config_1().await?;
-        byte.set_bandwidth(bandwidth);
-        self.write(RegModemConfig1::addr(), byte.into_bits()).await
+    /// Sets the bandwidth.
+    ///
+    /// See: datasheet section 4.1.1.4
+    pub async fn set_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_1).await?;
+        set_bits(&mut byte, bandwidth as u8, MODEM_CONFIG_1_BW_MASK, 4);
+
+        // TODO if bandwidth == Bandwidth::Bw500kHz {
+        //     self.optimize_500khz_bandwidth().await?;
+        // }
+
+        self.write(MODEM_CONFIG_1, byte).await
     }
 
     /// Sets the cyclic error coding rate.
-    async fn set_coding_rate(&mut self, coding_rate: CyclicErrorCoding) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.get_reg_modem_config_1().await?;
-        byte.set_coding_rate(coding_rate);
-        self.write(RegModemConfig1::addr(), byte.into_bits()).await
+    ///
+    /// See: datasheet section 4.1.1.3
+    async fn set_coding_rate(&mut self, coding_rate: CodingRate) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_1).await?;
+        set_bits(&mut byte, coding_rate as u8, MODEM_CONFIG_1_CODING_RATE_MASK, 1);
+        self.write(MODEM_CONFIG_1, byte).await
+    }
+
+    /// Sets the device mode.
+    ///
+    /// See: datasheet section 2.1.4
+    pub async fn set_device_mode(&mut self, device_mode: DeviceMode) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(OP_MODE).await?;
+        set_bits(&mut byte, device_mode as u8, OP_MODE_MODE_MASK, 0);
+        self.write(OP_MODE, byte).await
     }
 
     /// Reads the carrier frequency.
-    pub async fn frequency(&mut self) -> Result<u32, Sx127xError<SPI::Error>> {
-        let msb = self.read(Reg::FrMsb as u8).await? as u32;
-        let mid = self.read(Reg::FrMid as u8).await? as u32;
-        let lsb = self.read(Reg::FrLsb as u8).await? as u32;
+    pub async fn frequency(&mut self) -> Result<u32, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(FRF_MSB).await? as u32;
+        let mid = self.read(FRF_MID).await? as u32;
+        let lsb = self.read(FRF_LSB).await? as u32;
         Ok((msb << 16) | (mid << 8) | lsb)
     }
 
-    /// Sets the carrier frequency.
-    ///
-    /// Important: check regulations for your area (e.g. 902-928 MHz for the United States)
-    pub async fn set_frequency(&mut self, hz: u32) -> Result<(), Sx127xError<SPI::Error>> {
+    /// Sets the carrier frequency. It's imperative that you check regulations for your area (e.g.
+    /// 902-928 MHz for the United States)
+    pub async fn set_frequency(&mut self, hz: u32) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let frf = calculate_frf(hz);
-        self.write(Reg::FrMsb as u8, (frf >> 16) as u8).await?;
-        self.write(Reg::FrMid as u8, (frf >> 8) as u8).await?;
-        self.write(Reg::FrLsb as u8, frf as u8).await
+        self.write(FRF_MSB, (frf >> 16) as u8).await?;
+        self.write(FRF_MID, (frf >> 8) as u8).await?;
+        self.write(FRF_LSB, frf as u8).await?;
+
+        self.calibrate().await
     }
 
-    /// Sets the header mode to implicit or explicit.
-    pub async fn set_header_mode(&mut self, implicit: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.get_reg_modem_config_1().await?;
-        byte.set_implicit_header_mode_on(implicit);
-        self.write(RegModemConfig1::addr(), byte.into_bits()).await
+    /// Sets the header mode to explicit or implicit.
+    ///
+    /// See: datasheet section 4.1.1.6
+    pub async fn set_header_mode(&mut self, mode: HeaderMode) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_1).await?;
+        set_bits(&mut byte, mode as u8, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, 0);
+        self.write(MODEM_CONFIG_1, byte).await
     }
 
-    /// Inverts IQ signals in the RX or TX path.
-    pub async fn set_invert_iq(&mut self, config: &InvertIQConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegInvertIQ::from_bits(self.read(RegInvertIQ::addr()).await?);
-        byte.set_rx_path(config.rx_path);
-        byte.set_tx_path(config.tx_path);
-        self.write(RegInvertIQ::addr(), byte.into_bits()).await?;
-
-        self.write(
-            Reg::InvertIQ2 as u8,
-            // TODO encode these values on register
-       if config.rx_path || config.tx_path { 0x19 } else { 0x1d }
-        ).await
-    }
-
-    /// Configures the Low Noise Amplifier (LNA) gain settings.
-    pub async fn set_lna_gain(&mut self, config: &LnaGainConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        self.write(RegLna::addr(), RegLna::from(config).into_bits()).await
-    }
-
-    /// Configures the Overload Current Protection (OCP) settings.
-    pub async fn set_ocp(&mut self, config: &OcpConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        self.write(RegOcp::addr(), RegOcp::from(config).into_bits()).await
-    }
-
-    /// Sets the power amplification (PA) ramp.
-    pub async fn set_pa_ramp(&mut self, pa_ramp: PaRamp) -> Result<(), Sx127xError<SPI::Error>> {
-        self.write(Reg::PaRamp as u8, pa_ramp as u8).await
-    }
-
-    /// Reads the power amplification (PA).
-    pub async fn pa(&mut self) -> Result<PaConfig, Sx127xError<SPI::Error>> {
-        let byte = RegPaConfig::from_bits(self.read(RegPaConfig::addr()).await?);
-        Ok(byte.into())
-    }
-
-    /// Sets the power amplification (PA).
-    pub async fn set_pa(&mut self, pa_config: &PaConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        let byte = RegPaConfig::from(pa_config);
-        self.write(Reg::PaConfig as u8, byte.into_bits()).await
+    /// Sets invert IQ config for the rx_path and tx_path.
+    ///
+    /// See: datasheet section 2.1.3.8
+    pub async fn set_invert_iq(&mut self, rx_path: bool, tx_path: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(INVERT_IQ).await?;
+        set_bits(&mut byte, rx_path as u8, INVERT_IQ_RX_MASK, 6);
+        set_bits(&mut byte, tx_path as u8, INVERT_IQ_TX_MASK, 0);
+        self.write(INVERT_IQ, byte).await
     }
 
     /// Sets the spreading factor.
     ///
-    /// See: page 27
-    pub async fn set_spreading_factor(&mut self, spreading_factor: SpreadingFactor) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut modem_config_2 = RegModemConfig2::from_bits(self.read(RegModemConfig2::addr()).await?);
-        modem_config_2.set_spreading_factor(spreading_factor);
-        self.write(RegModemConfig2::addr(), modem_config_2.into_bits()).await?;
+    /// See: datasheet section 4.1.1.2
+    pub async fn set_spreading_factor(&mut self, spreading_factor: SpreadingFactor) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut modem_config_2 = self.read(MODEM_CONFIG_2).await?;
+        set_bits(&mut modem_config_2, spreading_factor as u8, MODEM_CONFIG_2_SPREADING_FACTOR_MASK, 4);
+        self.write(MODEM_CONFIG_2, modem_config_2).await?;
+
+        let mut detect_optimize = self.read(DETECT_OPTIMIZE).await?;
+        detect_optimize &= !DETECT_OPTIMIZE_DETECTION_OPTIMIZE_MASK;
 
         if spreading_factor == SpreadingFactor::Sf6 {
-            self.set_header_mode(true).await?;
+            self.set_header_mode(HeaderMode::Implicit).await?;
+            detect_optimize |= 0x5;
+            self.write(DETECTION_THRESHOLD, 0x0c).await?;
+        } else {
+            detect_optimize |= 0x3;
+            self.write(DETECTION_THRESHOLD, 0x0a).await?;
         }
-        let mut detect_optimize = RegDetectOptimize::from_bits(self.read(RegDetectOptimize::addr()).await?);
-        detect_optimize.update(spreading_factor);
-        self.write(RegDetectOptimize::addr(), detect_optimize.into_bits()).await?;
-
-        // TODO this feels a bit heavy-handed
-        let mut detection_threshold = RegDetectionThreshold::from_bits(self.read(RegDetectionThreshold::addr()).await?);
-        detection_threshold.update(spreading_factor);
-        self.write(RegDetectionThreshold::addr(), detection_threshold.into_bits()).await?;
-
-        Ok(())
+        self.write(DETECT_OPTIMIZE, detect_optimize).await
     }
 
-    /// Puts the device in sleep mode, which clears the FIFO buffer.
-    pub async fn sleep(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_device_mode(DeviceMode::Sleep).await
-    }
+    /// Transmits a `payload` of up to 255 bytes. Will automatically transition to STDBY when done.
+    pub async fn transmit(&mut self, payload: &[u8]) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        // noop if already transmitting
+        if self.device_mode().await? == DeviceMode::TX {
+            return Ok(())
+        }
 
-    /// Puts the device in standby mode.
-    pub async fn standby(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_device_mode(DeviceMode::Stdby).await
-    }
-
-    /// Transmits a `payload` of up to 255 bytes.
-    pub async fn transmit(&mut self, payload: &[u8]) -> Result<(), Sx127xError<SPI::Error>> {
         let payload_len = payload.len();
-        if payload_len > 255 {
-            return Err(Sx127xError::InvalidPayloadLength);
+        if payload_len > PAYLOAD_SIZE {
+            return Err(Sx127xLoraError::InvalidPayloadLength);
         }
 
-        // The chip will automatically transition the state to Stdby when done.
-        // TODO is this sufficient? MUST is be Standby?
-        if self.get_reg_op_mode().await?.mode() == DeviceMode::Tx {
-            return Err(Sx127xError::InvalidState)
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        self.write(FIFO_ADDR_PTR, FIFO_TX_BASE_ADDR).await?;
+        for &byte in payload.iter().take(PAYLOAD_SIZE) {
+            self.write(FIFO, byte).await?;
         }
-
-        self.standby().await?;
-        self.write(Reg::FifoAddrPtr as u8, Reg::FifoTxBaseAddr as u8).await?;
-        for &byte in payload.iter().take(255) {
-            self.write(Reg::Fifo as u8, byte).await?;
-        }
-        self.write(Reg::PayloadLength as u8, payload.len() as u8).await?;
-        self.set_device_mode(DeviceMode::Tx).await
+        self.write(PAYLOAD_LENGTH, payload.len() as u8).await?;
+        self.set_device_mode(DeviceMode::TX).await
     }
 
     /// Unmasks an interrupt.
-    pub async fn unmask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = RegIrqFlagsMask::from_bits(self.read(RegIrqFlagsMask::addr()).await?);
-        byte.unmask(interrupt);
-        self.write(RegIrqFlagsMask::addr(), byte.into_bits()).await
+    pub async fn unmask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(IRQ_FLAGS_MASK).await?;
+        self.write(IRQ_FLAGS_MASK, byte & !interrupt.mask()).await
     }
 
     /// Reads the number of valid headers received since last transition into Rx mode.
-    pub async fn valid_rx_headers(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
-        let msb = self.read(Reg::RxHeaderCntValueMsb as u8).await? as u16;
-        let lsb = self.read(Reg::RxHeaderCntValueLsb as u8).await? as u16;
+    pub async fn valid_rx_headers(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(RX_HEADER_CNT_VALUE_MSB).await? as u16;
+        let lsb = self.read(RX_HEADER_CNT_VALUE_LSB).await? as u16;
         Ok((msb << 8) | lsb)
     }
 
     /// Reads the number of valid packets received since last transition into Rx mode.
-    pub async fn valid_rx_packets(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
-        let msb = self.read(Reg::RxPacketCntValueMsb as u8).await? as u16;
-        let lsb = self.read(Reg::RxPacketCntValueLsb as u8).await? as u16;
+    pub async fn valid_rx_packets(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(RX_PACKET_CNT_VALUE_MSB).await? as u16;
+        let lsb = self.read(RX_PACKET_CNT_VALUE_LSB).await? as u16;
         Ok((msb << 8) | lsb)
     }
 
     // PRIVATE -------------------------------------------------------------------------------------
 
-    async fn get_reg_op_mode(&mut self) -> Result<RegOpMode, Sx127xError<SPI::Error>> {
-        Ok(RegOpMode::from_bits(self.read(RegOpMode::addr()).await?))
+    async fn device_mode(&mut self) -> Result<DeviceMode, Sx127xLoraError<SPI::Error>> {
+        let op_mode = self.read(OP_MODE).await?;
+        Ok(DeviceMode::from(get_bits(op_mode, OP_MODE_MODE_MASK, 0)))
     }
 
-    async fn get_reg_modem_config_1(&mut self) -> Result<RegModemConfig1, Sx127xError<SPI::Error>> {
-        Ok(RegModemConfig1::from_bits(self.read(RegModemConfig1::addr()).await?))
+    async fn set_dio_mapping1(&mut self, value: u8, mask: u8, left_shift: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(DIO_MAPPING_1).await?;
+        set_bits(&mut byte, value, mask, left_shift);
+        self.write(DIO_MAPPING_1, byte).await
     }
 
-    // Sets `device_mode` on RegOpMode.
-    async fn set_device_mode(&mut self, device_mode: DeviceMode) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.get_reg_op_mode().await?;
-        byte.set_mode(device_mode);
-        self.write(RegOpMode::addr(), byte.into_bits()).await
+    // Selects the LoRa modem when `on` == true, and the FSK/OOK modem when `on` == false.
+    async fn set_long_range_mode(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        // also clears the FIFO buffer
+        self.set_device_mode(DeviceMode::SLEEP).await?;
+
+        #[cfg(feature = "defmt")]
+        debug!("op_mode: 0b{:b}", self.read(OP_MODE).await?);
+        //Ok(())
+
+        let mut op_mode = self.read(OP_MODE).await?;
+        set_bits(&mut op_mode, on as u8, OP_MODE_LONG_RANGE_MODE_MASK, 7);
+        self.write(OP_MODE, op_mode).await?;
+
+        self.set_device_mode(DeviceMode::STDBY).await
     }
 
     // Writes the `data` raw byte to the register at `addr`.
-    async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xError<SPI::Error>> {
+    async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
         // 1 wnr bit (1 for write) + 7 bit addr
         let buf = [addr | 0x80, data];
-        self.spi.write(&buf).await.map_err(Sx127xError::SPI)
+
+        #[cfg(feature = "defmt")]
+        debug!("writing 0b{:b} to 0x{:x}", data, addr);
+
+        self.spi.write(&buf).await.map_err(Sx127xLoraError::SPI)
     }
 }
 

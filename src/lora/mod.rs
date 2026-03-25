@@ -1,3 +1,4 @@
 pub mod driver;
 pub mod types;
-pub(crate) mod registers;
+pub mod registers;
+pub(crate) mod bits;

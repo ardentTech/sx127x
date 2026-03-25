@@ -14,7 +14,7 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 use {defmt_rtt as _, panic_probe as _};
 use sx127x::lora::driver::{Sx127x, Sx127xConfig};
-use sx127x::lora::types::{Dio0, Interrupt};
+use sx127x::lora::types::{Dio0Signal, Interrupt};
 
 const FREQUENCY_HZ: u32 = 915_000_000;
 
@@ -36,7 +36,7 @@ async fn main(_task_spawner: Spawner) {
     config.frequency = FREQUENCY_HZ;
     let mut sx127x = Sx127x::new(spi_dev, config).await.expect("driver init failed :(");
 
-    sx127x.enable_dio0(Dio0::RxDone).await.expect("enable_dio0 failed :(");
+    sx127x.set_dio0(Dio0Signal::RxDone).await.expect("enable_dio0 failed :(");
     sx127x.receive(None).await.expect("receive failed :(");
 
     loop {

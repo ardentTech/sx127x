@@ -13,8 +13,8 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
-use sx127x::lora::driver::{Sx127x, Sx127xConfig};
-use sx127x::lora::types::{Dio1, Interrupt};
+use sx127x::lora::driver::{Sx127x, Sx127xConfig, RX_TIMEOUT_MIN_SYMBOLS};
+use sx127x::lora::types::{Dio1Signal, Interrupt};
 
 const FREQUENCY_HZ: u32 = 915_000_000;
 
@@ -36,10 +36,11 @@ async fn main(_task_spawner: Spawner) {
     config.frequency = FREQUENCY_HZ;
     let mut sx127x = Sx127x::new(spi_dev, config).await.expect("driver init failed :(");
 
-    sx127x.enable_dio1(Dio1::RxTimeout).await.expect("enable_dio0 failed");
+    sx127x.set_dio1(Dio1Signal::RxTimeout).await.expect("enable_dio1 failed");
 
     loop {
-        sx127x.receive(Some(4)).await.expect("receive init failed :(");
+        sx127x.receive(Some(RX_TIMEOUT_MIN_SYMBOLS)).await.expect("receive init failed :(");
+        info!("waiting for timeout...");
         dio1.wait_for_high().await;
         info!("RxTimeout triggered!");
         sx127x.clear_interrupt(Interrupt::RxTimeout).await.expect("clear interrupt RxTimeout failed :(");

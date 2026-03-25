@@ -1,6 +1,6 @@
-// TODO should all `from_bits` use `try_from` instead?
+use crate::lora::registers::{IRQ_FLAGS_CAD_DETECTED_MASK, IRQ_FLAGS_CAD_DONE_MASK, IRQ_FLAGS_FHSS_CHANGE_CHANNEL_MASK, IRQ_FLAGS_PAYLOAD_CRC_ERROR_MASK, IRQ_FLAGS_RX_DONE_MASK, IRQ_FLAGS_RX_TIMEOUT_MASK, IRQ_FLAGS_TX_DONE_MASK, IRQ_FLAGS_VALID_HEADER_MASK};
 
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,
     Bw10_4kHz = 0x1,
@@ -14,9 +14,9 @@ pub enum Bandwidth {
     Bw250kHz = 0x8,
     Bw500kHz = 0x9,
 }
-impl Bandwidth {
-    pub(crate) const fn from_bits(bits: u8) -> Self {
-        match bits {
+impl From<u8> for Bandwidth {
+    fn from(value: u8) -> Self {
+        match value {
             0x0 => Bandwidth::Bw7_8kHz,
             0x1 => Bandwidth::Bw10_4kHz,
             0x2 => Bandwidth::Bw15_6kHz,
@@ -26,99 +26,128 @@ impl Bandwidth {
             0x6 => Bandwidth::Bw62_5kHz,
             0x7 => Bandwidth::Bw125kHz,
             0x8 => Bandwidth::Bw250kHz,
-            0x9 => Bandwidth::Bw500kHz,
-            _ => unreachable!()
+            _ => Bandwidth::Bw500kHz,
         }
     }
-    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
+}
+impl Bandwidth {
+    pub(crate) fn hz(&self) -> u32 {
+        match self {
+            Bandwidth::Bw7_8kHz => 7_800,
+            Bandwidth::Bw10_4kHz => 10_400,
+            Bandwidth::Bw15_6kHz => 15_600,
+            Bandwidth::Bw20_8kHz => 20_800,
+            Bandwidth::Bw31_25kHz => 31_250,
+            Bandwidth::Bw41_7kHz => 41_700,
+            Bandwidth::Bw62_5kHz => 62_500,
+            Bandwidth::Bw125kHz => 125_000,
+            Bandwidth::Bw250kHz => 250_000,
+            _ => 500_000
+        }
+    }
+
+    pub(crate) fn khz(&self) -> f32 {
+        match self {
+            Bandwidth::Bw7_8kHz => 7.8,
+            Bandwidth::Bw10_4kHz => 10.4,
+            Bandwidth::Bw15_6kHz => 15.6,
+            Bandwidth::Bw20_8kHz => 20.8,
+            Bandwidth::Bw31_25kHz => 31.25,
+            Bandwidth::Bw41_7kHz => 41.7,
+            Bandwidth::Bw62_5kHz => 62.5,
+            Bandwidth::Bw125kHz => 125.0,
+            Bandwidth::Bw250kHz => 250.0,
+            _ => 500.0
+        }
+    }
 }
 
-#[derive(Clone, Copy, Default, PartialEq)]
-pub enum CyclicErrorCoding {
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum CodingRate {
     #[default]
-    Rate4_5 = 0x1,
-    Rate4_6 = 0x2,
-    Rate4_7 = 0x3,
-    Rate4_8 = 0x4,
+    Cr4_5 = 0x1,
+    Cr4_6 = 0x2,
+    Cr4_7 = 0x3,
+    Cr4_8 = 0x4,
 }
-impl CyclicErrorCoding {
-    pub(crate) const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x1 => Self::Rate4_5,
-            0x2 => Self::Rate4_6,
-            0x3 => Self::Rate4_7,
-            0x4 => Self::Rate4_8,
-            _ => unreachable!()
+impl From<u8> for CodingRate {
+    fn from(value: u8) -> Self {
+        match value {
+            0x1 => CodingRate::Cr4_5,
+            0x2 => CodingRate::Cr4_6,
+            0x3 => CodingRate::Cr4_7,
+            _ => CodingRate::Cr4_8,
         }
     }
-    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
+}
+impl Into<f32> for CodingRate {
+    fn into(self) -> f32 {
+        4f32 / (match self {
+            CodingRate::Cr4_5 => 5f32,
+            CodingRate::Cr4_6 => 6f32,
+            CodingRate::Cr4_7 => 7f32,
+            CodingRate::Cr4_8 => 8f32,
+        })
+    }
 }
 
-// see: [table 16]
-#[derive(Clone, Copy, PartialEq)]
-pub(crate) enum DeviceMode {
-    Sleep = 0x0,
-    Stdby = 0x1,
-    Fstx = 0x2,
-    Tx = 0x3,
-    Fsrx = 0x4,
-    RxContinuous = 0x5,
-    RxSingle = 0x6,
-    Cad = 0x7
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DeviceMode {
+    SLEEP = 0x0,
+    STDBY = 0x1,
+    FSTX = 0x2,
+    TX = 0x3,
+    FSRX = 0x4,
+    RXCONTINUOUS = 0x5,
+    RXSINGLE = 0x6,
+    CAD = 0x7
 }
-impl DeviceMode {
-    pub(crate) const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Sleep,
-            0x1 => Self::Stdby,
-            0x2 => Self::Fstx,
-            0x3 => Self::Tx,
-            0x4 => Self::Fsrx,
-            0x5 => Self::RxContinuous,
-            0x6 => Self::RxSingle,
-            0x7 => Self::Cad,
-            _ => unreachable!()
+impl From<u8> for DeviceMode {
+    fn from(value: u8) -> Self {
+        match value {
+            0x0 => DeviceMode::SLEEP,
+            0x1 => DeviceMode::STDBY,
+            0x2 => DeviceMode::FSTX,
+            0x3 => DeviceMode::TX,
+            0x4 => DeviceMode::FSRX,
+            0x5 => DeviceMode::RXCONTINUOUS,
+            0x6 => DeviceMode::RXSINGLE,
+            _ => DeviceMode::CAD,
         }
     }
-    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum Dio0 {
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Dio0Signal {
+    #[default]
     RxDone = 0x0,
     TxDone = 0x1,
     CadDone = 0x2,
+    None = 0x3,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum Dio1 {
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Dio1Signal {
+    #[default]
     RxTimeout = 0x0,
     FhssChangeChannel = 0x1,
     CadDetected = 0x2,
+    None = 0x3,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum Dio2 {
-    FhssChangeChannel = 0x0,
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum HeaderMode {
+    #[default]
+    Explicit = 0x0,
+    Implicit = 0x1,
 }
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum Dio3 {
-    CadDone = 0x0,
-    ValidHeader = 0x1,
-    PayloadCrcError = 0x2,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum Dio4 {
-    CadDetected = 0x0,
-    PllLock = 0x1,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum Dio5 {
-    ModeReady = 0x0,
-    ClkOut = 0x1,
+impl From<u8> for HeaderMode {
+    fn from(value: u8) -> Self {
+        match value {
+            0x0 => HeaderMode::Explicit,
+            _ => HeaderMode::Implicit,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -132,6 +161,25 @@ pub enum Interrupt {
     RxDone,
     RxTimeout,
 }
+impl Interrupt {
+
+    pub(crate) fn lsb_offset(&self) -> u8 {
+        self.mask() >> 1
+    }
+
+    pub(crate) fn mask(&self) -> u8 {
+        match self {
+            Interrupt::CadDetected => IRQ_FLAGS_CAD_DETECTED_MASK,
+            Interrupt::FhssChangeChannel => IRQ_FLAGS_FHSS_CHANGE_CHANNEL_MASK,
+            Interrupt::CadDone => IRQ_FLAGS_CAD_DONE_MASK,
+            Interrupt::TxDone => IRQ_FLAGS_TX_DONE_MASK,
+            Interrupt::ValidHeader => IRQ_FLAGS_VALID_HEADER_MASK,
+            Interrupt::PayloadCrcError => IRQ_FLAGS_PAYLOAD_CRC_ERROR_MASK,
+            Interrupt::RxDone => IRQ_FLAGS_RX_DONE_MASK,
+            Interrupt::RxTimeout => IRQ_FLAGS_RX_TIMEOUT_MASK,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct InvertIQConfig {
@@ -139,71 +187,26 @@ pub struct InvertIQConfig {
     pub tx_path: bool,
 }
 
-// LNA gain ----------------------------------------------------------------------------------------
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum LnaGain {
-    G1 = 0x1,
-    G2 = 0x2,
-    G3 = 0x3,
-    G4 = 0x4,
-    G5 = 0x5,
-    G6 = 0x6,
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ModemStatus {
+    SignalDetected = 0x0,
+    SignalSynchronized = 0x1,
+    RxOnGoing = 0x4,
+    HeaderInfoValid = 0x8,
+    ModemClear = 0x16,
 }
-impl LnaGain {
-    pub(crate) const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x1 => Self::G1,
-            0x2 => Self::G2,
-            0x3 => Self::G3,
-            0x4 => Self::G4,
-            0x5 => Self::G5,
-            0x6 => Self::G6,
-            _ => unreachable!()
+impl From<u8> for ModemStatus {
+    fn from(value: u8) -> Self {
+        match value {
+            0x0 => ModemStatus::SignalDetected,
+            0x1 => ModemStatus::SignalSynchronized,
+            0x4 => ModemStatus::RxOnGoing,
+            0x8 => ModemStatus::HeaderInfoValid,
+            _ => ModemStatus::ModemClear,
         }
     }
-    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub struct LnaGainConfig {
-    pub boost_hf: bool,
-    pub gain: LnaGain,
-}
-
-// OCP ---------------------------------------------------------------------------------------------
-
-#[derive(Clone, Copy, PartialEq)]
-pub struct OcpConfig {
-    pub on: bool,
-    pub trim: u8,
-}
-
-// PA ramp -----------------------------------------------------------------------------------------
-
-#[derive(Clone, Copy, Default, PartialEq)]
-pub enum PaRamp {
-    Ms3_4 = 0x0,
-    Ms2 = 0x1,
-    Ms1 = 0x2,
-    Us500 = 0x3,
-    Us250 = 0x4,
-    Us125 = 0x5,
-    Us100 = 0x6,
-    Us62 = 0x7,
-    Us50 = 0x8,
-    #[default]
-    Us40 = 0x9,
-    Us31 = 0xa,
-    Us25 = 0xb,
-    Us20 = 0xc,
-    Us15 = 0xd,
-    Us12 = 0xe,
-    Us10 = 0xf,
-}
-
-// TODO make a struct and include coding rate of last header received?
-//see: [page 111]
 #[derive(Clone, Copy, PartialEq)]
 pub enum RxStatus {
     ModemClear,
@@ -214,8 +217,9 @@ pub enum RxStatus {
     Unknown,
 }
 
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum SpreadingFactor {
+    /// Only implicit header mode is possible with Sf6.
     Sf6 = 0x6,
     #[default]
     Sf7 = 0x7,
@@ -225,72 +229,16 @@ pub enum SpreadingFactor {
     Sf11 = 0xb,
     Sf12 = 0xc,
 }
-impl SpreadingFactor {
-    pub(crate) const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x6 => Self::Sf6,
-            0x7 => Self::Sf7,
-            0x8 => Self::Sf8,
-            0x9 => Self::Sf9,
-            0xa => Self::Sf10,
-            0xb => Self::Sf11,
-            0xc => Self::Sf12,
-            _ => unreachable!()
+impl From<u8> for SpreadingFactor {
+    fn from(value: u8) -> Self {
+        match value {
+            0x6 => SpreadingFactor::Sf6,
+            0x7 => SpreadingFactor::Sf7,
+            0x8 => SpreadingFactor::Sf8,
+            0x9 => SpreadingFactor::Sf9,
+            0xa => SpreadingFactor::Sf10,
+            0xb => SpreadingFactor::Sf11,
+            _ => SpreadingFactor::Sf12,
         }
-    }
-    pub(crate) const fn into_bits(self) -> u8 { self as u8 }
-}
-
-#[derive(Debug, Default, PartialEq)]
-pub enum PaSelect {
-    #[default]
-    Boost,
-    Rfo(u8)
-}
-
-#[derive(Debug, PartialEq)]
-pub enum PaConfigError {
-    InvalidPaBoostPower,
-    InvalidRfoPower
-}
-
-#[derive(Debug, PartialEq)]
-pub struct PaConfig {
-    /// Power amplifier.
-    pub(crate) pa_select: PaSelect,
-    /// Output power in dBm. If `pa_select` == `Boost`, `power` must be <= 20. If `pa_select` ==
-    /// `Rfo`, `power` must be <= 17.
-    pub(crate) output_power: u8,
-    // TODO max_power? Option?
-}
-
-impl PaConfig {
-    pub fn new(pa_select: PaSelect, output_power: u8) -> Result<Self, PaConfigError> {
-        match pa_select {
-            PaSelect::Boost => if output_power > 20 { return Err(PaConfigError::InvalidPaBoostPower) },
-            PaSelect::Rfo(_) => if output_power > 17 { return Err(PaConfigError::InvalidRfoPower) },
-        }
-        Ok(Self { pa_select, output_power })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::lora::types::{PaConfig, PaConfigError, PaSelect};
-
-    #[test]
-    fn test_pa_config_new_invalid_boost_power() {
-        assert_eq!(
-            PaConfig::new(PaSelect::Boost, 21u8),
-            Err(PaConfigError::InvalidPaBoostPower)
-        );
-    }
-
-    #[test]
-    fn test_pa_config_new_invalid_rfo_power() {
-        assert_eq!(
-            PaConfig::new(PaSelect::Rfo(3u8), 18u8),
-            Err(PaConfigError::InvalidRfoPower)
-        );
     }
 }

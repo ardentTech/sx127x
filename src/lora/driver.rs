@@ -53,7 +53,8 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         driver.set_coding_rate(config.coding_rate).await?;
         driver.set_frequency(config.frequency).await?;
         driver.set_spreading_factor(config.spreading_factor).await?;
-        // TODO disable temp cal?
+        driver.set_temp_monitor(false).await?;
+
         Ok(driver)
     }
 
@@ -121,7 +122,7 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Ok(ModemStatus::from(byte))
     }
 
-    /// Reads the byte from the register at `addr`.
+    /// Reads the byte from the register at `addr` over SPI.
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         let mut read = [0; 2];
         // 1 wnr bit (0 for read) + 7 bit addr
@@ -131,6 +132,8 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     }
 
     /// Reads 255 bytes from the FIFO buffer.
+    ///
+    /// See: datasheet figure 10
     pub async fn read_rx_data(&mut self) -> Result<[u8; PAYLOAD_SIZE], Sx127xLoraError<SPI::Error>> {
         let reg_hop_channel = self.read(HOP_CHANNEL).await?;
         let crc_on_payload = get_bits(reg_hop_channel, HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, 6) == 1;
@@ -273,6 +276,21 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(DETECT_OPTIMIZE, detect_optimize).await
     }
 
+    /// Sets the temperature monitor operation flag. This will switch to the FSK/OOK modem,
+    /// set/unset the temp monitor flag, then switch back to the LoRa modem before returning.
+    ///
+    /// see: datasheet section 2.1.3.8: "It is recommended to disable the fully automated
+    /// (temperature-dependent) calibration, to better control when it is triggered (and avoid
+    /// unexpected packet losses)"
+    pub async fn set_temp_monitor(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_long_range_mode(false).await?;
+
+        let image_cal = self.read(IMAGE_CAL).await?;
+        self.write(IMAGE_CAL, image_cal | !(on as u8)).await?;
+
+        self.set_long_range_mode(true).await
+    }
+
     /// Gets the spreading factor.
     pub async fn spreading_factor(&mut self) -> Result<SpreadingFactor, Sx127xLoraError<SPI::Error>> {
         let modem_config_2 = self.read(MODEM_CONFIG_2).await?;
@@ -328,6 +346,17 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Ok((msb << 8) | lsb)
     }
 
+    /// Writes the `data` byte to the register at `addr` over SPI.
+    pub async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        // 1 wnr bit (1 for write) + 7 bit addr
+        let buf = [addr | 0x80, data];
+
+        #[cfg(feature = "defmt")]
+        debug!("writing 0b{:b} to 0x{:x}", data, addr);
+
+        self.spi.write(&buf).await.map_err(Sx127xLoraError::SPI)
+    }
+
     // PRIVATE -------------------------------------------------------------------------------------
 
     async fn device_mode(&mut self) -> Result<DeviceMode, Sx127xLoraError<SPI::Error>> {
@@ -354,17 +383,6 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(OP_MODE, op_mode).await?;
 
         self.set_device_mode(DeviceMode::STDBY).await
-    }
-
-    // Writes the `data` raw byte to the register at `addr`.
-    async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        // 1 wnr bit (1 for write) + 7 bit addr
-        let buf = [addr | 0x80, data];
-
-        #[cfg(feature = "defmt")]
-        debug!("writing 0b{:b} to 0x{:x}", data, addr);
-
-        self.spi.write(&buf).await.map_err(Sx127xLoraError::SPI)
     }
 }
 

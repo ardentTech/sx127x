@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_invert_iq` method
 - `bandwidth`, `coding_rate`, `spreading_factor` methods
 - `symbol_rate`, `data_rate` methods
+- make SPI `write` method public
+- `set_temp_monitor` method
 
 ## [0.1.0] - 2026-03-07
 

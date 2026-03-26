@@ -57,6 +57,11 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Ok(driver)
     }
 
+    pub async fn bandwidth(&mut self) -> Result<Bandwidth, Sx127xLoraError<SPI::Error>> {
+        let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
+        Ok(Bandwidth::from((modem_config_1 & MODEM_CONFIG_1_BW_MASK) >> 4))
+    }
+
     /// Triggers the IQ and RSSI calibration when set in Standby mode. Takes ~10ms.
     pub async fn calibrate(&mut self) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
@@ -71,6 +76,19 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(IRQ_FLAGS, byte | interrupt.mask()).await
     }
 
+    /// Gets the cyclic error coding rate.
+    pub async fn coding_rate(&mut self) -> Result<CodingRate, Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(MODEM_CONFIG_1).await?;
+        Ok(CodingRate::from(get_bits(byte, MODEM_CONFIG_1_CODING_RATE_MASK, 1)))
+    }
+
+    /// Calculates the current data rate in bits/s.
+    pub async fn data_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let coding_rate: f32 = self.coding_rate().await?.into();
+        let symbol_rate = self.symbol_rate().await? as f32;
+        let spreading_factor = (self.spreading_factor().await? as u8) as f32;
+        Ok(calculate_data_rate(symbol_rate, spreading_factor, coding_rate))
+    }
 
     /// Enables the DIO0 pin signal source.
     pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
@@ -255,6 +273,20 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(DETECT_OPTIMIZE, detect_optimize).await
     }
 
+    /// Gets the spreading factor.
+    pub async fn spreading_factor(&mut self) -> Result<SpreadingFactor, Sx127xLoraError<SPI::Error>> {
+        let modem_config_2 = self.read(MODEM_CONFIG_2).await?;
+        Ok(SpreadingFactor::from(get_bits(modem_config_2, MODEM_CONFIG_2_SPREADING_FACTOR_MASK, 4)))
+    }
+
+    /// Calculates the symbol rate in chips/s.
+    pub async fn symbol_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
+        let bandwidth = self.bandwidth().await?;
+        let spreading_factor = self.spreading_factor().await?;
+
+        Ok(calculate_symbol_rate(bandwidth.hz(), spreading_factor as u32) as u16)
+    }
+
     /// Transmits a `payload` of up to 255 bytes. Will automatically transition to STDBY when done.
     pub async fn transmit(&mut self, payload: &[u8]) -> Result<(), Sx127xLoraError<SPI::Error>> {
         // noop if already transmitting
@@ -316,7 +348,6 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
 
         #[cfg(feature = "defmt")]
         debug!("op_mode: 0b{:b}", self.read(OP_MODE).await?);
-        //Ok(())
 
         let mut op_mode = self.read(OP_MODE).await?;
         set_bits(&mut op_mode, on as u8, OP_MODE_LONG_RANGE_MODE_MASK, 7);
@@ -337,16 +368,39 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     }
 }
 
+fn calculate_data_rate(symbol_rate: f32, spreading_factor: f32, coding_rate: f32) -> u16 {
+    (symbol_rate * spreading_factor * coding_rate) as u16
+}
+
 fn calculate_frf(hz: u32) -> u32 {
     ((hz as f32) / FSTEP) as u32
+}
+
+fn calculate_symbol_rate(bandwidth: u32, spreading_factor: u32) -> u32 {
+    bandwidth / 2u32.pow(spreading_factor)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn calculate_data_rate_ok() {
+        let data_rate = calculate_data_rate(1953f32, 6f32, 0.8f32);
+        assert_eq!(data_rate, 9374u16);
+    }
+
     #[test]
     fn calculate_frf_ok() {
         let frf = calculate_frf(434_000_000);
         assert_eq!(frf, 0x6c8000);
+    }
+
+    #[test]
+    fn calculate_symbol_rate_ok() {
+        let bandwidth = 125_000u32;
+        let spreading_factor = 7u32;
+        let symbol_rate = calculate_symbol_rate(bandwidth, spreading_factor);
+        assert_eq!(symbol_rate, 976u32);
     }
 }

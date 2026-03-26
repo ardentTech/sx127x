@@ -9,14 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `lora` and `fsk` cargo features
-- `set_power_amplification` method
-- `set_pa_ramp` method
-- `set_ocp` method
-- `set_lna_gain` method
 - `valid_rx_headers` method
 - `valid_rx_packets` method
 - `last_packet_snr` method
 - `set_invert_iq` method
+- `bandwidth`, `coding_rate`, `spreading_factor` methods
+- `symbol_rate`, `data_rate` methods
 
 ## [0.1.0] - 2026-03-07
 

@@ -279,14 +279,12 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     /// Sets the temperature monitor operation flag. This will switch to the FSK/OOK modem,
     /// set/unset the temp monitor flag, then switch back to the LoRa modem before returning.
     ///
-    /// see: datasheet section 2.1.3.8: "It is recommended to disable the fully automated
-    /// (temperature-dependent) calibration, to better control when it is triggered (and avoid
-    /// unexpected packet losses)"
+    /// See: datasheet section 2.1.3.8
     pub async fn set_temp_monitor(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_long_range_mode(false).await?;
 
         let image_cal = self.read(IMAGE_CAL).await?;
-        self.write(IMAGE_CAL, image_cal | !(on as u8)).await?;
+        self.write(IMAGE_CAL, image_cal | !on as u8).await?;
 
         self.set_long_range_mode(true).await
     }
@@ -374,9 +372,6 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     async fn set_long_range_mode(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
         // also clears the FIFO buffer
         self.set_device_mode(DeviceMode::SLEEP).await?;
-
-        #[cfg(feature = "defmt")]
-        debug!("op_mode: 0b{:b}", self.read(OP_MODE).await?);
 
         let mut op_mode = self.read(OP_MODE).await?;
         set_bits(&mut op_mode, on as u8, OP_MODE_LONG_RANGE_MODE_MASK, 7);

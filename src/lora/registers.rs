@@ -71,7 +71,7 @@ pub const INVERT_IQ_RX_MASK: u8 = 0x40;
 pub const INVERT_IQ_TX_MASK: u8 = 0x1;
 
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
-pub(crate) const IMAGE_CAL: u8 = 0x3b;
+pub(crate) const IMAGE_CAL: u8 = 0x3b;  
 pub const DETECTION_THRESHOLD: u8 = 0x37;
 
 // RegDioMapping1 ----------------------------------------------------------------------------------

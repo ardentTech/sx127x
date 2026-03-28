@@ -40,6 +40,7 @@ async fn main(_task_spawner: Spawner) {
     sx127x.receive(None).await.expect("receive failed :(");
 
     loop {
+        info!("waiting for RxDone...");
         dio0.wait_for_high().await;
         info!("RxDone triggered!");
         sx127x.clear_interrupt(Interrupt::RxDone).await.expect("clear interrupt RxDone failed :(");

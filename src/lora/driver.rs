@@ -53,7 +53,6 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         driver.set_coding_rate(config.coding_rate).await?;
         driver.set_frequency(config.frequency).await?;
         driver.set_spreading_factor(config.spreading_factor).await?;
-        driver.set_temp_monitor(false).await?;
 
         Ok(driver)
     }

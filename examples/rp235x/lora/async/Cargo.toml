@@ -28,6 +28,13 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "rx_single"
+path = "src/bin/rx_single.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "rx_timeout"
 path = "src/bin/rx_timeout.rs"
 test = false

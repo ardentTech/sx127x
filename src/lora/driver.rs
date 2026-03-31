@@ -262,6 +262,24 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(LNA, byte).await
     }
 
+    /// Sets the over-current protection (OCP) on/off.
+    ///
+    /// See: datasheet section 3.4.4
+    pub async fn set_ocp(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(OCP).await?;
+        set_bits(&mut byte, on as u8, OCP_ON_MASK, 5);
+        self.write(OCP, byte).await
+    }
+
+    /// Sets the over-current protection (OCP) trimming.
+    ///
+    /// See: datasheet section 3.4.4
+    pub async fn set_ocp_trim(&mut self, trim: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(OCP).await?;
+        set_bits(&mut byte, trim, OCP_TRIM_MASK, 0);
+        self.write(OCP, byte).await
+    }
+
     /// Sets the spreading factor.
     ///
     /// See: datasheet section 4.1.1.2

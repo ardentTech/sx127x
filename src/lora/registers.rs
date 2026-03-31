@@ -12,6 +12,11 @@ pub const FRF_MSB: u8 = 0x06;
 pub const FRF_MID: u8 = 0x07;
 pub const FRF_LSB: u8 = 0x08;
 
+// RegOcp -------------------------------------------------------------------------------------
+pub const OCP: u8 = 0x0b;
+pub const OCP_ON_MASK: u8 = 0x20;
+pub const OCP_TRIM_MASK: u8 = 0x1f;
+
 // RegLna -------------------------------------------------------------------------------------
 pub const LNA: u8 = 0x0c;
 pub const LNA_GAIN_MASK: u8 = 0xe0;

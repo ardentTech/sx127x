@@ -187,6 +187,17 @@ pub struct InvertIQConfig {
     pub tx_path: bool,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum LnaGain {
+    #[default]
+    G1 = 0x1,
+    G2 = 0x2,
+    G3 = 0x3,
+    G4 = 0x4,
+    G5 = 0x5,
+    G6 = 0x6
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ModemStatus {
     SignalDetected = 0x0,

@@ -12,6 +12,12 @@ pub const FRF_MSB: u8 = 0x06;
 pub const FRF_MID: u8 = 0x07;
 pub const FRF_LSB: u8 = 0x08;
 
+// RegLna -------------------------------------------------------------------------------------
+pub const LNA: u8 = 0x0c;
+pub const LNA_GAIN_MASK: u8 = 0xe0;
+pub const LNA_BOOST_LF_MASK: u8 = 0x18;
+pub const LNA_BOOST_HF_MASK: u8 = 0x3;
+
 // begin lora page registers -----------------------------------------------------------------------
 pub const FIFO_ADDR_PTR: u8 = 0x0d;
 pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;

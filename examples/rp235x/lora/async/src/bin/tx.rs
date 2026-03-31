@@ -15,7 +15,7 @@ use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 use sx127x::lora::driver::{Sx127x, Sx127xConfig};
 use sx127x::lora::registers::OP_MODE;
-use sx127x::lora::types::{Dio0Signal, Interrupt};
+use sx127x::lora::types::{Dio0Signal, Interrupt, SpreadingFactor};
 
 const FREQUENCY_HZ: u32 = 915_000_000;
 
@@ -26,6 +26,7 @@ async fn main(_task_spawner: Spawner) {
     let mosi = p.PIN_11;
     let sck = p.PIN_10;
     let cs = Output::new(p.PIN_13, Level::High);
+    let mut led = Output::new(p.PIN_20, Level::Low);
 
     let spi = Spi::new(p.SPI1, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Config::default());
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
@@ -35,20 +36,20 @@ async fn main(_task_spawner: Spawner) {
 
     let mut config = Sx127xConfig::default();
     config.frequency = FREQUENCY_HZ;
+    config.spreading_factor = SpreadingFactor::Sf12;
     let mut sx127x = Sx127x::new(spi_dev, config).await.expect("driver init failed :(");
+    sx127x.set_temp_monitor(false).await.expect("disable temp monitor failed :(");
 
     sx127x.set_dio0(Dio0Signal::TxDone).await.expect("set_dio0 failed");
 
     loop {
-        match sx127x.transmit("howdy".as_bytes()).await {
-            Ok(_) => info!("transmit init :)"),
-            Err(_) => error!("transmit init failed :(")
-        }
+        sx127x.transmit("howdy".as_bytes()).await.expect("transmit failed :(");
         info!("waiting for TxDone...");
         dio0.wait_for_high().await;
+
         info!("TxDone triggered!");
+        led.toggle();
         sx127x.clear_interrupt(Interrupt::TxDone).await.expect("clear interrupt TxDone failed :(");
-        Timer::after(embassy_time::Duration::from_millis(3_000)).await;
-        info!("looping around");
+        Timer::after(embassy_time::Duration::from_millis(2_000)).await;
     }
 }

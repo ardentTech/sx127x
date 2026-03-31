@@ -253,6 +253,15 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(INVERT_IQ, byte).await
     }
 
+    /// Sets the gain for the low noise receiver amplifier (LNA).
+    ///
+    /// See: datasheet page 110
+    pub async fn set_lna_gain(&mut self, gain: LnaGain) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(LNA).await?;
+        set_bits(&mut byte, gain as u8, LNA_GAIN_MASK, 5);
+        self.write(LNA, byte).await
+    }
+
     /// Sets the spreading factor.
     ///
     /// See: datasheet section 4.1.1.2

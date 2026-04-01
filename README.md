@@ -14,7 +14,6 @@
 
 ### TODO
 - [ ] tx power
-- [ ] set preamble
 - [ ] invert iq
 - [ ] frequency error
 - [ ] errata

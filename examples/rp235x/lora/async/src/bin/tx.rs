@@ -39,8 +39,10 @@ async fn main(_task_spawner: Spawner) {
     config.spreading_factor = SpreadingFactor::Sf12;
     let mut sx127x = Sx127x::new(spi_dev, config).await.expect("driver init failed :(");
     sx127x.set_temp_monitor(false).await.expect("disable temp monitor failed :(");
+    // symbol duration (~33ms) is > 16ms so enable low data rate optimize
+    sx127x.set_low_data_rate_optimize(true).await.expect("set_low_data_rate_optimize failed :(");
 
-    sx127x.set_dio0(Dio0Signal::TxDone).await.expect("set_dio0 failed");
+    sx127x.set_dio0(Dio0Signal::TxDone).await.expect("set_dio0 failed :(");
 
     loop {
         sx127x.transmit("howdy".as_bytes()).await.expect("transmit failed :(");

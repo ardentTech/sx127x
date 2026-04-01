@@ -16,6 +16,7 @@ pub const RX_TIMEOUT_MAX_SYMBOLS: u16 = 1023;
 #[derive(Debug)]
 pub enum Sx127xLoraError<SPI> {
     InvalidPayloadLength,
+    InvalidPreambleLength,
     InvalidState,
     InvalidSymbolTimeout,
     PacketTermination,
@@ -88,6 +89,14 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         let symbol_rate = self.symbol_rate().await? as f32;
         let spreading_factor = (self.spreading_factor().await? as u8) as f32;
         Ok(calculate_data_rate(symbol_rate, spreading_factor, coding_rate))
+    }
+
+    /// Reads the carrier frequency.
+    pub async fn frequency(&mut self) -> Result<u32, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(FRF_MSB).await? as u32;
+        let mid = self.read(FRF_MID).await? as u32;
+        let lsb = self.read(FRF_LSB).await? as u32;
+        Ok((msb << 16) | (mid << 8) | lsb)
     }
 
     /// Enables the DIO0 pin signal source.
@@ -238,14 +247,6 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(OP_MODE, byte).await
     }
 
-    /// Reads the carrier frequency.
-    pub async fn frequency(&mut self) -> Result<u32, Sx127xLoraError<SPI::Error>> {
-        let msb = self.read(FRF_MSB).await? as u32;
-        let mid = self.read(FRF_MID).await? as u32;
-        let lsb = self.read(FRF_LSB).await? as u32;
-        Ok((msb << 16) | (mid << 8) | lsb)
-    }
-
     /// Sets the carrier frequency. It's imperative that you check regulations for your area (e.g.
     /// 902-928 MHz for the United States)
     pub async fn set_frequency(&mut self, hz: u32) -> Result<(), Sx127xLoraError<SPI::Error>> {
@@ -311,6 +312,20 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         let mut byte = self.read(OCP).await?;
         set_bits(&mut byte, trim, OCP_TRIM_MASK, 0);
         self.write(OCP, byte).await
+    }
+
+    /// Sets the preamble length, minus 4 symbols of fixed overhead. A `length` of 6, which is the
+    /// minimum valid preamble length, will yield a total of 10 symbols, and a `length` of 65535
+    /// will yield a total of 65539 symbols.
+    ///
+    /// See: datasheet section 4.1.1.6
+    pub async fn set_preamble_length(&mut self, length: u16) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        // TODO break out validation logic like this for unit testing
+        if length < 6 {
+            return Err(Sx127xLoraError::InvalidPreambleLength)
+        }
+        self.write(PREAMBLE_MSB, (length >> 8) as u8).await?;
+        self.write(PREAMBLE_LSB, (length & 0xff) as u8).await
     }
 
     /// Sets the spreading factor.

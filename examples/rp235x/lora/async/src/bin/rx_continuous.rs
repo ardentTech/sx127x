@@ -4,16 +4,18 @@
 #![no_std]
 #![no_main]
 
+use core::convert::Infallible;
 use defmt::*;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
+use embassy_embedded_hal::shared_bus::SpiDeviceError;
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Input, Level, Output, Pull};
 use embassy_rp::peripherals::SPI1;
-use embassy_rp::spi::{Async, Config, Spi};
+use embassy_rp::spi::{Async, Config, Error, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 use {defmt_rtt as _, panic_probe as _};
-use sx127x::lora::driver::{Sx127x, Sx127xConfig};
+use sx127x::lora::driver::{Sx127x, Sx127xConfig, Sx127xLoraError};
 use sx127x::lora::types::{Dio0Signal, Interrupt};
 
 const FREQUENCY_HZ: u32 = 915_000_000;
@@ -51,6 +53,13 @@ async fn main(_task_spawner: Spawner) {
             },
             Err(_) => error!("read_rx_data failed :(")
         }
-        info!("looping around");
+        match sx127x.last_packet_rssi().await {
+            Ok(byte) => info!("last rx packet RSSI: {}", byte),
+            Err(_) => error!("last_packet_rssi failed :(")
+        }
+        match sx127x.last_packet_snr().await {
+            Ok(byte) => info!("last rx packet SNR: {}", byte),
+            Err(_) => error!("last_packet_snr failed :(")
+        }
     }
 }

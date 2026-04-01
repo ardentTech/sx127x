@@ -14,12 +14,8 @@
 
 ### TODO
 - [ ] tx power
-- [x] ocp
 - [ ] set preamble
-- [x] set crc
 - [ ] invert iq
-- [x] rssi
-- [ ] snr
 - [ ] frequency error
 - [ ] errata
 - [ ] `rx_single` example

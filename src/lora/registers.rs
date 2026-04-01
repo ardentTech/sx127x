@@ -73,6 +73,8 @@ pub const MODEM_CONFIG_2_SYMB_TIMEOUT_MASK: u8 = 0x03;
 
 pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
+pub const MODEM_CONFIG_3: u8 = 0x26;
+pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK: u8 = 0x08;
 
 // RegDetectOptimize -------------------------------------------------------------------------------
 pub const DETECT_OPTIMIZE: u8 = 0x31;

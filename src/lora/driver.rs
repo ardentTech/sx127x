@@ -285,6 +285,16 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(LNA, byte).await
     }
 
+    /// Sets the low data rate optimization.Its use is mandated when the symbol duration exceeds
+    /// 16ms.
+    ///
+    /// See: datasheet section 4.1.1.6
+    pub async fn set_low_data_rate_optimize(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_3).await?;
+        set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK, 3);
+        self.write(MODEM_CONFIG_3, byte).await
+    }
+
     /// Sets the over-current protection (OCP) on/off.
     ///
     /// See: datasheet section 3.4.4

@@ -200,10 +200,19 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     /// Sets the cyclic error coding rate.
     ///
     /// See: datasheet section 4.1.1.3
-    async fn set_coding_rate(&mut self, coding_rate: CodingRate) -> Result<(), Sx127xLoraError<SPI::Error>> {
+    pub async fn set_coding_rate(&mut self, coding_rate: CodingRate) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         set_bits(&mut byte, coding_rate as u8, MODEM_CONFIG_1_CODING_RATE_MASK, 1);
         self.write(MODEM_CONFIG_1, byte).await
+    }
+
+    /// Sets CRC generation and check on payload on/off.
+    ///
+    /// See: section 4.1.1.6
+    pub async fn set_crc(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_2).await?;
+        set_bits(&mut byte, on as u8, MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK, 2);
+        self.write(MODEM_CONFIG_2, byte).await
     }
 
     /// Sets the device mode.

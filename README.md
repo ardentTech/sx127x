@@ -14,14 +14,14 @@
 
 ### TODO
 - [ ] tx power
-- [ ] ocp
+- [x] ocp
 - [ ] set preamble
-- [ ] set crc
+- [x] set crc
 - [ ] invert iq
 - [ ] rssi
 - [ ] snr
 - [ ] frequency error
-- [ ] ldo
+- [ ] errata
 - [ ] `rx_single` example
 - [ ] `async` LoRa impl
 - [ ] `sync` LoRa impl

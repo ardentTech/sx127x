@@ -8,9 +8,9 @@
 - `sync`: compile the sync library
 
 ### Reset
-- "A power-on reset of the SX1276/77/78/79 is triggered at power up." [DS section 5.2]
+- "A power-on reset of the SX1276/77/78/79 is triggered at power up." [datasheet section 5.2]
 - To perform a manual reset: "Pin 7 should be pulled low for a hundred microseconds, and then released. The user should then wait for 5 ms before using
-  the chip." [DS section 5.2.2]
+  the chip." [datasheet section 5.2.2]
 
 ### TODO
 - [ ] tx power
@@ -18,11 +18,12 @@
 - [ ] set preamble
 - [x] set crc
 - [ ] invert iq
-- [ ] rssi
+- [x] rssi
 - [ ] snr
 - [ ] frequency error
 - [ ] errata
 - [ ] `rx_single` example
+- [ ] `rssi` example (datasheet page 87 note 3)
 - [ ] `async` LoRa impl
 - [ ] `sync` LoRa impl
 - [ ] `async` FSK/OOK impl

@@ -100,6 +100,13 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
     }
 
+    /// Reads received signal strength indicator (RSSI) of last packet received.
+    ///
+    /// See: datasheet section 3.5.5
+    pub async fn last_packet_rssi(&mut self) -> Result<u8, Sx127xLoraError<SPI::Error>> {
+        self.read(PKT_RSSI_VALUE).await
+    }
+
     /// Reads estimation of signal-to-noise ratio (SNR) in dB on last packet received.
     ///
     /// See: datasheet section 3.5.5
@@ -181,6 +188,13 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
 
         self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR).await?;
         self.set_device_mode(mode).await
+    }
+
+    /// Reads the current received signal strength indicator (RSSI).
+    ///
+    /// See: datasheet section 3.5.5
+    pub async fn rssi(&mut self) -> Result<u8, Sx127xLoraError<SPI::Error>> {
+        self.read(RSSI_VALUE).await
     }
 
     /// Sets the bandwidth.

@@ -49,6 +49,8 @@ pub const RX_PACKET_CNT_VALUE_MSB: u8 = 0x16;
 pub const RX_PACKET_CNT_VALUE_LSB: u8 = 0x17;
 pub const MODEM_STAT: u8 = 0x18;
 pub const PKT_SNR_VALUE: u8 = 0x19;
+pub const PKT_RSSI_VALUE: u8 = 0x1a;
+pub const RSSI_VALUE: u8 = 0x1b;
 
 // RegHopChannel -----------------------------------------------------------------------------------
 pub const HOP_CHANNEL: u8 = 0x1c;

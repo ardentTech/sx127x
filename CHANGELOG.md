@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_lna_gain` method
 - `set_ocp`, `set_ocp_trim` methods
 - `set_crc` method and make `set_coding_rate` public
+- `rssi`, `last_packet_rssi` methods
 
 ## [0.1.0] - 2026-03-07
 

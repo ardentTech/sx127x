@@ -299,19 +299,57 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     /// Sets the over-current protection (OCP) on/off.
     ///
     /// See: datasheet section 3.4.4
-    pub async fn set_ocp(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        let mut byte = self.read(OCP).await?;
-        set_bits(&mut byte, on as u8, OCP_ON_MASK, 5);
-        self.write(OCP, byte).await
+    pub async fn set_ocp(&mut self, on: bool, imax: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let trim = if imax < 130 {
+            (imax - 45) / 5
+        } else {
+            (imax + 30) / 10
+        };
+        self.write(OCP, ((on as u8) << 5) | trim).await
     }
 
-    /// Sets the over-current protection (OCP) trimming.
+    /// Sets the power amplifier (PA) to PA_HP on the PA_BOOST pin.
     ///
-    /// See: datasheet section 3.4.4
-    pub async fn set_ocp_trim(&mut self, trim: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        let mut byte = self.read(OCP).await?;
-        set_bits(&mut byte, trim, OCP_TRIM_MASK, 0);
-        self.write(OCP, byte).await
+    /// See: datasheet section 3.4.2
+    ///
+    /// Arguments:
+    ///
+    /// * `power`: 2 <= a <= 17 for continuous operation, or 20 for duty-cycled operation
+    pub async fn set_pa_boost(&mut self, power: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        assert!(power == 20 || (power >= 2 && power <= 17));
+
+        let mut byte = self.read(PA_CONFIG).await?;
+        set_bits(&mut byte, 1, PA_CONFIG_PA_SELECT_MASK, 7);
+        set_bits(&mut byte, 7, PA_CONFIG_MAX_POWER_MASK, 4);
+        set_bits(&mut byte, if power == 20 { power - 5 } else { power - 2 }, PA_CONFIG_OUTPUT_POWER_MASK, 0);
+        self.write(PA_CONFIG, byte).await?;
+
+        self.write(PA_DAC, if power == 20 { 0x87 } else { 0x84 }).await?;
+        self.set_ocp(true, if power == 20 { 120 } else { 87 }).await
+    }
+
+    /// Sets the power amplifier (PA) to PA_HF on the RFO_HF pin or PA_LF on the RFO_LF pin.
+    ///
+    /// See: datasheet section 3.4.2
+    ///
+    /// Arguments:
+    ///
+    /// * `power`: -4 <= a <= 15
+    pub async fn set_pa_rfo(&mut self, power: i8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        assert!(power >= -4 && power <= 15);
+
+        let mut byte = self.read(PA_CONFIG).await?;
+        set_bits(&mut byte, 0, PA_CONFIG_PA_SELECT_MASK, 7);
+        if (-4..=0).contains(&power) {
+            set_bits(&mut byte, 0, PA_CONFIG_MAX_POWER_MASK, 4);
+            set_bits(&mut byte, (power as f32 + 4.2) as u8, PA_CONFIG_OUTPUT_POWER_MASK, 0);
+        } else {
+            set_bits(&mut byte, 7, PA_CONFIG_MAX_POWER_MASK, 4);
+            set_bits(&mut byte, power as u8, PA_CONFIG_OUTPUT_POWER_MASK, 0);
+        }
+
+        self.write(PA_DAC, 0x84).await?;
+        self.set_ocp(false, 0).await
     }
 
     /// Sets the preamble length, minus 4 symbols of fixed overhead. A `length` of 6, which is the

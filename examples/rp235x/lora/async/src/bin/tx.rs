@@ -41,6 +41,7 @@ async fn main(_task_spawner: Spawner) {
     sx127x.set_temp_monitor(false).await.expect("disable temp monitor failed :(");
     // symbol duration (~33ms) is > 16ms so enable low data rate optimize
     sx127x.set_low_data_rate_optimize(true).await.expect("set_low_data_rate_optimize failed :(");
+    sx127x.set_pa_boost(20).await.expect("set_amplifier_boost failed :(");
 
     sx127x.set_dio0(Dio0Signal::TxDone).await.expect("set_dio0 failed :(");
 

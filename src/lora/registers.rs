@@ -12,6 +12,12 @@ pub const FRF_MSB: u8 = 0x06;
 pub const FRF_MID: u8 = 0x07;
 pub const FRF_LSB: u8 = 0x08;
 
+// RegPaConfig -------------------------------------------------------------------------------------
+pub const PA_CONFIG: u8 = 0x09;
+pub const PA_CONFIG_PA_SELECT_MASK: u8 = 0x80;
+pub const PA_CONFIG_MAX_POWER_MASK: u8 = 0x70;
+pub const PA_CONFIG_OUTPUT_POWER_MASK: u8 = 0xf;
+
 // RegOcp -------------------------------------------------------------------------------------
 pub const OCP: u8 = 0x0b;
 pub const OCP_ON_MASK: u8 = 0x20;
@@ -97,3 +103,7 @@ pub const DIO_MAPPING_1_DIO0_MASK: u8 = 0xc0;
 pub const DIO_MAPPING_1_DIO0_SHIFT: u8 = 0x6;
 pub const DIO_MAPPING_1_DIO1_MASK: u8 = 0x30;
 pub const DIO_MAPPING_1_DIO1_SHIFT: u8 = 0x4;
+
+// RegPaDac ----------------------------------------------------------------------------------
+pub const PA_DAC: u8 = 0x4d;
+pub const PA_DAC_MASK: u8 = 0x07;

@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_low_data_rate_optimize` method
 - `set_preamble_length` method
 - `set_pa_boost`, `set_pa_rfo` methods
+- `frequency_error_indication_hz`, `frequency_error_indication_ppm` methods
 
 ## [0.1.0] - 2026-03-07
 

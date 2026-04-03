@@ -5,6 +5,7 @@ use embedded_hal_async::spi::SpiDevice;
 use crate::lora::bits::{get_bits, set_bits};
 use crate::lora::registers::*;
 use crate::lora::types::*;
+use crate::lora::calculate;
 
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
 const FXOSC_HZ: u32 = 32_000_000;
@@ -45,7 +46,6 @@ pub struct Sx127x<SPI> {
     spi: SPI
 }
 impl <SPI: SpiDevice>Sx127x<SPI> {
-
     pub async fn new(spi: SPI, config: Sx127xConfig) -> Result<Sx127x<SPI>, Sx127xLoraError<SPI::Error>> {
         let mut driver = Self { spi };
         driver.set_long_range_mode(true).await?;
@@ -88,7 +88,7 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         let coding_rate: f32 = self.coding_rate().await?.into();
         let symbol_rate = self.symbol_rate().await? as f32;
         let spreading_factor = (self.spreading_factor().await? as u8) as f32;
-        Ok(calculate_data_rate(symbol_rate, spreading_factor, coding_rate))
+        Ok(calculate::data_rate(symbol_rate, spreading_factor, coding_rate))
     }
 
     /// Reads the carrier frequency.
@@ -99,12 +99,34 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         Ok((msb << 16) | (mid << 8) | lsb)
     }
 
-    /// Enables the DIO0 pin signal source.
+    /// Reads the frequency error indication (FEI) in Hz.
+    ///
+    /// See: datasheet section 4.1.5
+    pub async fn frequency_error_indication_hz(&mut self) -> Result<f64, Sx127xLoraError<SPI::Error>> {
+        let msb = self.read(FEI_MSB).await?;
+        let mid = self.read(FEI_MID).await?;
+        let lsb = self.read(FEI_LSB).await?;
+        let fei = (((msb as u32) << 16) | ((mid as u32) << 8) | (lsb as u32)) as i32;
+        let bandwidth = self.bandwidth().await?;
+
+        Ok(calculate::fei_hz(fei, bandwidth.khz()))
+    }
+
+    /// Reads the frequency error indication (FEI) in PPM.
+    ///
+    /// See: datasheet section 4.1.5
+    pub async fn frequency_error_indication_ppm(&mut self) -> Result<f64, Sx127xLoraError<SPI::Error>> {
+        let hz = self.frequency_error_indication_hz().await?;
+        let frf = self.frequency().await?;
+        Ok(calculate::fei_ppm(hz, frf))
+    }
+
+    /// Sets the DIO0 pin signal source.
     pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
     }
 
-    /// Enables the DIO1 pin signal source.
+    /// Sets the DIO1 pin signal source.
     pub async fn set_dio1(&mut self, signal: Dio1Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
     }
@@ -250,7 +272,7 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
     /// Sets the carrier frequency. It's imperative that you check regulations for your area (e.g.
     /// 902-928 MHz for the United States)
     pub async fn set_frequency(&mut self, hz: u32) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        let frf = calculate_frf(hz);
+        let frf = calculate::frf(hz, FSTEP);
         self.write(FRF_MSB, (frf >> 16) as u8).await?;
         self.write(FRF_MID, (frf >> 8) as u8).await?;
         self.write(FRF_LSB, frf as u8).await?;
@@ -412,7 +434,7 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         let bandwidth = self.bandwidth().await?;
         let spreading_factor = self.spreading_factor().await?;
 
-        Ok(calculate_symbol_rate(bandwidth.hz(), spreading_factor as u32) as u16)
+        Ok(calculate::symbol_rate(bandwidth.hz(), spreading_factor as u32) as u16)
     }
 
     /// Transmits a `payload` of up to 255 bytes. Will automatically transition to STDBY when done.
@@ -490,42 +512,5 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(OP_MODE, op_mode).await?;
 
         self.set_device_mode(DeviceMode::STDBY).await
-    }
-}
-
-fn calculate_data_rate(symbol_rate: f32, spreading_factor: f32, coding_rate: f32) -> u16 {
-    (symbol_rate * spreading_factor * coding_rate) as u16
-}
-
-fn calculate_frf(hz: u32) -> u32 {
-    ((hz as f32) / FSTEP) as u32
-}
-
-fn calculate_symbol_rate(bandwidth: u32, spreading_factor: u32) -> u32 {
-    bandwidth / 2u32.pow(spreading_factor)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn calculate_data_rate_ok() {
-        let data_rate = calculate_data_rate(1953f32, 6f32, 0.8f32);
-        assert_eq!(data_rate, 9374u16);
-    }
-
-    #[test]
-    fn calculate_frf_ok() {
-        let frf = calculate_frf(434_000_000);
-        assert_eq!(frf, 0x6c8000);
-    }
-
-    #[test]
-    fn calculate_symbol_rate_ok() {
-        let bandwidth = 125_000u32;
-        let spreading_factor = 7u32;
-        let symbol_rate = calculate_symbol_rate(bandwidth, spreading_factor);
-        assert_eq!(symbol_rate, 976u32);
     }
 }

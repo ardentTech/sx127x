@@ -81,8 +81,13 @@ pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 pub const PREAMBLE_MSB: u8 = 0x20;
 pub const PREAMBLE_LSB: u8 = 0x21;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
+
+// RegModemConfig3 ---------------------------------------------------------------------------------
 pub const MODEM_CONFIG_3: u8 = 0x26;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK: u8 = 0x08;
+pub const FEI_MSB: u8 = 0x28;
+pub const FEI_MID: u8 = 0x29;
+pub const FEI_LSB: u8 = 0x2a;
 
 // RegDetectOptimize -------------------------------------------------------------------------------
 pub const DETECT_OPTIMIZE: u8 = 0x31;

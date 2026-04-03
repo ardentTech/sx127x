@@ -2,25 +2,23 @@
 `#![no_std]`, `async`-first driver for the Semtech SX127X transceiver built on top of Rust [embedded-hal](https://github.com/rust-embedded/embedded-hal).
 
 ### Cargo Features
-- `lora` (default): compile the LoRa modem
-- `fsk`: compile the FSK/OOK modem
-- `async` (default): compile the async library
-- `sync`: compile the sync library
+- `lora` (default): LoRa modem
+- `fsk`: FSK/OOK modem
+- `async` (default): modem async impl
+- `sync`: modem sync impl
 
-### Reset
-- "A power-on reset of the SX1276/77/78/79 is triggered at power up." [datasheet section 5.2]
-- To perform a manual reset: "Pin 7 should be pulled low for a hundred microseconds, and then released. The user should then wait for 5 ms before using
-  the chip." [datasheet section 5.2.2]
+### Roadmap
+- [ ] LoRa async (in-progress)
+- [ ] LoRa sync
+- [ ] FSK async
+- [ ] FSK sync
 
-### TODO
-- [ ] tx power
-- [ ] invert iq
-- [ ] frequency error
-- [ ] errata
-- [ ] `rx_single` example
-- [ ] `rssi` example (datasheet page 87 note 3)
-- [ ] `async` LoRa impl
-- [ ] `sync` LoRa impl
-- [ ] `async` FSK/OOK impl
-- [ ] `sync` FSK/OOK impl
-- [ ] RX, RX_TX, TX driver modes to customize FIFO buffer mem layout
+### Examples
+* [LoRa RP235x async](https://github.com/ardentTech/sx127x/tree/main/examples/rp235x/lora/async)
+
+### Resources
+* [Datasheet](https://semtech.my.salesforce.com/sfc/p/E0000000JelG/a/2R0000001Rbr/6EfVZUorrpoKFfvaF_Fkpgp5kzjiNyiAbqcpqh9qSjE)
+
+### License
+* [MIT](https://github.com/ardentTech/sx127x/blob/main/LICENSE-MIT)
+* [Apache](https://github.com/ardentTech/sx127x/blob/main/LICENSE-APACHE)

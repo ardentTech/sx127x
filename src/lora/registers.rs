@@ -84,7 +84,7 @@ pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 pub const PREAMBLE_MSB: u8 = 0x20;
 pub const PREAMBLE_LSB: u8 = 0x21;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
-// TODO MAX_PAYLOAD_LENGTH 0x23
+pub const MAX_PAYLOAD_LENGTH: u8 = 0x23;
 // TODO HOP_PERIOD 0x24
 // TODO FIFO_RX_BYTE_ADDR 0x25
 

@@ -325,6 +325,14 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_3, byte).await
     }
 
+    /// Sets the maximum payload length.
+    ///
+    /// If header payload length exceeds value a header CRC error is generated. Allows filtering of
+    /// packet with a bad size.
+    pub async fn set_max_payload_length(&mut self, payload_length: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.write(MAX_PAYLOAD_LENGTH, payload_length).await
+    }
+
     /// Sets the over-current protection (OCP) on/off.
     ///
     /// See: datasheet section 3.4.4

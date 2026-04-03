@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_pa_ramp` method
 - update RegInvertIQ2 according to rx_path or tx_path inversion
 - `set_sync_word` method
+- `set_max_payload_length` method
 
 ## [0.1.0] - 2026-03-07
 

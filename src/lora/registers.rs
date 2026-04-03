@@ -18,12 +18,15 @@ pub const PA_CONFIG_PA_SELECT_MASK: u8 = 0x80;
 pub const PA_CONFIG_MAX_POWER_MASK: u8 = 0x70;
 pub const PA_CONFIG_OUTPUT_POWER_MASK: u8 = 0xf;
 
-// RegOcp -------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+pub const PA_RAMP: u8 = 0x0a;
+
+// RegOcp ------------------------------------------------------------------------------------------
 pub const OCP: u8 = 0x0b;
 pub const OCP_ON_MASK: u8 = 0x20;
 pub const OCP_TRIM_MASK: u8 = 0x1f;
 
-// RegLna -------------------------------------------------------------------------------------
+// RegLna ------------------------------------------------------------------------------------------
 pub const LNA: u8 = 0x0c;
 pub const LNA_GAIN_MASK: u8 = 0xe0;
 pub const LNA_BOOST_LF_MASK: u8 = 0x18;
@@ -109,6 +112,6 @@ pub const DIO_MAPPING_1_DIO0_SHIFT: u8 = 0x6;
 pub const DIO_MAPPING_1_DIO1_MASK: u8 = 0x30;
 pub const DIO_MAPPING_1_DIO1_SHIFT: u8 = 0x4;
 
-// RegPaDac ----------------------------------------------------------------------------------
+// RegPaDac ----------------------------------------------------------------------------------------
 pub const PA_DAC: u8 = 0x4d;
 pub const PA_DAC_MASK: u8 = 0x07;

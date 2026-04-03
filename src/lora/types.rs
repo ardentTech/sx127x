@@ -218,6 +218,27 @@ impl From<u8> for ModemStatus {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum PARamp {
+    Ms3_4 = 0x0,
+    Ms2 = 0x1,
+    Ms1 = 0x2,
+    Us500 = 0x3,
+    Us250 = 0x4,
+    Us125 = 0x5,
+    Us100 = 0x6,
+    Us62 = 0x7,
+    Us50 = 0x8,
+    #[default]
+    Us40 = 0x9,
+    Us31 = 0xa,
+    Us25 = 0xb,
+    Us20 = 0xc,
+    Us15 = 0xd,
+    Us12 = 0xe,
+    Us10 = 0xf,
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum RxStatus {
     ModemClear,

@@ -350,6 +350,12 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.set_ocp(true, if power == 20 { 120 } else { 87 }).await
     }
 
+    /// Sets the rise/fall time of the power amplifier (PA).
+    pub async fn set_pa_ramp(&mut self, pa_ramp: PARamp) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let byte = self.read(PA_RAMP).await?;
+        self.write(PA_RAMP, byte | pa_ramp as u8).await
+    }
+
     /// Sets the power amplifier (PA) to PA_HF on the RFO_HF pin or PA_LF on the RFO_LF pin.
     ///
     /// See: datasheet section 3.4.2

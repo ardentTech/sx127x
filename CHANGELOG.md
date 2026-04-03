@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_pa_boost`, `set_pa_rfo` methods
 - `frequency_error_indication_hz`, `frequency_error_indication_ppm` methods
 - `set_pa_ramp` method
+- update RegInvertIQ2 according to rx_path or tx_path inversion
 
 ## [0.1.0] - 2026-03-07
 

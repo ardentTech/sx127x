@@ -84,13 +84,21 @@ pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 pub const PREAMBLE_MSB: u8 = 0x20;
 pub const PREAMBLE_LSB: u8 = 0x21;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
+// TODO MAX_PAYLOAD_LENGTH 0x23
+// TODO HOP_PERIOD 0x24
+// TODO FIFO_RX_BYTE_ADDR 0x25
 
 // RegModemConfig3 ---------------------------------------------------------------------------------
 pub const MODEM_CONFIG_3: u8 = 0x26;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK: u8 = 0x08;
+
+// -------------------------------------------------------------------------------------------------
 pub const FEI_MSB: u8 = 0x28;
 pub const FEI_MID: u8 = 0x29;
 pub const FEI_LSB: u8 = 0x2a;
+// TODO RSSI_WIDEBAND 0x2c
+// TODO IfFreq2 errata
+// TODO IfFreq1 errata
 
 // RegDetectOptimize -------------------------------------------------------------------------------
 pub const DETECT_OPTIMIZE: u8 = 0x31;
@@ -101,9 +109,14 @@ pub const INVERT_IQ: u8 = 0x33;
 pub const INVERT_IQ_RX_MASK: u8 = 0x40;
 pub const INVERT_IQ_TX_MASK: u8 = 0x1;
 
+// -------------------------------------------------------------------------------------------------
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
-pub(crate) const IMAGE_CAL: u8 = 0x3b;  
+pub(crate) const IMAGE_CAL: u8 = 0x3b;
+// TODO HIGH_BW_OPTIMIZE_1 0x36
 pub const DETECTION_THRESHOLD: u8 = 0x37;
+// TODO SYNC_WORD 0x39
+// TODO HIGH_BW_OPTIMIZE_2 0x3a
+pub const INVERT_IQ_2: u8 = 0x3b;
 
 // RegDioMapping1 ----------------------------------------------------------------------------------
 pub const DIO_MAPPING_1: u8 = 0x40;

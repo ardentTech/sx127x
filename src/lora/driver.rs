@@ -296,6 +296,9 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         let mut byte = self.read(INVERT_IQ).await?;
         set_bits(&mut byte, rx_path as u8, INVERT_IQ_RX_MASK, 6);
         set_bits(&mut byte, tx_path as u8, INVERT_IQ_TX_MASK, 0);
+
+        self.write(INVERT_IQ_2, if rx_path || tx_path { 0x19 } else { 0x1d }).await?;
+
         self.write(INVERT_IQ, byte).await
     }
 

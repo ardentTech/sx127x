@@ -423,6 +423,11 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(DETECT_OPTIMIZE, detect_optimize).await
     }
 
+    /// Sets the LoRa sync word.
+    pub async fn set_sync_word(&mut self, sync_word: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.write(SYNC_WORD, sync_word).await
+    }
+
     /// Sets the temperature monitor operation flag. This will switch to the FSK/OOK modem,
     /// set/unset the temp monitor flag, then switch back to the LoRa modem before returning.
     ///

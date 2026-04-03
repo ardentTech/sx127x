@@ -114,7 +114,7 @@ pub const INVERT_IQ_TX_MASK: u8 = 0x1;
 pub(crate) const IMAGE_CAL: u8 = 0x3b;
 pub const HIGH_BW_OPTIMIZE_1: u8 = 0x36;
 pub const DETECTION_THRESHOLD: u8 = 0x37;
-// TODO SYNC_WORD 0x39
+pub const SYNC_WORD: u8 = 0x39;
 pub const HIGH_BW_OPTIMIZE_2: u8 = 0x3a;
 pub const INVERT_IQ_2: u8 = 0x3b;
 

@@ -11,6 +11,8 @@ const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
 const FXOSC_HZ: u32 = 32_000_000;
 const FSTEP: f32 = (FXOSC_HZ as f32) / (2u32.pow(19) as f32);
 const PAYLOAD_SIZE: usize = 255;
+// identifies silicon Version 1b, which applies to errata
+const PRODUCTION_VERSION: u8 = 0x12;
 pub const RX_TIMEOUT_MIN_SYMBOLS: u16 = 4;
 pub const RX_TIMEOUT_MAX_SYMBOLS: u16 = 1023;
 
@@ -24,13 +26,13 @@ pub enum Sx127xLoraError<SPI> {
     SPI(SPI),
 }
 
-pub struct Sx127xConfig {
+pub struct Sx127xLoraConfig {
     pub bandwidth: Bandwidth,
     pub coding_rate: CodingRate,
     pub frequency: u32, // Hz
     pub spreading_factor: SpreadingFactor,
 }
-impl Default for Sx127xConfig {
+impl Default for Sx127xLoraConfig {
     fn default() -> Self {
         Self {
             bandwidth: Bandwidth::default(),
@@ -42,11 +44,11 @@ impl Default for Sx127xConfig {
 }
 
 /// Sx127x driver with LoRa modem.
-pub struct Sx127x<SPI> {
+pub struct Sx127xLora<SPI> {
     spi: SPI
 }
-impl <SPI: SpiDevice>Sx127x<SPI> {
-    pub async fn new(spi: SPI, config: Sx127xConfig) -> Result<Sx127x<SPI>, Sx127xLoraError<SPI::Error>> {
+impl <SPI: SpiDevice> Sx127xLora<SPI> {
+    pub async fn new(spi: SPI, config: Sx127xLoraConfig) -> Result<Sx127xLora<SPI>, Sx127xLoraError<SPI::Error>> {
         let mut driver = Self { spi };
         driver.set_long_range_mode(true).await?;
 
@@ -54,6 +56,8 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         driver.set_coding_rate(config.coding_rate).await?;
         driver.set_frequency(config.frequency).await?;
         driver.set_spreading_factor(config.spreading_factor).await?;
+
+        driver.optimize_bandwidth().await?;
 
         Ok(driver)
     }
@@ -521,5 +525,25 @@ impl <SPI: SpiDevice>Sx127x<SPI> {
         self.write(OP_MODE, op_mode).await?;
 
         self.set_device_mode(DeviceMode::STDBY).await
+    }
+
+    // see: errata section 2.1
+    async fn optimize_bandwidth(&mut self) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        if self.read(VERSION).await? != PRODUCTION_VERSION { return Ok(()) } // noop for engineering samples
+
+        match self.frequency().await? {
+            410_000_000..=525_000_000 => {
+                self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
+                self.write(HIGH_BW_OPTIMIZE_2, 0x7f).await?;
+            }
+            862_000_000..=1_020_000_000 => {
+                self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
+                self.write(HIGH_BW_OPTIMIZE_2, 0x64).await?;
+            }
+            _ => {
+                self.write(HIGH_BW_OPTIMIZE_1, 0x03).await?;
+            }
+        }
+        Ok(())
     }
 }

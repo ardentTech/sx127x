@@ -112,10 +112,10 @@ pub const INVERT_IQ_TX_MASK: u8 = 0x1;
 // -------------------------------------------------------------------------------------------------
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
 pub(crate) const IMAGE_CAL: u8 = 0x3b;
-// TODO HIGH_BW_OPTIMIZE_1 0x36
+pub const HIGH_BW_OPTIMIZE_1: u8 = 0x36;
 pub const DETECTION_THRESHOLD: u8 = 0x37;
 // TODO SYNC_WORD 0x39
-// TODO HIGH_BW_OPTIMIZE_2 0x3a
+pub const HIGH_BW_OPTIMIZE_2: u8 = 0x3a;
 pub const INVERT_IQ_2: u8 = 0x3b;
 
 // RegDioMapping1 ----------------------------------------------------------------------------------
@@ -128,3 +128,6 @@ pub const DIO_MAPPING_1_DIO1_SHIFT: u8 = 0x4;
 // RegPaDac ----------------------------------------------------------------------------------------
 pub const PA_DAC: u8 = 0x4d;
 pub const PA_DAC_MASK: u8 = 0x07;
+
+// -------------------------------------------------------------------------------------------------
+pub const VERSION: u8 = 0x42;

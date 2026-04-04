@@ -125,6 +125,13 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(calculate::fei_ppm(hz, frf))
     }
 
+    /// Reads the current value of RX data buffer pointer.
+    ///
+    /// See: datasheet pages 41-42
+    pub async fn last_rx_byte_addr(&mut self) -> Result<u8, Sx127xLoraError<SPI::Error>> {
+        self.read(FIFO_RX_BYTE_ADDR).await
+    }
+
     /// Sets the DIO0 pin signal source.
     pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await

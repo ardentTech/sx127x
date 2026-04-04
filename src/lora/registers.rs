@@ -85,7 +85,7 @@ pub const PREAMBLE_MSB: u8 = 0x20;
 pub const PREAMBLE_LSB: u8 = 0x21;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
 pub const MAX_PAYLOAD_LENGTH: u8 = 0x23;
-// TODO HOP_PERIOD 0x24
+pub const HOP_PERIOD: u8 = 0x24;
 pub const FIFO_RX_BYTE_ADDR: u8 = 0x25;
 
 // RegModemConfig3 ---------------------------------------------------------------------------------

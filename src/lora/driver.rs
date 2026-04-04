@@ -305,7 +305,14 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_1, byte).await
     }
 
-    /// Sets invert IQ config for the rx_path and tx_path.
+    /// Sets the symbol periods between frequency hops.
+    ///
+    /// See: datasheet section 4.1.1.8
+    pub async fn set_hop_period(&mut self, period: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.write(HOP_PERIOD, period).await
+    }
+
+    /// Sets the invert IQ config for the rx_path and tx_path.
     ///
     /// See: datasheet section 2.1.3.8
     pub async fn set_invert_iq(&mut self, rx_path: bool, tx_path: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {

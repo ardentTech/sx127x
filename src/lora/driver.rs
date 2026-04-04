@@ -232,6 +232,11 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         self.read(RSSI_VALUE).await
     }
 
+    /// Reads the current received signal strength indicator (RSSI) wideband measurement.
+    pub async fn rssi_wideband(&mut self) -> Result<u8, Sx127xLoraError<SPI::Error>> {
+        self.read(RSSI_WIDEBAND).await
+    }
+
     /// Sets the bandwidth.
     ///
     /// See: datasheet section 4.1.1.4

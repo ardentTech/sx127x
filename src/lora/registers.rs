@@ -96,7 +96,7 @@ pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK: u8 = 0x08;
 pub const FEI_MSB: u8 = 0x28;
 pub const FEI_MID: u8 = 0x29;
 pub const FEI_LSB: u8 = 0x2a;
-// TODO RSSI_WIDEBAND 0x2c
+pub const RSSI_WIDEBAND: u8 = 0x2c;
 // TODO IfFreq2 errata
 // TODO IfFreq1 errata
 

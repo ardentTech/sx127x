@@ -97,8 +97,8 @@ pub const FEI_MSB: u8 = 0x28;
 pub const FEI_MID: u8 = 0x29;
 pub const FEI_LSB: u8 = 0x2a;
 pub const RSSI_WIDEBAND: u8 = 0x2c;
-// TODO IfFreq2 errata
-// TODO IfFreq1 errata
+pub const IF_FREQ_2: u8 = 0x2f;
+pub const IF_FREQ_1: u8 = 0x30;
 
 // RegDetectOptimize -------------------------------------------------------------------------------
 pub const DETECT_OPTIMIZE: u8 = 0x31;

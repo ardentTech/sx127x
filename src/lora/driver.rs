@@ -57,8 +57,6 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         driver.set_frequency(config.frequency).await?;
         driver.set_spreading_factor(config.spreading_factor).await?;
 
-        driver.optimize_bandwidth().await?;
-
         Ok(driver)
     }
 
@@ -170,6 +168,18 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(ModemStatus::from(byte))
     }
 
+    /// Optimize receiver intermediate frequency to mitigate spurious reception of LoRa signal.
+    ///
+    /// See: errata section 2.3
+    pub async fn optimize_rx_response(&mut self) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        
+        let bandwidth = self.bandwidth().await?;
+        self.optimize_rx_response_frf_offset(bandwidth).await?;
+        self.optimize_rx_response_detect_optimize(bandwidth).await?;
+        self.optimize_rx_response_if(bandwidth).await
+    }
+
     /// Reads the byte from the register at `addr` over SPI.
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         let mut read = [0; 2];
@@ -244,18 +254,14 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         self.read(RSSI_WIDEBAND).await
     }
 
-    /// Sets the bandwidth.
+    /// Sets the bandwidth and then optimizes the sensitivity of the modem.
     ///
     /// See: datasheet section 4.1.1.4
     pub async fn set_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         set_bits(&mut byte, bandwidth as u8, MODEM_CONFIG_1_BW_MASK, 4);
-
-        // TODO if bandwidth == Bandwidth::Bw500kHz {
-        //     self.optimize_500khz_bandwidth().await?;
-        // }
-
-        self.write(MODEM_CONFIG_1, byte).await
+        self.write(MODEM_CONFIG_1, byte).await?;
+        self.optimize_bandwidth().await
     }
 
     /// Sets the cyclic error coding rate.
@@ -577,5 +583,46 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
             }
         }
         Ok(())
+    }
+
+    async fn optimize_rx_response_detect_optimize(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut detect_optimize = self.read(DETECT_OPTIMIZE).await?;
+        set_bits(&mut detect_optimize, if bandwidth == Bandwidth::Bw500kHz { 1 } else { 0 }, DETECT_OPTIMIZE_DETECTION_OPTIMIZE_MASK, 7);
+        self.write(DETECT_OPTIMIZE, detect_optimize).await
+    }
+
+    async fn optimize_rx_response_frf_offset(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        match bandwidth {
+            Bandwidth::Bw7_8kHz => self.set_frequency_offset(7_8000).await,
+            Bandwidth::Bw10_4kHz => self.set_frequency_offset(10_4000).await,
+            Bandwidth::Bw15_6kHz => self.set_frequency_offset(15_6000).await,
+            Bandwidth::Bw20_8kHz => self.set_frequency_offset(20_8000).await,
+            Bandwidth::Bw31_25kHz => self.set_frequency_offset(31_2000).await,
+            Bandwidth::Bw41_7kHz => self.set_frequency_offset(41_6000).await,
+            _ => Ok(())
+        }
+    }
+
+    pub async fn optimize_rx_response_if(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        if bandwidth != Bandwidth::Bw500kHz {
+            self.write(IF_FREQ_2, match bandwidth {
+                Bandwidth::Bw7_8kHz => 0x48,
+                Bandwidth::Bw10_4kHz | Bandwidth::Bw15_6kHz | Bandwidth::Bw20_8kHz | Bandwidth::Bw31_25kHz | Bandwidth::Bw41_7kHz => 0x44,
+                _ => 0x40
+            }).await?;
+
+            self.write(IF_FREQ_1, 0x00).await?;
+        }
+        Ok(())
+    }
+
+    async fn set_frequency_offset(&mut self, offset: i32) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut frequency = self.frequency().await?;
+        if offset > 0 {
+            frequency += offset as u32;
+        } else {
+            frequency -= offset as u32;
+        }
+        self.set_frequency(frequency).await
     }
 }

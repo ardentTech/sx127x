@@ -47,18 +47,7 @@ impl Bandwidth {
     }
 
     pub(crate) fn khz(&self) -> f32 {
-        match self {
-            Bandwidth::Bw7_8kHz => 7.8,
-            Bandwidth::Bw10_4kHz => 10.4,
-            Bandwidth::Bw15_6kHz => 15.6,
-            Bandwidth::Bw20_8kHz => 20.8,
-            Bandwidth::Bw31_25kHz => 31.25,
-            Bandwidth::Bw41_7kHz => 41.7,
-            Bandwidth::Bw62_5kHz => 62.5,
-            Bandwidth::Bw125kHz => 125.0,
-            Bandwidth::Bw250kHz => 250.0,
-            _ => 500.0
-        }
+        self.hz() as f32 / 1000.0
     }
 }
 

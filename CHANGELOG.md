@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `last_rx_byte_addr` method
 - `set_hop_period` method
 - `optimize_rx_response` method for errata 2.3
+- DIO2..DIO5 signals and setters
 
 ## [0.1.0] - 2026-03-07
 

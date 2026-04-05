@@ -125,6 +125,38 @@ pub enum Dio1Signal {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Dio2Signal {
+    #[default]
+    FhssChangeChannel = 0x0,
+    None = 0x3,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Dio3Signal {
+    #[default]
+    CadDone = 0x0,
+    ValidHeader = 0x1,
+    PayloadCrcError = 0x2,
+    None = 0x3,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Dio4Signal {
+    #[default]
+    CadDetected = 0x0,
+    PllLock = 0x1,
+    None = 0x3,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Dio5Signal {
+    #[default]
+    ModeReady = 0x0,
+    ClkOut = 0x1,
+    None = 0x3,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum HeaderMode {
     #[default]
     Explicit = 0x0,

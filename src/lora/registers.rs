@@ -124,10 +124,21 @@ pub const DIO_MAPPING_1_DIO0_MASK: u8 = 0xc0;
 pub const DIO_MAPPING_1_DIO0_SHIFT: u8 = 0x6;
 pub const DIO_MAPPING_1_DIO1_MASK: u8 = 0x30;
 pub const DIO_MAPPING_1_DIO1_SHIFT: u8 = 0x4;
+pub const DIO_MAPPING_1_DIO2_MASK: u8 = 0x0c;
+pub const DIO_MAPPING_1_DIO2_SHIFT: u8 = 0x2;
+pub const DIO_MAPPING_1_DIO3_MASK: u8 = 0x03;
+pub const DIO_MAPPING_1_DIO3_SHIFT: u8 = 0x0;
+
+// RegDioMapping1 ----------------------------------------------------------------------------------
+pub const DIO_MAPPING_2: u8 = 0x41;
+pub const DIO_MAPPING_2_DIO4_MASK: u8 = 0xc0;
+pub const DIO_MAPPING_2_DIO4_SHIFT: u8 = 0x6;
+pub const DIO_MAPPING_2_DIO5_MASK: u8 = 0x30;
+pub const DIO_MAPPING_2_DIO5_SHIFT: u8 = 0x4;
+
+// -------------------------------------------------------------------------------------------------
+pub const VERSION: u8 = 0x42;
 
 // RegPaDac ----------------------------------------------------------------------------------------
 pub const PA_DAC: u8 = 0x4d;
 pub const PA_DAC_MASK: u8 = 0x07;
-
-// -------------------------------------------------------------------------------------------------
-pub const VERSION: u8 = 0x42;

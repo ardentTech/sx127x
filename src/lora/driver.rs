@@ -132,12 +132,32 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Sets the DIO0 pin signal source.
     pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
+        self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
     }
 
     /// Sets the DIO1 pin signal source.
     pub async fn set_dio1(&mut self, signal: Dio1Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        self.set_dio_mapping1(signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
+        self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
+    }
+
+    /// Sets the DIO2 pin signal source.
+    pub async fn set_dio2(&mut self, signal: Dio2Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_SHIFT).await
+    }
+
+    /// Sets the DIO3 pin signal source.
+    pub async fn set_dio3(&mut self, signal: Dio3Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_SHIFT).await
+    }
+
+    /// Sets the DIO4 pin signal source.
+    pub async fn set_dio4(&mut self, signal: Dio4Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_SHIFT).await
+    }
+
+    /// Sets the DIO5 pin signal source.
+    pub async fn set_dio5(&mut self, signal: Dio5Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_SHIFT).await
     }
 
     /// Reads received signal strength indicator (RSSI) of last packet received.
@@ -173,7 +193,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     /// See: errata section 2.3
     pub async fn optimize_rx_response(&mut self) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
-        
+
         let bandwidth = self.bandwidth().await?;
         self.optimize_rx_response_frf_offset(bandwidth).await?;
         self.optimize_rx_response_detect_optimize(bandwidth).await?;
@@ -547,10 +567,10 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(DeviceMode::from(get_bits(op_mode, OP_MODE_MODE_MASK, 0)))
     }
 
-    async fn set_dio_mapping1(&mut self, value: u8, mask: u8, left_shift: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        let mut byte = self.read(DIO_MAPPING_1).await?;
+    async fn set_dio_mapping(&mut self, register: u8, value: u8, mask: u8, left_shift: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let mut byte = self.read(register).await?;
         set_bits(&mut byte, value, mask, left_shift);
-        self.write(DIO_MAPPING_1, byte).await
+        self.write(register, byte).await
     }
 
     // Selects the LoRa modem when `on` == true, and the FSK/OOK modem when `on` == false.

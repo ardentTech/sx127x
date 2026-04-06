@@ -4,8 +4,9 @@
 ### Cargo Features
 - `lora` (default): LoRa modem
 - `fsk`: FSK/OOK modem
-- `async` (default): modem async impl
-- `sync`: modem sync impl
+- `async` (default): modem async implementation
+- `sync`: modem sync implementation
+- `half_duplex`: use the full data buffer size of 256 bytes for RX or TX, at the cost of full duplex RX and TX with 128 byte buffers.
 
 ### Roadmap
 - [ ] LoRa async (in-progress)

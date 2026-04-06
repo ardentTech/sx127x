@@ -3,4 +3,5 @@ These examples were developed and validated with a [Pico 2 W](https://www.raspbe
 different hardware combinations, it's important to select the correct frequency and verify the pin mappings.
 
 ## Usage
-E.g. `$ cargo run --bin tx`
+1. Set log level as needed: `$ export DEFMT_LOG=info`
+2. Run example: `$ cargo run --bin tx`

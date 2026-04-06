@@ -1,5 +1,6 @@
 //! This async example shows how to use the LoRa modem to transmit a packet and then respond to the
-//! TxDone interrupt on DIO0 once triggered.
+//! TxDone interrupt on DIO0 once triggered. The high spread factor (SF) results in a low bit rate,
+//! so there is no explicit timer delay in this example.
 #![no_std]
 #![no_main]
 
@@ -53,6 +54,5 @@ async fn main(_task_spawner: Spawner) {
         info!("TxDone triggered!");
         led.toggle();
         sx127x.clear_interrupt(Interrupt::TxDone).await.expect("clear interrupt TxDone failed :(");
-        Timer::after(embassy_time::Duration::from_millis(2_000)).await;
     }
 }

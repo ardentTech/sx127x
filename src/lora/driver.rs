@@ -10,7 +10,10 @@ use crate::lora::calculate;
 const DEFAULT_FREQUENCY_HZ: u32 = 434_000_000;
 const FXOSC_HZ: u32 = 32_000_000;
 const FSTEP: f32 = (FXOSC_HZ as f32) / (2u32.pow(19) as f32);
-const PAYLOAD_SIZE: usize = 255;
+#[cfg(feature = "half_duplex")]
+const PAYLOAD_SIZE: usize = 256;
+#[cfg(not(feature = "half_duplex"))]
+const PAYLOAD_SIZE: usize = 128;
 // identifies silicon Version 1b, which applies to errata
 const PRODUCTION_VERSION: u8 = 0x12;
 pub const RX_TIMEOUT_MIN_SYMBOLS: u16 = 4;
@@ -209,7 +212,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(read[1])
     }
 
-    /// Reads 255 bytes from the FIFO buffer.
+    /// Reads N bytes from the FIFO buffer, depending upon the `half_duplex` feature flag.
     ///
     /// See: datasheet figure 10
     pub async fn read_rx_data(&mut self) -> Result<[u8; PAYLOAD_SIZE], Sx127xLoraError<SPI::Error>> {
@@ -242,6 +245,20 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet pages 40-42
     pub async fn receive(&mut self, timeout: Option<u16>) -> Result<(), Sx127xLoraError<SPI::Error>> {
+        let device_mode = self.device_mode().await?;
+        #[cfg(feature = "half_duplex")]
+        {
+            if device_mode == DeviceMode::RXSINGLE || device_mode == DeviceMode::RXCONTINUOUS || device_mode == DeviceMode::TX {
+                return Err(Sx127xLoraError::InvalidState)
+            }
+        }
+        #[cfg(not(feature = "half_duplex"))]
+        {
+            if device_mode == DeviceMode::RXSINGLE || device_mode == DeviceMode::RXCONTINUOUS {
+                return Err(Sx127xLoraError::InvalidState)
+            }
+        }
+
         self.set_device_mode(DeviceMode::STDBY).await?;
         let mut mode = DeviceMode::RXCONTINUOUS;
 
@@ -258,6 +275,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
             self.write(SYMB_TIMEOUT_LSB, (timeout & 0xff) as u8).await?;
         }
 
+        self.write(FIFO_RX_BASE_ADDR, 0x00).await?;
         self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR).await?;
         self.set_device_mode(mode).await
     }
@@ -510,14 +528,26 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Transmits a `payload` of up to 255 bytes. Will automatically transition to STDBY when done.
     pub async fn transmit(&mut self, payload: &[u8]) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        // noop if already transmitting
-        if self.device_mode().await? == DeviceMode::TX {
-            return Ok(())
-        }
-
         let payload_len = payload.len();
         if payload_len > PAYLOAD_SIZE {
             return Err(Sx127xLoraError::InvalidPayloadLength);
+        }
+
+        let device_mode = self.device_mode().await?;
+        #[cfg(feature = "half_duplex")]
+        {
+            if device_mode == DeviceMode::RXSINGLE || device_mode == DeviceMode::RXCONTINUOUS {
+                return Err(Sx127xLoraError::InvalidState)
+            }
+            self.write(FIFO_TX_BASE_ADDR, 0x00).await?;
+        }
+        #[cfg(not(feature = "half_duplex"))]
+        {
+            self.write(FIFO_TX_BASE_ADDR, 0x80).await?;
+        }
+
+        if device_mode == DeviceMode::TX {
+            return Err(Sx127xLoraError::InvalidState)
         }
 
         self.set_device_mode(DeviceMode::STDBY).await?;

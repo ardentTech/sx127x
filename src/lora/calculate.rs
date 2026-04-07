@@ -14,6 +14,14 @@ pub(crate) fn frf(hz: u32, fstep: f32) -> u32 {
     ((hz as f32) / fstep) as u32
 }
 
+pub(crate) fn ocp_trim(imax: u8) -> u8 {
+    if imax < 130 {
+        (imax - 45) / 5
+    } else {
+        (imax + 30) / 10
+    }
+}
+
 pub(crate) fn symbol_rate(bandwidth: u32, spreading_factor: u32) -> u32 {
     bandwidth / 2u32.pow(spreading_factor)
 }
@@ -24,21 +32,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn calculate_data_rate_ok() {
-        let data_rate = data_rate(1953f32, 6f32, 0.8f32);
-        assert_eq!(data_rate, 9374u16);
+    fn data_rate_ok() {
+        let res = data_rate(1953f32, 6f32, 0.8f32);
+        assert_eq!(res, 9374u16);
     }
 
     #[test]
     fn fei_new_neg_fei_hz_ok() {
-        let fei_hz = fei_hz(-2i32, 16f32);
-        assert_relative_eq!(fei_hz, -0.032, epsilon=1e-3);
+        let res = fei_hz(-2i32, 16f32);
+        assert_relative_eq!(res, -0.032, epsilon=1e-3);
     }
 
     #[test]
     fn fei_new_pos_fei_hz_ok() {
-        let fei_hz = fei_hz(8i32, 16f32);
-        assert_relative_eq!(fei_hz, 0.128, epsilon=1e-3);
+        let res = fei_hz(8i32, 16f32);
+        assert_relative_eq!(res, 0.128, epsilon=1e-3);
     }
 
     #[test]
@@ -56,13 +64,25 @@ mod tests {
     }
 
     #[test]
-    fn calculate_frf_ok() {
-        let frf = frf(434_000_000, (32_000_000f32) / (2u32.pow(19) as f32));
-        assert_eq!(frf, 0x6c8000);
+    fn frf_ok() {
+        let res = frf(434_000_000, (32_000_000f32) / (2u32.pow(19) as f32));
+        assert_eq!(res, 0x6c8000);
     }
 
     #[test]
-    fn calculate_symbol_rate_ok() {
+    fn ocp_trim_high_ok() {
+        let res = ocp_trim(140);
+        assert_eq!(res, 17);
+    }
+
+    #[test]
+    fn ocp_trim_low_ok() {
+        let res = ocp_trim(129);
+        assert_eq!(res, 16);
+    }
+
+    #[test]
+    fn symbol_rate_ok() {
         let bandwidth = 125_000u32;
         let spreading_factor = 7u32;
         let symbol_rate = symbol_rate(bandwidth, spreading_factor);

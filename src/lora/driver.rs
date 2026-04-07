@@ -426,11 +426,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 3.4.4
     pub async fn set_ocp(&mut self, on: bool, imax: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        let trim = if imax < 130 {
-            (imax - 45) / 5
-        } else {
-            (imax + 30) / 10
-        };
+        let trim = calculate::ocp_trim(imax);
         self.write(OCP, ((on as u8) << 5) | trim).await
     }
 
@@ -490,7 +486,6 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 4.1.1.6
     pub async fn set_preamble_length(&mut self, length: u16) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        // TODO break out validation logic like this for unit testing
         if length < 6 {
             return Err(Sx127xLoraError::InvalidPreambleLength)
         }
@@ -531,10 +526,8 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     /// See: datasheet section 2.1.3.8
     pub async fn set_temp_monitor(&mut self, on: bool) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_long_range_mode(false).await?;
-
         let image_cal = self.read(IMAGE_CAL).await?;
         self.write(IMAGE_CAL, image_cal | !on as u8).await?;
-
         self.set_long_range_mode(true).await
     }
 

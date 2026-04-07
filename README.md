@@ -6,7 +6,7 @@
 - `fsk`: FSK/OOK modem
 - `async` (default): modem async implementation
 - `sync`: modem sync implementation
-- `half_duplex`: use the full data buffer size of 256 bytes for RX or TX, at the cost of full duplex RX and TX with 128 byte buffers.
+- `half_duplex`: with the `lora` modem, use the full data buffer size of 256 bytes for RX or TX, at the cost of full duplex RX and TX with 128 byte buffers.
 
 ### Roadmap
 - [ ] LoRa async (in-progress)
@@ -19,6 +19,7 @@
 
 ### Resources
 * [Datasheet](https://semtech.my.salesforce.com/sfc/p/E0000000JelG/a/2R0000001Rbr/6EfVZUorrpoKFfvaF_Fkpgp5kzjiNyiAbqcpqh9qSjE)
+* [Errata](https://semtech.my.salesforce.com/sfc/p/E0000000JelG/a/2R000000HSPv/sqi9xX0gs6hgzl2LoPwCK0TS9GDPlMwsXmcNzJCMHjw)
 
 ### License
 * [MIT](https://github.com/ardentTech/sx127x/blob/main/LICENSE-MIT)

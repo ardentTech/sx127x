@@ -53,8 +53,8 @@ pub struct Sx127xLora<SPI> {
 impl <SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn new(spi: SPI, config: Sx127xLoraConfig) -> Result<Sx127xLora<SPI>, Sx127xLoraError<SPI::Error>> {
         let mut driver = Self { spi };
-        driver.set_long_range_mode(true).await?;
 
+        driver.set_long_range_mode(true).await?;
         driver.set_bandwidth(config.bandwidth).await?;
         driver.set_coding_rate(config.coding_rate).await?;
         driver.set_frequency(config.frequency).await?;
@@ -63,12 +63,17 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(driver)
     }
 
+    /// Gets the bandwidth.
+    ///
+    /// See: datasheet section 4.1.1.4
     pub async fn bandwidth(&mut self) -> Result<Bandwidth, Sx127xLoraError<SPI::Error>> {
         let modem_config_1 = self.read(MODEM_CONFIG_1).await?;
         Ok(Bandwidth::from((modem_config_1 & MODEM_CONFIG_1_BW_MASK) >> 4))
     }
 
     /// Triggers the IQ and RSSI calibration when set in Standby mode. Takes ~10ms.
+    ///
+    /// See: datasheet section 2.1.3.8
     pub async fn calibrate(&mut self) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
         let mut image_cal = self.read(IMAGE_CAL).await?;
@@ -83,12 +88,14 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Gets the cyclic error coding rate.
+    ///
+    /// See: datasheet section 4.1.1.3
     pub async fn coding_rate(&mut self) -> Result<CodingRate, Sx127xLoraError<SPI::Error>> {
         let byte = self.read(MODEM_CONFIG_1).await?;
         Ok(CodingRate::from(get_bits(byte, MODEM_CONFIG_1_CODING_RATE_MASK, 1)))
     }
 
-    /// Calculates the current data rate in bits/s.
+    /// Calculates the data rate in bits/s.
     pub async fn data_rate(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let coding_rate: f32 = self.coding_rate().await?.into();
         let symbol_rate = self.symbol_rate().await? as f32;
@@ -96,7 +103,9 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(calculate::data_rate(symbol_rate, spreading_factor, coding_rate))
     }
 
-    /// Reads the carrier frequency.
+    /// Gets the carrier frequency in Hz.
+    ///
+    /// See: datasheet section 4.1.4
     pub async fn frequency(&mut self) -> Result<u32, Sx127xLoraError<SPI::Error>> {
         let msb = self.read(FRF_MSB).await? as u32;
         let mid = self.read(FRF_MID).await? as u32;
@@ -104,7 +113,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok((msb << 16) | (mid << 8) | lsb)
     }
 
-    /// Reads the frequency error indication (FEI) in Hz.
+    /// Gets the frequency error indication (FEI) in Hz.
     ///
     /// See: datasheet section 4.1.5
     pub async fn frequency_error_indication_hz(&mut self) -> Result<f64, Sx127xLoraError<SPI::Error>> {
@@ -117,7 +126,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(calculate::fei_hz(fei, bandwidth.khz()))
     }
 
-    /// Reads the frequency error indication (FEI) in PPM.
+    /// Gets the frequency error indication (FEI) in PPM.
     ///
     /// See: datasheet section 4.1.5
     pub async fn frequency_error_indication_ppm(&mut self) -> Result<f64, Sx127xLoraError<SPI::Error>> {
@@ -126,7 +135,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(calculate::fei_ppm(hz, frf))
     }
 
-    /// Reads the current value of RX data buffer pointer.
+    /// Gets the RX data buffer pointer.
     ///
     /// See: datasheet pages 41-42
     pub async fn last_rx_byte_addr(&mut self) -> Result<u8, Sx127xLoraError<SPI::Error>> {
@@ -134,43 +143,55 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Sets the DIO0 pin signal source.
+    ///
+    /// See: datasheet table 18
     pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
     }
 
     /// Sets the DIO1 pin signal source.
+    ///
+    /// See: datasheet table 18
     pub async fn set_dio1(&mut self, signal: Dio1Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
     }
 
     /// Sets the DIO2 pin signal source.
+    ///
+    /// See: datasheet table 18
     pub async fn set_dio2(&mut self, signal: Dio2Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_SHIFT).await
     }
 
     /// Sets the DIO3 pin signal source.
+    ///
+    /// See: datasheet table 18
     pub async fn set_dio3(&mut self, signal: Dio3Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_SHIFT).await
     }
 
     /// Sets the DIO4 pin signal source.
+    ///
+    /// See: datasheet table 18
     pub async fn set_dio4(&mut self, signal: Dio4Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_SHIFT).await
     }
 
     /// Sets the DIO5 pin signal source.
+    ///
+    /// See: datasheet table 18
     pub async fn set_dio5(&mut self, signal: Dio5Signal) -> Result<(), Sx127xLoraError<SPI::Error>> {
         self.set_dio_mapping(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_SHIFT).await
     }
 
-    /// Reads received signal strength indicator (RSSI) of last packet received.
+    /// Gets received signal strength indicator (RSSI) of last packet received.
     ///
     /// See: datasheet section 3.5.5
     pub async fn last_packet_rssi(&mut self) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         self.read(PKT_RSSI_VALUE).await
     }
 
-    /// Reads estimation of signal-to-noise ratio (SNR) in dB on last packet received.
+    /// Gets estimation of signal-to-noise ratio (SNR) in dB on last packet received.
     ///
     /// See: datasheet section 3.5.5
     pub async fn last_packet_snr(&mut self) -> Result<i8, Sx127xLoraError<SPI::Error>> {
@@ -178,6 +199,8 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Masks an interrupt.
+    ///
+    /// See: datasheet section 4.1.2.4
     pub async fn mask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let byte = self.read(IRQ_FLAGS_MASK).await?;
         self.write(IRQ_FLAGS_MASK, byte | interrupt.mask()).await
@@ -187,8 +210,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 2.0.2
     pub async fn modem_status(&mut self) -> Result<ModemStatus, Sx127xLoraError<SPI::Error>> {
-        let byte = self.read(MODEM_STAT).await?;
-        Ok(ModemStatus::from(byte))
+        Ok(ModemStatus::from(self.read(MODEM_STAT).await?))
     }
 
     /// Optimize receiver intermediate frequency to mitigate spurious reception of LoRa signal.
@@ -203,7 +225,9 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         self.optimize_rx_response_if(bandwidth).await
     }
 
-    /// Reads the byte from the register at `addr` over SPI.
+    /// Gets the byte from the register at `addr` over SPI.
+    ///
+    /// See: datasheet section 2.2
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         let mut read = [0; 2];
         // 1 wnr bit (0 for read) + 7 bit addr
@@ -212,7 +236,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(read[1])
     }
 
-    /// Reads N bytes from the FIFO buffer, depending upon the `half_duplex` feature flag.
+    /// Gets N bytes from the FIFO buffer, depending upon the `half_duplex` feature flag.
     ///
     /// See: datasheet figure 10
     pub async fn read_rx_data(&mut self) -> Result<[u8; PAYLOAD_SIZE], Sx127xLoraError<SPI::Error>> {
@@ -280,14 +304,14 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_device_mode(mode).await
     }
 
-    /// Reads the current received signal strength indicator (RSSI).
+    /// Gets the received signal strength indicator (RSSI).
     ///
     /// See: datasheet section 3.5.5
     pub async fn rssi(&mut self) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         self.read(RSSI_VALUE).await
     }
 
-    /// Reads the current received signal strength indicator (RSSI) wideband measurement.
+    /// Gets the received signal strength indicator (RSSI) wideband measurement.
     pub async fn rssi_wideband(&mut self) -> Result<u8, Sx127xLoraError<SPI::Error>> {
         self.read(RSSI_WIDEBAND).await
     }
@@ -330,7 +354,9 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Sets the carrier frequency. It's imperative that you check regulations for your area (e.g.
-    /// 902-928 MHz for the United States)
+    /// 902-928 MHz for the United States).
+    ///
+    /// See: datasheet section 4.1.4
     pub async fn set_frequency(&mut self, hz: u32) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let frf = calculate::frf(hz, FSTEP);
         self.write(FRF_MSB, (frf >> 16) as u8).await?;
@@ -527,6 +553,8 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Transmits a `payload` of up to 255 bytes. Will automatically transition to STDBY when done.
+    ///
+    /// See: datasheet figure 9
     pub async fn transmit(&mut self, payload: &[u8]) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let payload_len = payload.len();
         if payload_len > PAYLOAD_SIZE {
@@ -560,19 +588,21 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Unmasks an interrupt.
+    ///
+    /// See: datasheet section 4.1.2.4
     pub async fn unmask_interrupt(&mut self, interrupt: Interrupt) -> Result<(), Sx127xLoraError<SPI::Error>> {
         let byte = self.read(IRQ_FLAGS_MASK).await?;
         self.write(IRQ_FLAGS_MASK, byte & !interrupt.mask()).await
     }
 
-    /// Reads the number of valid headers received since last transition into Rx mode.
+    /// Gets the number of valid headers received since last transition into Rx mode.
     pub async fn valid_rx_headers(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let msb = self.read(RX_HEADER_CNT_VALUE_MSB).await? as u16;
         let lsb = self.read(RX_HEADER_CNT_VALUE_LSB).await? as u16;
         Ok((msb << 8) | lsb)
     }
 
-    /// Reads the number of valid packets received since last transition into Rx mode.
+    /// Gets the number of valid packets received since last transition into Rx mode.
     pub async fn valid_rx_packets(&mut self) -> Result<u16, Sx127xLoraError<SPI::Error>> {
         let msb = self.read(RX_PACKET_CNT_VALUE_MSB).await? as u16;
         let lsb = self.read(RX_PACKET_CNT_VALUE_LSB).await? as u16;
@@ -580,6 +610,8 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Writes the `data` byte to the register at `addr` over SPI.
+    ///
+    /// See: datasheet section 2.2
     pub async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
         // 1 wnr bit (1 for write) + 7 bit addr
         let buf = [addr | 0x80, data];

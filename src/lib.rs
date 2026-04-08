@@ -4,3 +4,4 @@
 pub mod fsk;
 #[cfg(feature = "lora")]
 pub mod lora;
+pub(crate) mod shared;

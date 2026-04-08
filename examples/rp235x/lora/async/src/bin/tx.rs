@@ -15,7 +15,6 @@ use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 use sx127x::lora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127x::lora::registers::OP_MODE;
 use sx127x::lora::types::{Dio0Signal, Interrupt, SpreadingFactor};
 
 const FREQUENCY_HZ: u32 = 915_000_000;

@@ -2,6 +2,7 @@
 use defmt::debug;
 
 use embedded_hal_async::spi::SpiDevice;
+use crate::shared::interface::Sx127xSpi;
 use crate::lora::bits::{get_bits, set_bits};
 use crate::lora::registers::*;
 use crate::lora::types::*;
@@ -48,11 +49,11 @@ impl Default for Sx127xLoraConfig {
 
 /// Sx127x driver with LoRa modem.
 pub struct Sx127xLora<SPI> {
-    spi: SPI
+    spi: Sx127xSpi<SPI>
 }
 impl <SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn new(spi: SPI, config: Sx127xLoraConfig) -> Result<Sx127xLora<SPI>, Sx127xLoraError<SPI::Error>> {
-        let mut driver = Self { spi };
+        let mut driver = Self { spi: Sx127xSpi::new(spi) };
 
         driver.set_long_range_mode(true).await?;
         driver.set_bandwidth(config.bandwidth).await?;
@@ -229,11 +230,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 2.2
     pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xLoraError<SPI::Error>> {
-        let mut read = [0; 2];
-        // 1 wnr bit (0 for read) + 7 bit addr
-        let write = [addr & 0x7f, 0];
-        self.spi.transfer(&mut read, &write).await.map_err(Sx127xLoraError::SPI)?;
-        Ok(read[1])
+        self.spi.read(addr).await.map_err(Sx127xLoraError::SPI)
     }
 
     /// Gets N bytes from the FIFO buffer, depending upon the `half_duplex` feature flag.
@@ -606,13 +603,7 @@ impl <SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 2.2
     pub async fn write(&mut self, addr: u8, data: u8) -> Result<(), Sx127xLoraError<SPI::Error>> {
-        // 1 wnr bit (1 for write) + 7 bit addr
-        let buf = [addr | 0x80, data];
-
-        #[cfg(feature = "defmt")]
-        debug!("writing 0b{:b} to 0x{:x}", data, addr);
-
-        self.spi.write(&buf).await.map_err(Sx127xLoraError::SPI)
+        self.spi.write(addr, data).await.map_err(Sx127xLoraError::SPI)
     }
 
     // PRIVATE -------------------------------------------------------------------------------------

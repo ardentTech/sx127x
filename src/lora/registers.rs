@@ -1,4 +1,4 @@
-pub(crate) use crate::shared::registers::*;
+pub(crate) use crate::common::registers::*;
 
 // begin lora page registers -----------------------------------------------------------------------
 pub(crate) const FIFO_ADDR_PTR: u8 = 0x0d;

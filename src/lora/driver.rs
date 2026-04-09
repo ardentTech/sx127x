@@ -2,7 +2,7 @@
 use defmt::debug;
 
 use embedded_hal_async::spi::SpiDevice;
-use crate::shared::interface::Sx127xSpi;
+use crate::common::interface::Sx127xSpi;
 use crate::lora::bits::{get_bits, set_bits};
 use crate::lora::registers::*;
 use crate::lora::types::*;

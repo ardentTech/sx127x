@@ -1,0 +1,8 @@
+[package]
+name = "sx127x-common"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+embedded-hal-async = "1.0.0"

@@ -1,26 +1,11 @@
 # Sx127x
-`#![no_std]`, `async`-first driver for the Semtech SX127X transceiver built on top of Rust [embedded-hal](https://github.com/rust-embedded/embedded-hal).
+`#![no_std]`, `async`-first drivers for the Semtech SX127X transceiver built on top of Rust [embedded-hal](https://github.com/rust-embedded/embedded-hal).
 
-### Cargo Features
-- `lora` (default): LoRa modem
-- `fsk`: FSK/OOK modem
-- `async` (default): modem async implementation
-- `sync`: modem sync implementation
-- `half_duplex`: with the `lora` modem, use the full data buffer size of 256 bytes for RX or TX, at the cost of full duplex RX and TX with 128 byte buffers.
+## Crates
 
-### Roadmap
-- [ ] LoRa async (in-progress)
-- [ ] LoRa sync
-- [ ] FSK async
-- [ ] FSK sync
-
-### Examples
-* [LoRa RP235x async](https://github.com/ardentTech/sx127x/tree/main/examples/rp235x/lora/async)
-
-### Resources
-* [Datasheet](https://semtech.my.salesforce.com/sfc/p/E0000000JelG/a/2R0000001Rbr/6EfVZUorrpoKFfvaF_Fkpgp5kzjiNyiAbqcpqh9qSjE)
-* [Errata](https://semtech.my.salesforce.com/sfc/p/E0000000JelG/a/2R000000HSPv/sqi9xX0gs6hgzl2LoPwCK0TS9GDPlMwsXmcNzJCMHjw)
-
-### License
-* [MIT](https://github.com/ardentTech/sx127x/blob/main/LICENSE-MIT)
-* [Apache](https://github.com/ardentTech/sx127x/blob/main/LICENSE-APACHE)
+| Crate                                     | Dir          | Docs                                            | Description                  |
+|-------------------------------------------|--------------|-------------------------------------------------|------------------------------|
+| [sx127x](https://crates.io/crates/sx127x) | ./dual_modem | [Docs.rs](https://docs.rs/sx127x/0.1.0/sx127x/) | Dual-modem (FSK + LoRa) impl |
+| sx127x-common                             | ./common     | -                                               | code common to both modems   |
+| sx127x-fsk                                | ./fsk        | -                                               | FSK modem impl               |
+| sx127x-lora                               | ./lora       | -                                               | LoRa modem impl              |

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-16
+
 ### Added
 - `lora` and `fsk` cargo features
 - `valid_rx_headers` method
@@ -34,12 +36,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_hop_period` method
 - `optimize_rx_response` method for errata 2.3
 - DIO2..DIO5 signals and setters
-- `half_duplex` feature flag 
-
-## [0.1.0] - 2026-03-07
-
-### Added
-- async lora tx example
-- async lora rx timeout example
-- async lora rx continuous example
-- async lora driver
+- `half_duplex` feature flag

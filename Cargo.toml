@@ -1,0 +1,26 @@
+[package]
+name = "sx127x"
+version = "0.1.0"
+edition = "2024"
+authors = ["Jonathan D. Baker <jonathan@ardent.tech>"]
+description = "A no-std driver for using the FSK and LoRa modems on Semtech Sx127x chips."
+keywords = ["embedded", "fsk", "lora"]
+categories = ["embedded", "no-std"]
+repository = "https://github.com/ardentTech/sx127x"
+license = "MIT OR Apache-2.0"
+exclude = ["CHANGELOG.md", "examples/*"]
+readme = "README.md"
+
+[dependencies]
+defmt = { version = "1.0.1", optional = true }
+embedded-hal = { version = "1.0.0", optional = true }
+embedded-hal-async = "1.0.0"
+maybe-async = "0.2.10"
+sx127x-common = { git = "https://github.com/ardentTech/sx127x-common.git" }
+sx127x-fsk = { git = "https://github.com/ardentTech/sx127x-fsk.git" }
+sx127x-lora = { git = "https://github.com/ardentTech/sx127x-lora.git" }
+
+[features]
+default = []
+defmt = ["dep:defmt"]
+sync = ["maybe-async/is_sync", "dep:embedded-hal"]

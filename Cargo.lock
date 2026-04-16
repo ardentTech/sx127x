@@ -3,22 +3,6 @@
 version = 4
 
 [[package]]
-name = "approx"
-version = "0.6.0-rc2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94fbdd65cc59dcc820bfb0fd01315963d4f9898bf3399a47134c9836698c47df"
-dependencies = [
- "num-traits",
- "paste",
-]
-
-[[package]]
-name = "autocfg"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
-
-[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -72,19 +56,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-traits"
-version = "0.2.19"
+name = "maybe-async"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
+checksum = "5cf92c10c7e361d6b99666ec1c6f9805b0bea2c3bd8c78dc6fe98ac5bd78db11"
 dependencies = [
- "autocfg",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
-
-[[package]]
-name = "paste"
-version = "1.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "proc-macro-error-attr2"
@@ -119,27 +99,52 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.44"
+version = "1.0.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21b2ebcf727b7760c461f091f9f0f539b77b8e87f2fd88131e7f1b433b3cece4"
+checksum = "41f2619966050689382d2b44f664f4bc593e129785a36d6ee376ddf37259b924"
 dependencies = [
  "proc-macro2",
 ]
 
 [[package]]
-name = "sx127x-common"
+name = "sx127x"
 version = "0.1.0"
 dependencies = [
+ "defmt",
+ "embedded-hal",
  "embedded-hal-async",
+ "maybe-async",
+ "sx127x-common",
+ "sx127x-fsk",
+ "sx127x-lora",
+]
+
+[[package]]
+name = "sx127x-common"
+version = "0.1.0"
+source = "git+https://github.com/ardentTech/sx127x-common.git#3fe899c23eb3c07e8e6ebc0080851a26a491ddb4"
+dependencies = [
+ "embedded-hal-async",
+ "maybe-async",
+]
+
+[[package]]
+name = "sx127x-fsk"
+version = "0.1.0"
+source = "git+https://github.com/ardentTech/sx127x-fsk.git#885c0461e25efcee8e5fba2a01ed5fee494c5792"
+dependencies = [
+ "embedded-hal-async",
+ "maybe-async",
+ "sx127x-common",
 ]
 
 [[package]]
 name = "sx127x-lora"
 version = "0.1.0"
+source = "git+https://github.com/ardentTech/sx127x-lora.git#115580ad5f00fb9395ea910ba07352911db8e07d"
 dependencies = [
- "approx",
- "defmt",
  "embedded-hal-async",
+ "maybe-async",
  "sx127x-common",
 ]
 

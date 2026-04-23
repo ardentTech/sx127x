@@ -115,23 +115,24 @@ dependencies = [
  "embedded-hal-async",
  "maybe-async",
  "sx127x-common",
- "sx127x-fsk",
- "sx127x-lora",
+ "sx127xfsk",
+ "sx127xlora",
 ]
 
 [[package]]
 name = "sx127x-common"
 version = "0.1.0"
-source = "git+https://github.com/ardentTech/sx127x-common.git#3fe899c23eb3c07e8e6ebc0080851a26a491ddb4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbd9b941fcc0b535ed0a983a9b05f1105d0255aaec0460e6e7fa6cbb41d5f634"
 dependencies = [
  "embedded-hal-async",
  "maybe-async",
 ]
 
 [[package]]
-name = "sx127x-fsk"
+name = "sx127xfsk"
 version = "0.1.0"
-source = "git+https://github.com/ardentTech/sx127x-fsk.git#885c0461e25efcee8e5fba2a01ed5fee494c5792"
+source = "git+https://github.com/ardentTech/sx127x-fsk.git?rev=afefdf7#afefdf7ffad64849c1ff1b03669ad9906e8b33c4"
 dependencies = [
  "embedded-hal-async",
  "maybe-async",
@@ -139,9 +140,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "sx127x-lora"
+name = "sx127xlora"
 version = "0.1.0"
-source = "git+https://github.com/ardentTech/sx127x-lora.git#115580ad5f00fb9395ea910ba07352911db8e07d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0fb3d3170abf0aa681c649c3b8dfd9caec4b25e96f6fb70bcd5a7290db12fe5"
 dependencies = [
  "embedded-hal-async",
  "maybe-async",

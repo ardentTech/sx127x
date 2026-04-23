@@ -1,6 +1,6 @@
 # Sx127x
-`#![no_std]`, `async`-first driver for using both the FSK and LoRa modems on the Semtech SX127X transceiver. As it
-depends on both the [sx127x-fsk](https://github.com/ardentTech/sx127x-fsk) and [sx127x-lora](https://github.com/ardentTech/sx127x-lora)
+`#![no_std]`, `async`-first driver for using the FSK and LoRa modems on the Semtech SX127X transceiver. As it depends
+on both the [sx127xfsk](https://github.com/ardentTech/sx127x-fsk) and [sx127xlora](https://github.com/ardentTech/sx127x-lora)
 crates, it has a larger footprint than either modem driver on its own.
 
 ### Cargo Features
@@ -15,5 +15,5 @@ crates, it has a larger footprint than either modem driver on its own.
 
 ### License
 
-* [MIT](https://github.com/ardentTech/sx127x-lora/blob/main/LICENSE-MIT)
-* [Apache](https://github.com/ardentTech/sx127x-lora/blob/main/LICENSE-APACHE)
+* [MIT](https://github.com/ardentTech/sx127x/blob/main/LICENSE-MIT)
+* [Apache](https://github.com/ardentTech/sx127x/blob/main/LICENSE-APACHE)

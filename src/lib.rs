@@ -10,8 +10,8 @@ use embedded_hal::spi::SpiDevice;
 use embedded_hal_async::spi::SpiDevice;
 
 use sx127x_common::error::Sx127xError;
-use sx127x_fsk::driver::Sx127xFsk;
-use sx127x_lora::driver::{Sx127xLora, Sx127xLoraConfig};
+use sx127xfsk::driver::Sx127xFsk;
+use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
 
 pub struct Sx127x<SPI> {
     fsk: Option<Sx127xFsk<SPI>>,

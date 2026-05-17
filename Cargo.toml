@@ -1,0 +1,10 @@
+[workspace]
+resolver = "3"
+members = ["common", "fsk", "lora"]
+
+[workspace.dependencies]
+approx = "0.6.0-rc2"
+defmt = { version = "1.0.1" }
+embedded-hal = { version = "1.0.0" }
+embedded-hal-async = { version = "1.0.0" }
+maybe-async = "0.2"

@@ -4,7 +4,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::*;
+use defmt::{info};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Input, Level, Output, Pull};
@@ -12,10 +12,13 @@ use embassy_rp::peripherals::SPI1;
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
+use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 use common::{heartbeat, LORA_FREQUENCY_HZ};
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
 use sx127xlora::types::{Dio0Signal, IRQ, PowerAmplifier, SpreadingFactor};
+
+const TX_DELAY_MS: u64 = 3_000;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
@@ -51,5 +54,6 @@ async fn main(spawner: Spawner) {
         info!("TxDone triggered!");
 
         sx127x.clear_irq(IRQ::TxDone).await.unwrap();
+        Timer::after(embassy_time::Duration::from_millis(TX_DELAY_MS)).await;
     }
 }

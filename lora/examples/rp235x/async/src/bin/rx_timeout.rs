@@ -17,6 +17,8 @@ use common::{heartbeat, LORA_FREQUENCY_HZ};
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
 use sx127xlora::types::{Dio1Signal, TimeoutSymbols, IRQ};
 
+const RECEIVE_DELAY_MS: u64 = 3_000;
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -46,6 +48,6 @@ async fn main(spawner: Spawner) {
         info!("RxTimeout triggered!");
 
         sx127x.clear_irq(IRQ::RxTimeout).await.unwrap();
-        Timer::after(embassy_time::Duration::from_millis(3_000)).await;
+        Timer::after(embassy_time::Duration::from_millis(RECEIVE_DELAY_MS)).await;
     }
 }

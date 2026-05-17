@@ -21,6 +21,8 @@ use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
 use sx127xlora::types::{DeviceMode, Dio3Signal, IRQ};
 use common::{heartbeat, LORA_FREQUENCY_HZ};
 
+const CAD_DEVICE_MODE_DELAY_MS: u64 = 250;
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -54,7 +56,7 @@ async fn main(spawner: Spawner) {
             info!("CadDetected not triggered. OK to transmit.");
         }
         sx127x.clear_irq(IRQ::CadDone).await.unwrap();
-        Timer::after(embassy_time::Duration::from_millis(250)).await;
+        Timer::after(embassy_time::Duration::from_millis(CAD_DEVICE_MODE_DELAY_MS)).await;
         sx127x.set_device_mode(DeviceMode::CAD).await.unwrap();
     }
 }

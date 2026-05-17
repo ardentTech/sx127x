@@ -1,6 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["common", "fsk", "lora"]
+members = [
+    "common",
+    "fsk",
+    "lora",
+    "lora/examples/rp235x/async"
+]
 
 [workspace.dependencies]
 approx = "0.6.0-rc2"

@@ -74,6 +74,6 @@ async fn main(spawner: Spawner) {
 
         sx127x.clear_irq(IRQ::TxDone).await.unwrap();
         PULSE_LED.signal(());
-        Timer::after(embassy_time::Duration::from_millis(TX_DELAY_MS)).await;
+        Timer::after_millis(TX_DELAY_MS).await;
     }
 }

@@ -8,8 +8,9 @@
 use defmt::{error, info};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
+use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Input, Level, Output, Pull};
-use embassy_rp::peripherals::SPI1;
+use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, SPI1};
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
@@ -17,6 +18,10 @@ use {defmt_rtt as _, panic_probe as _};
 use common::{heartbeat, LORA_FREQUENCY_HZ};
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
 use sx127xlora::types::{Dio0Signal, Dio1Signal, TimeoutSymbols, IRQ};
+
+bind_interrupts!(struct Irqs {
+    DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
+});
 
 #[embassy_executor::task]
 async fn dio1_task(mut dio1: Input<'static>) {
@@ -34,7 +39,7 @@ async fn main(spawner: Spawner) {
     let sck = p.PIN_10;
     let cs = Output::new(p.PIN_13, Level::High);
 
-    let spi = Spi::new(p.SPI1, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Config::default());
+    let spi = Spi::new(p.SPI1, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Irqs, Config::default());
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 
@@ -47,8 +52,8 @@ async fn main(spawner: Spawner) {
     sx127x.set_dio0(Dio0Signal::RxDone).await.unwrap();
     sx127x.set_dio1(Dio1Signal::RxTimeout).await.unwrap();
 
-    spawner.spawn(dio1_task(Input::new(p.PIN_16, Pull::Down))).unwrap();
-    spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low))).unwrap();
+    spawner.spawn(dio1_task(Input::new(p.PIN_16, Pull::Down)).unwrap());
+    spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low)).unwrap());
 
     sx127x.receive(Some(TimeoutSymbols::max())).await.unwrap();
 

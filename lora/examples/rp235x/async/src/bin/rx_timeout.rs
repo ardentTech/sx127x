@@ -6,8 +6,9 @@
 use defmt::*;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
+use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Input, Level, Output, Pull};
-use embassy_rp::peripherals::SPI1;
+use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, SPI1};
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
@@ -17,7 +18,11 @@ use common::{heartbeat, LORA_FREQUENCY_HZ};
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
 use sx127xlora::types::{Dio1Signal, TimeoutSymbols, IRQ};
 
-const RECEIVE_DELAY_MS: u64 = 3_000;
+const RX_DELAY_MS: u64 = 3_000;
+
+bind_interrupts!(struct Irqs {
+    DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
+});
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
@@ -27,7 +32,7 @@ async fn main(spawner: Spawner) {
     let sck = p.PIN_10;
     let cs = Output::new(p.PIN_13, Level::High);
 
-    let spi = Spi::new(p.SPI1, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Config::default());
+    let spi = Spi::new(p.SPI1, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Irqs, Config::default());
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 
@@ -38,7 +43,7 @@ async fn main(spawner: Spawner) {
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
 
     sx127x.set_dio1(Dio1Signal::RxTimeout).await.unwrap();
-    spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low))).unwrap();
+    spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low)).unwrap());
 
     loop {
         sx127x.receive(Some(TimeoutSymbols::min())).await.unwrap();
@@ -48,6 +53,6 @@ async fn main(spawner: Spawner) {
         info!("RxTimeout triggered!");
 
         sx127x.clear_irq(IRQ::RxTimeout).await.unwrap();
-        Timer::after(embassy_time::Duration::from_millis(RECEIVE_DELAY_MS)).await;
+        Timer::after_millis(RX_DELAY_MS).await;
     }
 }

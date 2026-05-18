@@ -116,57 +116,6 @@ impl From<u8> for DeviceMode {
 
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum Dio0Signal {
-    #[default]
-    RxDone = 0x0,
-    TxDone = 0x1,
-    CadDone = 0x2,
-    None = 0x3,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum Dio1Signal {
-    #[default]
-    RxTimeout = 0x0,
-    FhssChangeChannel = 0x1,
-    CadDetected = 0x2,
-    None = 0x3,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum Dio2Signal {
-    #[default]
-    FhssChangeChannel = 0x0,
-    None = 0x3,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum Dio3Signal {
-    #[default]
-    CadDone = 0x0,
-    ValidHeader = 0x1,
-    PayloadCrcError = 0x2,
-    None = 0x3,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum Dio4Signal {
-    #[default]
-    CadDetected = 0x0,
-    PllLock = 0x1,
-    None = 0x3,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum Dio5Signal {
-    #[default]
-    ModeReady = 0x0,
-    ClkOut = 0x1,
-    None = 0x3,
-}
-
-// -------------------------------------------------------------------------------------------------
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum HeaderMode {
     #[default]
     Explicit = 0x0,
@@ -198,32 +147,100 @@ impl From<u8> for HopChannel {
     }
 }
 
-// -------------------------------------------------------------------------------------------------
-#[derive(Clone, Copy, PartialEq)]
-pub enum IRQ {
-    CadDetected,
-    FhssChangeChannel,
-    CadDone,
-    TxDone,
-    ValidHeader,
-    PayloadCrcError,
-    RxDone,
-    RxTimeout,
+// IRQs --------------------------------------------------------------------------------------------
+pub trait IRQ: private::Sealed {
+    const MASK: u8;
 }
 
-impl IRQ {
-    pub(crate) fn mask(&self) -> u8 {
-        match self {
-            IRQ::CadDetected => registers::IRQ_FLAGS_CAD_DETECTED_MASK,
-            IRQ::FhssChangeChannel => registers::IRQ_FLAGS_FHSS_CHANGE_CHANNEL_MASK,
-            IRQ::CadDone => registers::IRQ_FLAGS_CAD_DONE_MASK,
-            IRQ::TxDone => registers::IRQ_FLAGS_TX_DONE_MASK,
-            IRQ::ValidHeader => registers::IRQ_FLAGS_VALID_HEADER_MASK,
-            IRQ::PayloadCrcError => registers::IRQ_FLAGS_PAYLOAD_CRC_ERROR_MASK,
-            IRQ::RxDone => registers::IRQ_FLAGS_RX_DONE_MASK,
-            IRQ::RxTimeout => registers::IRQ_FLAGS_RX_TIMEOUT_MASK,
-        }
-    }
+pub struct CadDetected {}
+impl IRQ for CadDetected { const MASK: u8 = registers::IRQ_FLAGS_CAD_DETECTED_MASK; }
+
+pub struct CadDone {}
+impl IRQ for CadDone { const MASK: u8 = registers::IRQ_FLAGS_CAD_DONE_MASK; }
+
+pub struct FhssChangeChannel {}
+impl IRQ for FhssChangeChannel { const MASK: u8 = registers::IRQ_FLAGS_FHSS_CHANGE_CHANNEL_MASK; }
+
+pub struct PayloadCrcError {}
+impl IRQ for PayloadCrcError { const MASK: u8 = registers::IRQ_FLAGS_PAYLOAD_CRC_ERROR_MASK; }
+
+pub struct RxDone {}
+impl IRQ for RxDone { const MASK: u8 = registers::IRQ_FLAGS_RX_DONE_MASK; }
+
+pub struct RxTimeout {}
+impl IRQ for RxTimeout { const MASK: u8 = registers::IRQ_FLAGS_RX_TIMEOUT_MASK; }
+
+pub struct TxDone {}
+impl IRQ for TxDone { const MASK: u8 = registers::IRQ_FLAGS_TX_DONE_MASK; }
+
+pub struct ValidHeader {}
+impl IRQ for ValidHeader { const MASK: u8 = registers::IRQ_FLAGS_VALID_HEADER_MASK; }
+
+// Dio0 --------------------------------------------------------------------------------------------
+pub trait Dio0Signal: private::Sealed {
+    const VALUE: u8;
+}
+
+impl Dio0Signal for RxDone { const VALUE: u8 = 0x0; }
+impl Dio0Signal for TxDone { const VALUE: u8 = 0x1; }
+impl Dio0Signal for CadDone { const VALUE: u8 = 0x2; }
+// Dio1 --------------------------------------------------------------------------------------------
+pub trait Dio1Signal: private::Sealed {
+    const VALUE: u8;
+}
+impl Dio1Signal for CadDetected { const VALUE: u8 = 0x2; }
+impl Dio1Signal for FhssChangeChannel { const VALUE: u8 = 0x1; }
+impl Dio1Signal for RxTimeout { const VALUE: u8 = 0x0; }
+
+
+// Dio2 --------------------------------------------------------------------------------------------
+pub trait Dio2Signal: private::Sealed {
+    const VALUE: u8;
+}
+impl Dio2Signal for FhssChangeChannel { const VALUE: u8 = 0x0; }
+
+// Dio3 --------------------------------------------------------------------------------------------
+pub trait Dio3Signal: private::Sealed {
+    const VALUE: u8;
+}
+impl Dio3Signal for CadDone { const VALUE: u8 = 0x0; }
+impl Dio3Signal for PayloadCrcError { const VALUE: u8 = 0x2; }
+impl Dio3Signal for ValidHeader { const VALUE: u8 = 0x1; }
+
+// Dio4 --------------------------------------------------------------------------------------------
+pub trait Dio4Signal: private::Sealed {
+    const VALUE: u8;
+}
+pub struct PllLock {}
+impl Dio4Signal for CadDetected { const VALUE: u8 = 0x0; }
+impl Dio4Signal for PllLock { const VALUE: u8 = 0x1; }
+
+// Dio5 --------------------------------------------------------------------------------------------
+pub trait Dio5Signal: private::Sealed {
+    const VALUE: u8;
+}
+pub struct ClkOut {}
+pub struct ModeReady {}
+impl Dio5Signal for ClkOut { const VALUE: u8 = 0x1; }
+impl Dio5Signal for ModeReady { const VALUE: u8 = 0x0; }
+
+// -------------------------------------------------------------------------------------------------
+
+mod private {
+    use crate::types::{CadDetected, CadDone, ClkOut, FhssChangeChannel, ModeReady, PayloadCrcError, PllLock, RxDone, RxTimeout, TxDone, ValidHeader};
+
+    pub trait Sealed {}
+    impl Sealed for CadDetected {}
+    impl Sealed for CadDone {}
+    impl Sealed for ClkOut {}
+    impl Sealed for FhssChangeChannel {}
+    impl Sealed for ModeReady {}
+    impl Sealed for PayloadCrcError {}
+    impl Sealed for PllLock {}
+    impl Sealed for RxDone {}
+    impl Sealed for RxTimeout {}
+    impl Sealed for TxDone {}
+    impl Sealed for ValidHeader {}
 }
 
 // -------------------------------------------------------------------------------------------------

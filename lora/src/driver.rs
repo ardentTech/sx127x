@@ -72,9 +72,9 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Clears an irq.
-    pub async fn clear_irq(&mut self, irq: IRQ) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn clear_irq<I: IRQ>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         let byte = self.read(IRQ_FLAGS).await?;
-        self.write(IRQ_FLAGS, byte | irq.mask()).await
+        self.write(IRQ_FLAGS, byte | <I as IRQ>::MASK).await
     }
 
     /// Gets the cyclic error coding rate.
@@ -141,8 +141,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Gets an irq flag.
-    pub async fn irq_flag(&mut self, irq: IRQ) -> Result<bool, Sx127xError<SPI::Error>> {
-        Ok(self.read(IRQ_FLAGS).await? & irq.mask() == 1)
+    pub async fn irq_flag<I: IRQ>(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
+        Ok(self.read(IRQ_FLAGS).await? & <I as IRQ>::MASK == 1)
     }
 
     /// Gets the RX data buffer pointer.
@@ -185,43 +185,43 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Sets the DIO0 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio0(&mut self, signal: Dio0Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_OFFSET).await
+    pub async fn set_dio0<S: Dio0Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_1, <S as Dio0Signal>::VALUE, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_OFFSET).await
     }
 
     /// Sets the DIO1 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio1(&mut self, signal: Dio1Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_OFFSET).await
+    pub async fn set_dio1<S: Dio1Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_1, <S as Dio1Signal>::VALUE, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_OFFSET).await
     }
 
     /// Sets the DIO2 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio2(&mut self, signal: Dio2Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_OFFSET).await
+    pub async fn set_dio2<S: Dio2Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_1, <S as Dio2Signal>::VALUE, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_OFFSET).await
     }
 
     /// Sets the DIO3 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio3(&mut self, signal: Dio3Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio_mapping(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_OFFSET).await
+    pub async fn set_dio3<S: Dio3Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_1, <S as Dio3Signal>::VALUE, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_OFFSET).await
     }
 
     /// Sets the DIO4 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio4(&mut self, signal: Dio4Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio_mapping(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_OFFSET).await
+    pub async fn set_dio4<S: Dio4Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_2, <S as Dio4Signal>::VALUE, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_OFFSET).await
     }
 
     /// Sets the DIO5 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio5(&mut self, signal: Dio5Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio_mapping(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_OFFSET).await
+    pub async fn set_dio5<S: Dio5Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_dio_mapping(DIO_MAPPING_2, <S as Dio5Signal>::VALUE, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_OFFSET).await
     }
 
     /// Gets received signal strength indicator (RSSI) of last packet received.
@@ -248,9 +248,9 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Masks an irq.
     ///
     /// See: datasheet section 4.1.2.4
-    pub async fn mask_irq(&mut self, irq: IRQ) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn mask_irq<I: IRQ>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         let byte = self.read(IRQ_FLAGS_MASK).await?;
-        self.write(IRQ_FLAGS_MASK, byte | irq.mask()).await
+        self.write(IRQ_FLAGS_MASK, byte | <I as IRQ>::MASK).await
     }
 
     /// Gets the modem status.
@@ -646,9 +646,9 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Unmasks an irq.
     ///
     /// See: datasheet section 4.1.2.4
-    pub async fn unmask_irq(&mut self, irq: IRQ) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn unmask_irq<I: IRQ>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         let byte = self.read(IRQ_FLAGS_MASK).await?;
-        self.write(IRQ_FLAGS_MASK, byte & !irq.mask()).await
+        self.write(IRQ_FLAGS_MASK, byte & !<I as IRQ>::MASK).await
     }
 
     /// Gets the number of valid headers received since last transition into Rx mode.
@@ -707,7 +707,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     async fn optimize_rx_response_detect_optimize(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
         let mut detect_optimize = self.read(DETECT_OPTIMIZE).await?;
-        set_bits(&mut detect_optimize, if bandwidth == Bandwidth::Bw500kHz { 1 } else { 0 }, DETECT_OPTIMIZE_AUTOMATIC_IF_ON_MASK, DETECT_OPTIMIZE_AUTOMATIC_IF_ON_OFFSET);
+        set_bits(
+            &mut detect_optimize,
+            if bandwidth == Bandwidth::Bw500kHz { 1 } else { 0 },
+            DETECT_OPTIMIZE_AUTOMATIC_IF_ON_MASK, DETECT_OPTIMIZE_AUTOMATIC_IF_ON_OFFSET);
         self.write(DETECT_OPTIMIZE, detect_optimize).await
     }
 

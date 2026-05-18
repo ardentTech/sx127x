@@ -18,7 +18,7 @@ use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 use common::LORA_FREQUENCY_HZ;
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{Dio0Signal, IRQ, PowerAmplifier, SpreadingFactor};
+use sx127xlora::types::{PowerAmplifier, SpreadingFactor, TxDone};
 
 const TX_DELAY_MS: u64 = 3_000;
 
@@ -62,7 +62,7 @@ async fn main(spawner: Spawner) {
     sx127x.set_low_data_rate_optimize(true).await.unwrap();
     sx127x.set_power_amplifier(PowerAmplifier::new(20).unwrap()).await.unwrap();
 
-    sx127x.set_dio0(Dio0Signal::TxDone).await.unwrap();
+    sx127x.set_dio0::<TxDone>().await.unwrap();
     spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low)).unwrap());
 
     loop {
@@ -72,7 +72,7 @@ async fn main(spawner: Spawner) {
         dio0.wait_for_high().await;
         info!("TxDone triggered!");
 
-        sx127x.clear_irq(IRQ::TxDone).await.unwrap();
+        sx127x.clear_irq::<TxDone>().await.unwrap();
         PULSE_LED.signal(());
         Timer::after_millis(TX_DELAY_MS).await;
     }

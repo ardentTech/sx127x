@@ -19,7 +19,7 @@ use embassy_time::Timer;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{DeviceMode, Dio3Signal, IRQ};
+use sx127xlora::types::{CadDetected, CadDone, DeviceMode};
 use common::{heartbeat, LORA_FREQUENCY_HZ};
 
 const CAD_DEVICE_MODE_DELAY_MS: u64 = 250;
@@ -46,7 +46,7 @@ async fn main(spawner: Spawner) {
     config.frequency = LORA_FREQUENCY_HZ;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
 
-    sx127x.set_dio3(Dio3Signal::CadDone).await.unwrap();
+    sx127x.set_dio3::<CadDone>().await.unwrap();
 
     spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low)).unwrap());
     sx127x.set_device_mode(DeviceMode::CAD).await.unwrap();
@@ -54,13 +54,13 @@ async fn main(spawner: Spawner) {
     loop {
         dio3.wait_for_high().await;
 
-        if sx127x.irq_flag(IRQ::CadDetected).await.unwrap() {
+        if sx127x.irq_flag::<CadDetected>().await.unwrap() {
             info!("CadDetected triggered! Channel is busy so will retry later.");
-            sx127x.clear_irq(IRQ::CadDetected).await.unwrap();
+            sx127x.clear_irq::<CadDetected>().await.unwrap();
         } else {
             info!("CadDetected not triggered. OK to transmit.");
         }
-        sx127x.clear_irq(IRQ::CadDone).await.unwrap();
+        sx127x.clear_irq::<CadDone>().await.unwrap();
         Timer::after_millis(CAD_DEVICE_MODE_DELAY_MS).await;
         sx127x.set_device_mode(DeviceMode::CAD).await.unwrap();
     }

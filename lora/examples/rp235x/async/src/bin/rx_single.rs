@@ -17,7 +17,7 @@ use embassy_sync::mutex::Mutex;
 use {defmt_rtt as _, panic_probe as _};
 use common::{heartbeat, LORA_FREQUENCY_HZ};
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{Dio0Signal, Dio1Signal, TimeoutSymbols, IRQ};
+use sx127xlora::types::{Dio1Signal, RxDone, RxTimeout, TimeoutSymbols};
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
@@ -28,6 +28,7 @@ async fn dio1_task(mut dio1: Input<'static>) {
     loop {
         dio1.wait_for_high().await;
         error!("RxTimeout triggered :(");
+        // TODO clear RxTimeout?
     }
 }
 
@@ -49,8 +50,8 @@ async fn main(spawner: Spawner) {
     config.frequency = LORA_FREQUENCY_HZ;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
 
-    sx127x.set_dio0(Dio0Signal::RxDone).await.unwrap();
-    sx127x.set_dio1(Dio1Signal::RxTimeout).await.unwrap();
+    sx127x.set_dio0::<RxDone>().await.unwrap();
+    sx127x.set_dio1::<RxTimeout>().await.unwrap();
 
     spawner.spawn(dio1_task(Input::new(p.PIN_16, Pull::Down)).unwrap());
     spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low)).unwrap());
@@ -61,7 +62,7 @@ async fn main(spawner: Spawner) {
         info!("waiting for RxDone...");
         dio0.wait_for_high().await;
         info!("RxDone triggered!");
-        sx127x.clear_irq(IRQ::RxDone).await.unwrap();
+        sx127x.clear_irq::<RxDone>().await.unwrap();
         match sx127x.read_rx_data().await {
             Ok(buf) => {
                 let len: usize = buf.iter().filter(|c| **c != 0).count();

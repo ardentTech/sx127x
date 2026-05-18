@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PARFO` tuple struct
 - error check of received payload length compared to buffer size
 - `PreambleLength` and `TimeoutSymbols` types
+- `IRQ` and `DioXSignal` traits
 
 ### Changed
 
@@ -30,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_pa_boost` parameter type from `u8` to `PowerAmplifier`
 - `set_pa_rfo` parameter type forom `i8` to `PARFO`
 - rename `Interrupt` to `IRQ` for type and driver methods
+- dio methods bound by `DIO` trait
+- irq methods bound by `IRQ` trait
 
 ### Fixed
 
@@ -42,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DEFAULT_FREQUENCY_HZ` constant
 - `assert!` from driver
 - unused `RxStatus` enum
+- `DioXSignal` enums
 
 ## [0.1.1] - 2026-04-23
 

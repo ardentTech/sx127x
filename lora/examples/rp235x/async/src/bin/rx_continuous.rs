@@ -16,7 +16,7 @@ use embassy_sync::mutex::Mutex;
 use {defmt_rtt as _, panic_probe as _};
 use common::{heartbeat, LORA_FREQUENCY_HZ};
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{Dio0Signal, IRQ};
+use sx127xlora::types::RxDone;
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
@@ -40,7 +40,7 @@ async fn main(spawner: Spawner) {
     config.frequency = LORA_FREQUENCY_HZ;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
 
-    sx127x.set_dio0(Dio0Signal::RxDone).await.unwrap();
+    sx127x.set_dio0::<RxDone>().await.unwrap();
     spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low)).unwrap());
     sx127x.receive(None).await.unwrap();
 
@@ -48,7 +48,7 @@ async fn main(spawner: Spawner) {
         info!("waiting for RxDone...");
         dio0.wait_for_high().await;
         info!("RxDone triggered!");
-        sx127x.clear_irq(IRQ::RxDone).await.unwrap();
+        sx127x.clear_irq::<RxDone>().await.unwrap();
         match sx127x.read_rx_data().await {
             Ok(buf) => {
                 let len: usize = buf.iter().filter(|c| **c != 0).count();

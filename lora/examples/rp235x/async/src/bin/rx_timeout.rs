@@ -16,7 +16,7 @@ use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 use common::{heartbeat, LORA_FREQUENCY_HZ};
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{Dio1Signal, TimeoutSymbols, IRQ};
+use sx127xlora::types::{RxTimeout, TimeoutSymbols};
 
 const RX_DELAY_MS: u64 = 3_000;
 
@@ -42,7 +42,7 @@ async fn main(spawner: Spawner) {
     config.frequency = LORA_FREQUENCY_HZ;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
 
-    sx127x.set_dio1(Dio1Signal::RxTimeout).await.unwrap();
+    sx127x.set_dio1::<RxTimeout>().await.unwrap();
     spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low)).unwrap());
 
     loop {
@@ -52,7 +52,7 @@ async fn main(spawner: Spawner) {
         dio1.wait_for_high().await;
         info!("RxTimeout triggered!");
 
-        sx127x.clear_irq(IRQ::RxTimeout).await.unwrap();
+        sx127x.clear_irq::<RxTimeout>().await.unwrap();
         Timer::after_millis(RX_DELAY_MS).await;
     }
 }

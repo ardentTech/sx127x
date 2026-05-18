@@ -3,8 +3,8 @@ use defmt::Format;
 
 use sx127x_common::bits::get_bits;
 use sx127x_common::error::Sx127xError;
-use crate::registers::{PREAMBLE_DETECT_PREAMBLE_DETECTOR_ON_MASK, PREAMBLE_DETECT_PREAMBLE_DETECTOR_SIZE_MASK, SEQ_CONFIG_1_FROM_IDLE_MASK, SEQ_CONFIG_1_FROM_START_MASK, SEQ_CONFIG_1_FROM_TRANSMIT_MASK, SEQ_CONFIG_1_IDLE_MODE_MASK, SEQ_CONFIG_1_LOW_POWER_SELECTION_MASK, SEQ_CONFIG_2_FROM_PACKET_RECEIVED, SEQ_CONFIG_2_FROM_RECEIVE_MASK, SEQ_CONFIG_2_FROM_RX_TIMEOUT_MASK};
-use crate::types::FromReceive::{Disabled, LowPowerSelectionOnPayloadReadyInterrupt, PacketReceivedStateOnCrcOkInterrupt, PacketReceivedStateOnPayloadReadyInterrupt, SequencerOffStateOnPreambleDetectInterrupt, SequencerOffStateOnRssiInterrupt, SequencerOffStateOnSyncAddressInterrupt};
+use crate::registers::*;
+use crate::types::FromReceive::*;
 use crate::validate;
 
 pub enum AgcThreshold {

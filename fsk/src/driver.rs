@@ -23,53 +23,53 @@ pub struct Sx127xFsk<DM, SPI> {
 
 impl<SPI: SpiDevice> Sx127xFsk<crate::data_mode::ContinuousMode, SPI> {
     pub async fn set_dio0(&mut self, signal: ContinuousDio0Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
+        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_MASK).await
     }
 
     pub async fn set_dio1(&mut self, signal: ContinuousDio1Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
+        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_MASK).await
     }
 
     pub async fn set_dio2(&mut self, signal: ContinuousDio2Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_SHIFT).await
+        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_MASK).await
     }
 
     pub async fn set_dio3(&mut self, signal: ContinuousDio3Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_SHIFT).await
+        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_MASK).await
     }
 
     pub async fn set_dio4(&mut self, signal: ContinuousDio4Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_SHIFT).await
+        self.set_dio(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_MASK).await
     }
 
     pub async fn set_dio5(&mut self, signal: ContinuousDio5Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_SHIFT).await
+        self.set_dio(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_MASK).await
     }
 }
 
 impl<SPI: SpiDevice> Sx127xFsk<crate::data_mode::PacketMode, SPI> {
     pub async fn set_dio0(&mut self, signal: PacketDio0Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_SHIFT).await
+        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_MASK).await
     }
 
     pub async fn set_dio1(&mut self, signal: PacketDio1Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_SHIFT).await
+        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_MASK).await
     }
 
     pub async fn set_dio2(&mut self, signal: PacketDio2Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_SHIFT).await
+        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_MASK).await
     }
 
     pub async fn set_dio3(&mut self, signal: PacketDio3Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_SHIFT).await
+        self.set_dio(DIO_MAPPING_1, signal as u8, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_MASK).await
     }
 
     pub async fn set_dio4(&mut self, signal: PacketDio4Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_SHIFT).await
+        self.set_dio(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_MASK).await
     }
 
     pub async fn set_dio5(&mut self, signal: PacketDio5Signal) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_dio(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_SHIFT).await
+        self.set_dio(DIO_MAPPING_2, signal as u8, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_MASK).await
     }
 }
 

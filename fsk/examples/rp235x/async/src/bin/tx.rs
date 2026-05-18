@@ -7,8 +7,9 @@ use defmt::*;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_futures::select::{select, Either};
+use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Input, Level, Output, Pull};
-use embassy_rp::peripherals::SPI1;
+use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, SPI1};
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
@@ -21,6 +22,10 @@ use sx127xfsk::types::PacketFormat;
 
 const FREQUENCY_HZ: u32 = 915_000_000;
 
+bind_interrupts!(struct Irqs {
+    DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
+});
+
 #[embassy_executor::main]
 async fn main(_task_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -30,7 +35,7 @@ async fn main(_task_spawner: Spawner) {
     let cs = Output::new(p.PIN_13, Level::High);
     let mut led = Output::new(p.PIN_20, Level::Low);
 
-    let spi = Spi::new(p.SPI1, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Config::default());
+    let spi = Spi::new(p.SPI1, sck, mosi, miso, p.DMA_CH0, p.DMA_CH1, Irqs, Config::default());
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 

@@ -1315,6 +1315,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "sx127xfsk-rp235x-async"
+version = "0.1.0"
+dependencies = [
+ "cortex-m-rt",
+ "defmt",
+ "defmt-rtt",
+ "embassy-embedded-hal",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-rp",
+ "embassy-sync",
+ "embassy-time",
+ "panic-probe",
+ "sx127xfsk",
+]
+
+[[package]]
 name = "sx127xlora"
 version = "0.1.1"
 dependencies = [

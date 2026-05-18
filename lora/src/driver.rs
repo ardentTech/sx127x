@@ -178,8 +178,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Gets the rise/fall time of the power amplifier (PA).
     ///
     /// See: datasheet section 2.1.2.3
-    pub async fn pa_ramp(&mut self) -> Result<PARamp, Sx127xError<SPI::Error>> {
-        Ok(PARamp::from(get_bits(self.read(PA_RAMP).await?, PA_RAMP_MASK, PA_RAMP_OFFSET)))
+    pub async fn tx_power_ramp(&mut self) -> Result<TxPowerRamp, Sx127xError<SPI::Error>> {
+        Ok(TxPowerRamp::from(get_bits(self.read(PA_RAMP).await?, PA_RAMP_MASK, PA_RAMP_OFFSET)))
     }
 
     /// Sets the DIO0 pin signal source.
@@ -490,32 +490,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(OCP, ((ocp.on as u8) << OCP_ON_OFFSET) | calculate::ocp_trim(ocp.imax)).await
     }
 
-    /// Sets the power amplifier (PA) to PA_HP on the PA_BOOST pin.
-    ///
-    /// See: datasheet section 3.4.2
-    pub async fn set_power_amplifier(&mut self, pa: PowerAmplifier) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.read(PA_CONFIG).await?;
-        set_bits(&mut byte, 1, PA_CONFIG_PA_SELECT_MASK, PA_CONFIG_PA_SELECT_OFFSET);
-        set_bits(&mut byte, 7, PA_CONFIG_MAX_POWER_MASK, PA_CONFIG_MAX_POWER_OFFSET);
-        set_bits(&mut byte, if pa.0 == 20 { 15 } else { pa.0 - 2 }, PA_CONFIG_OUTPUT_POWER_MASK, PA_CONFIG_OUTPUT_POWER_OFFSET);
-        self.write(PA_CONFIG, byte).await?;
-
-        self.write(PA_DAC, if pa.0 == 20 { 0x87 } else { 0x84 }).await?;
-        self.set_ocp(Ocp::new(true, if pa.0 == 20 { 120 } else { 87 })).await
-    }
-
-    /// Gets the
-    pub async fn power_amplifier(&mut self) -> Result<PowerAmplifier, Sx127xError<SPI::Error>> {
-        if self.read(PA_DAC).await? == 0x87 {
-            Ok(PowerAmplifier { 0: 20 })
-        } else {
-            let output_power = get_bits(self.read(PA_CONFIG).await?, PA_CONFIG_OUTPUT_POWER_MASK, PA_CONFIG_OUTPUT_POWER_OFFSET);
-            Ok(PowerAmplifier { 0: output_power + 2 })
-        }
-    }
-
     /// Sets the rise/fall time of the power amplifier (PA).
-    pub async fn set_pa_ramp(&mut self, pa_ramp: PARamp) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn set_tx_power_ramp(&mut self, pa_ramp: TxPowerRamp) -> Result<(), Sx127xError<SPI::Error>> {
         let byte = self.read(PA_RAMP).await?;
         self.write(PA_RAMP, byte | pa_ramp as u8).await
     }
@@ -593,6 +569,26 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let image_cal = self.read(IMAGE_CAL).await?;
         self.write(IMAGE_CAL, image_cal | !on as u8).await?;
         self.set_long_range_mode(true).await
+    }
+
+    /// Sets the power amplifier (PA) to PA_HP on the PA_BOOST pin.
+    ///
+    /// See: datasheet section 3.4.2
+    // TODO getter?
+    pub async fn set_tx_power(&mut self, mut power: u8, use_rfo: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        if use_rfo {
+            if power > 15 { power = 15; }
+            self.write(PA_CONFIG, 0x70 | power).await?;
+            self.write(PA_DAC, 0x04).await
+        } else {
+            if power < 2 { power = 2; } else if power > 20 { power = 20; }
+            if power > 17 {
+                self.write(PA_DAC, 0x07).await?;
+            } else {
+                self.write(PA_DAC, 0x04).await?;
+            }
+            self.write(PA_CONFIG, 0x80 | (power - 2)).await
+        }
     }
 
     /// Gets the spreading factor.

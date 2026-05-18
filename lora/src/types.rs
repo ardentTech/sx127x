@@ -1,7 +1,7 @@
 use sx127x_common::bits::get_bits;
 use sx127x_common::error::Sx127xError;
 use crate::registers;
-use crate::types::PARamp::*;
+use crate::types::TxPowerRamp::*;
 use crate::validate;
 use crate::validate::{RX_TIMEOUT_SYMBOLS_MAX, RX_TIMEOUT_SYMBOLS_MIN};
 
@@ -346,19 +346,9 @@ impl Default for Ocp {
 }
 
 // -------------------------------------------------------------------------------------------------
-// TODO min/max getters?
-pub struct PowerAmplifier(pub(crate) u8);
-impl PowerAmplifier {
-    pub fn new(power: u8) -> Result<Self, Sx127xError<()>> {
-        if !validate::pa_power(power) {
-            return Err(Sx127xError::InvalidInput)
-        }
-        Ok(PowerAmplifier(power))
-    }
-}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum PARamp {
+pub enum TxPowerRamp {
     Ms3_4 = 0x0,
     Ms2 = 0x1,
     Ms1 = 0x2,
@@ -377,7 +367,7 @@ pub enum PARamp {
     Us12 = 0xe,
     Us10 = 0xf,
 }
-impl From<u8> for PARamp {
+impl From<u8> for TxPowerRamp {
     fn from(value: u8) -> Self {
         match value {
             0x0 => Ms3_4,

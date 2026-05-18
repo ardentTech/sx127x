@@ -18,7 +18,7 @@ use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 use common::LORA_FREQUENCY_HZ;
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{CadDetected, CadDone, DeviceMode, PowerAmplifier, SpreadingFactor, TxDone};
+use sx127xlora::types::{CadDetected, CadDone, DeviceMode, SpreadingFactor, TxDone};
 
 const TX_DELAY_MS: u64 = 3_000;
 
@@ -61,7 +61,9 @@ async fn main(spawner: Spawner) {
     sx127x.set_temp_monitor(false).await.unwrap();
     // symbol duration (~33ms) is > 16ms so enable low data rate optimization
     sx127x.set_low_data_rate_optimize(true).await.unwrap();
-    sx127x.set_power_amplifier(PowerAmplifier::new(20).unwrap()).await.unwrap();
+    // TODO i'm not even sure this pin is mapped...
+    //sx127x.set_power_amplifier(PowerAmplifier::new(20).unwrap()).await.unwrap();
+    sx127x.set_tx_power(20, false).await.unwrap();
 
     sx127x.set_dio0::<TxDone>().await.unwrap();
     sx127x.set_dio3::<CadDone>().await.unwrap();

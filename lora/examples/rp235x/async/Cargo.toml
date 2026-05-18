@@ -10,6 +10,7 @@ defmt = { workspace = true }
 defmt-rtt = { workspace = true }
 embassy-embedded-hal = { workspace = true }
 embassy-executor = { workspace = true, features = ["platform-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
+embassy-futures = { workspace = true }
 embassy-rp = { workspace = true, features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp235xa", "binary-info"] }
 embassy-sync = { workspace = true }
 embassy-time = { workspace = true, features = ["defmt", "defmt-timestamp-uptime"] }
@@ -37,13 +38,6 @@ bench = false
 [[bin]]
 name = "rx_single"
 path = "src/bin/rx_single.rs"
-test = false
-doctest = false
-bench = false
-
-[[bin]]
-name = "rx_timeout"
-path = "src/bin/rx_timeout.rs"
 test = false
 doctest = false
 bench = false

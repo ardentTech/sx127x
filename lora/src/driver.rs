@@ -465,8 +465,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(LNA, byte).await
     }
 
-    /// Sets the low data rate optimization.Its use is mandated when the symbol duration exceeds
-    /// 16ms.
+    /// Sets the low data rate optimization on/off. Its use is mandated when the symbol duration
+    /// exceeds 16ms.
     ///
     /// See: datasheet section 4.1.1.6
     pub async fn set_low_data_rate_optimize(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {

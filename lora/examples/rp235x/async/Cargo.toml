@@ -28,13 +28,6 @@ doctest = false
 bench = false
 
 [[bin]]
-name = "cad"
-path = "src/bin/cad.rs"
-test = false
-doctest = false
-bench = false
-
-[[bin]]
 name = "rx_continuous"
 path = "src/bin/rx_continuous.rs"
 test = false

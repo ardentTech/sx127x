@@ -63,7 +63,7 @@ async fn main(spawner: Spawner) {
     sx127x.set_low_data_rate_optimize(true).await.unwrap();
     // TODO i'm not even sure this pin is mapped...
     //sx127x.set_power_amplifier(PowerAmplifier::new(20).unwrap()).await.unwrap();
-    sx127x.set_tx_power(20, false).await.unwrap();
+    sx127x.set_tx_config(20, false).await.unwrap();
 
     sx127x.set_dio0::<TxDone>().await.unwrap();
     sx127x.set_dio3::<CadDone>().await.unwrap();

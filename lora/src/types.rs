@@ -1,7 +1,8 @@
 use sx127x_common::bits::get_bits;
 use sx127x_common::error::Sx127xError;
+use sx127x_common::error::Sx127xError::InvalidInput;
 use crate::registers;
-use crate::types::TxPowerRamp::*;
+use crate::types::PowerRamp::*;
 use crate::validate;
 use crate::validate::{RX_TIMEOUT_SYMBOLS_MAX, RX_TIMEOUT_SYMBOLS_MIN};
 
@@ -346,9 +347,26 @@ impl Default for Ocp {
 }
 
 // -------------------------------------------------------------------------------------------------
+pub struct TxConfig {
+    pub(crate) power: u8,
+    pub(crate) ramp: PowerRamp,
+    pub(crate) use_rfo: bool
+}
+impl TxConfig {
+    pub fn new(mut power: u8, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
+        if use_rfo {
+            if !validate::rfo_power(power) { return Err(InvalidInput) }
+        } else {
+            if !validate::boost_power(power) { return Err(InvalidInput) }
+            power -= 2;
+            if power > 17 { power -= 3 }
+        }
+        Ok(Self { power, ramp, use_rfo })
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum TxPowerRamp {
+pub enum PowerRamp {
     Ms3_4 = 0x0,
     Ms2 = 0x1,
     Ms1 = 0x2,
@@ -367,7 +385,7 @@ pub enum TxPowerRamp {
     Us12 = 0xe,
     Us10 = 0xf,
 }
-impl From<u8> for TxPowerRamp {
+impl From<u8> for PowerRamp {
     fn from(value: u8) -> Self {
         match value {
             0x0 => Ms3_4,
@@ -387,17 +405,6 @@ impl From<u8> for TxPowerRamp {
             0xf => Us10,
             _ => Us40,
         }
-    }
-}
-
-pub struct PARFO(pub(crate) i8);
-
-impl PARFO {
-    pub fn new(power: i8) -> Result<Self, Sx127xError<()>> {
-        if !validate::pa_rfo(power) {
-            return Err(Sx127xError::InvalidInput)
-        }
-        Ok(PARFO(power))
     }
 }
 

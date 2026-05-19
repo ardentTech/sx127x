@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - error check of received payload length compared to buffer size
 - `PreambleLength` and `TimeoutSymbols` types
 - `IRQ` and `DioXSignal` traits
+- `set_tx_config` method
 
 ### Changed
 
@@ -33,10 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - rename `Interrupt` to `IRQ` for type and driver methods
 - dio methods bound by `DIO` trait
 - irq methods bound by `IRQ` trait
-- `set_power_amplifier` to `set_tx_power`
-- `PARamp` to `TxPowerRamp`
-- `pa_ramp()` to `tx_power_ramp()`
-- `set_pa_ramp()` to `set_tx_power_ramp()`
+- `set_power_amplifier` to `set_tx_config`
 
 ### Fixed
 
@@ -51,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - unused `RxStatus` enum
 - `DioXSignal` enums
 - `PowerAmplifier` struct
+- `set_pa_rfo` method
 
 ## [0.1.1] - 2026-04-23
 

@@ -48,3 +48,10 @@ path = "src/bin/tx.rs"
 test = false
 doctest = false
 bench = false
+
+[[bin]]
+name = "tx_fhss"
+path = "src/bin/tx_fhss.rs"
+test = false
+doctest = false
+bench = false

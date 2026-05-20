@@ -132,6 +132,7 @@ impl From<u8> for HeaderMode {
 }
 
 // -------------------------------------------------------------------------------------------------
+// TODO not sure this struct is needed
 #[derive(Clone, Copy, Debug)]
 pub struct HopChannel {
     pll_timeout: bool,

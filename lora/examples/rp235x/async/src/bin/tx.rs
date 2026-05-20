@@ -15,27 +15,35 @@ use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex};
 use embassy_sync::mutex::Mutex;
 use embassy_sync::signal::Signal;
 use embassy_time::Timer;
+#[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 use common::LORA_FREQUENCY_HZ;
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{CadDetected, CadDone, DeviceMode, SpreadingFactor, TxDone};
+use sx127xlora::types::{CadDetected, CadDone, DeviceMode, PowerRamp, SpreadingFactor, TxConfig, TxDone};
 
 const TX_DELAY_MS: u64 = 3_000;
 
-static PULSE_LED: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+enum Led {
+    Green,
+    Red
+}
+
+static PULSE_LED: Signal<CriticalSectionRawMutex, Led> = Signal::new();
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
 });
 
 #[embassy_executor::task]
-pub async fn led_task(mut pin: Output<'static>) {
+pub async fn led_task(mut green: Output<'static>, mut red: Output<'static>) {
     loop {
-        PULSE_LED.wait().await;
+        let pin = match PULSE_LED.wait().await {
+            Led::Green => &mut green,
+            Led::Red => &mut red
+        };
         pin.set_high();
         Timer::after(embassy_time::Duration::from_millis(250)).await;
         pin.set_low();
-        Timer::after(embassy_time::Duration::from_millis(750)).await;
     }
 }
 
@@ -61,14 +69,12 @@ async fn main(spawner: Spawner) {
     sx127x.set_temp_monitor(false).await.unwrap();
     // symbol duration (~33ms) is > 16ms so enable low data rate optimization
     sx127x.set_low_data_rate_optimize(true).await.unwrap();
-    // TODO i'm not even sure this pin is mapped...
-    //sx127x.set_power_amplifier(PowerAmplifier::new(20).unwrap()).await.unwrap();
-    sx127x.set_tx_config(20, false).await.unwrap();
+    sx127x.set_tx_config(TxConfig::new(20, PowerRamp::default(), false).unwrap()).await.unwrap();
 
     sx127x.set_dio0::<TxDone>().await.unwrap();
     sx127x.set_dio3::<CadDone>().await.unwrap();
 
-    spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low)).unwrap());
+    spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
 
     loop {
         sx127x.set_device_mode(DeviceMode::CAD).await.unwrap();
@@ -82,7 +88,7 @@ async fn main(spawner: Spawner) {
             info!("TxDone triggered");
             sx127x.clear_irq::<TxDone>().await.unwrap();
 
-            PULSE_LED.signal(());
+            PULSE_LED.signal(Led::Green);
         } else {
             info!("CadDetected triggered so TX not attempted");
             sx127x.clear_irq::<CadDetected>().await.unwrap();

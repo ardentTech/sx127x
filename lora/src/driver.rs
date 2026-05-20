@@ -45,6 +45,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn new(spi: SPI, config: Sx127xLoraConfig) -> Result<Sx127xLora<SPI>, Sx127xError<SPI::Error>> {
         let mut driver = Self { spi: Sx127xSpi::new(spi) };
 
+        // TODO check version is != 0x00 before continuing?
+
         driver.set_long_range_mode(true).await?;
         driver.set_bandwidth(config.bandwidth).await?;
         driver.set_coding_rate(config.coding_rate).await?;
@@ -99,6 +101,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn device_mode(&mut self) -> Result<DeviceMode, Sx127xError<SPI::Error>> {
         let op_mode = self.read(OP_MODE).await?;
         Ok(DeviceMode::from(get_bits(op_mode, OP_MODE_MODE_MASK, OP_MODE_MODE_OFFSET)))
+    }
+
+    pub async fn fhss_channel(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
+        Ok(self.read(HOP_CHANNEL).await? & HOP_CHANNEL_FHSS_PRESENT_CHANNEL_MASK)
     }
 
     /// Gets the carrier frequency in Hz.
@@ -416,7 +422,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         } else if hz > HF_MIN_HZ {
             self.set_low_frequency_mode(false).await?;
         }
-        self.calibrate().await
+        Ok(())
     }
 
     /// Sets the header mode to explicit or implicit.
@@ -428,10 +434,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_1, byte).await
     }
 
-    /// Sets the symbol periods between frequency hops.
+    /// Sets the symbol period between frequency hops.
     ///
     /// See: datasheet section 4.1.1.8
-    pub async fn set_hop_period(&mut self, period: u8) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn set_fhss_period(&mut self, period: u8) -> Result<(), Sx127xError<SPI::Error>> {
         self.write(HOP_PERIOD, period).await
     }
 
@@ -713,6 +719,9 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_frequency(frequency).await
     }
 
+    /// Configure band-specific registers 0x61-0x73.
+    ///
+    /// See: datasheet section 4.3
     async fn set_low_frequency_mode(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = self.read(OP_MODE).await?;
         set_bits(&mut byte, on as u8, OP_MODE_LOW_FREQUENCY_MODE_ON_MASK, OP_MODE_LOW_FREQUENCY_MODE_ON_OFFSET);

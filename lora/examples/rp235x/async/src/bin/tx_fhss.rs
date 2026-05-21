@@ -39,51 +39,40 @@ async fn main(_spawner: Spawner) {
     let mut dio1 = Input::new(p.PIN_16, Pull::Down); // FhssChangeChannel
 
     let mut config = Sx127xLoraConfig::default();
-    config.bandwidth = Bandwidth::Bw250kHz;
+    config.bandwidth = Bandwidth::Bw125kHz;
     config.coding_rate = CodingRate::Cr4_5;
-    config.frequency = FHSS_CHANNELS[0];
-    config.spreading_factor = SpreadingFactor::Sf10;
-    // preamble len: 8 (should be default)
-    // symbol timeout: 5
-    // nb symb hop: 4
-    // iq inversion: false
-    // crc enabled: true
+    config.spreading_factor = SpreadingFactor::Sf12;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
-    sx127x.set_temp_monitor(false).await.unwrap();
-    // symbol duration (~33ms) is > 16ms so enable low data rate optimization
-    sx127x.set_low_data_rate_optimize(true).await.unwrap();
-    sx127x.set_tx_config(TxConfig::new(14, PowerRamp::default(), false).unwrap()).await.unwrap();
+    //sx127x.set_temp_monitor(false).await.unwrap();
+    // symbol duration (TODO) is > 16ms so enable low data rate optimization
+    sx127x.optimize_for_low_data_rate(true).await.unwrap();
+    sx127x.set_frequency(FHSS_CHANNELS[0]).await.unwrap();
+    sx127x.config_tx(TxConfig::new(14, PowerRamp::default(), false).unwrap()).await.unwrap();
 
-    sx127x.set_dio0::<TxDone>().await.unwrap();
+    sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.set_dio1::<FhssChangeChannel>().await.unwrap();
-    sx127x.set_fhss_period(12).await.unwrap();
+    sx127x.set_hop_period(12).await.unwrap();
 
-    // 128 bytes is the max in full duplex mode
-    let payload = "pingpong".as_bytes();
     let mut hops_completed: usize = 0;
-    let mut packets_sent: usize = 0;
 
-    sx127x.transmit(&payload).await.unwrap();
+    sx127x.tx(&"pingpong".as_bytes()).await.unwrap();
 
-    info!("entering main loop");
     loop {
-        info!("hops completed: {}, packets sent: {}", hops_completed, packets_sent);
-        info!("waiting...");
         match select(dio0.wait_for_high(), dio1.wait_for_high()).await {
             Either::First(_) => {
-                sx127x.clear_irq::<TxDone>().await.unwrap();
+                sx127x.clear_interrupt::<TxDone>().await.unwrap();
                 info!("TxDone triggered!");
-                sx127x.set_frequency(FHSS_CHANNELS[0]).await.unwrap();
-                packets_sent += 1;
-                hops_completed = 0;
-                // Timer::after_millis(1_000).await;
-                // sx127x.transmit(&payload).await.unwrap();
+                //sx127x.set_frequency(FHSS_CHANNELS[0]).await.unwrap();
+                //packets_sent += 1;
+                sx127x.set_hop_period(0).await.unwrap();
+                //hops_completed = 0;
             }
             Either::Second(_) => {
                 //info!("FhssChangeChannel triggered!");
-                let channel = sx127x.fhss_channel().await.unwrap();
+                let channel = sx127x.hop_channel().await.unwrap();
+                //info!("channel: {}", channel);
                 sx127x.set_frequency(FHSS_CHANNELS[channel as usize % FHSS_CHANNELS_SIZE]).await.unwrap();
-                sx127x.clear_irq::<FhssChangeChannel>().await.unwrap();
+                sx127x.clear_interrupt::<FhssChangeChannel>().await.unwrap();
                 hops_completed += 1;
             }
         }

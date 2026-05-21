@@ -63,37 +63,37 @@ async fn main(spawner: Spawner) {
     let mut dio3 = Input::new(p.PIN_18, Pull::Down);
 
     let mut config = Sx127xLoraConfig::default();
-    config.frequency = LORA_FREQUENCY_HZ;
     config.spreading_factor = SpreadingFactor::Sf12;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
-    sx127x.set_temp_monitor(false).await.unwrap();
+    // TODO? sx127x.set_temp_monitor(false).await.unwrap();
+    sx127x.set_frequency(LORA_FREQUENCY_HZ).await.unwrap();
     // symbol duration (~33ms) is > 16ms so enable low data rate optimization
-    sx127x.set_low_data_rate_optimize(true).await.unwrap();
-    sx127x.set_tx_config(TxConfig::new(20, PowerRamp::default(), false).unwrap()).await.unwrap();
+    sx127x.optimize_for_low_data_rate(true).await.unwrap();
+    sx127x.config_tx(TxConfig::new(20, PowerRamp::default(), false).unwrap()).await.unwrap();
 
-    sx127x.set_dio0::<TxDone>().await.unwrap();
+    sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.set_dio3::<CadDone>().await.unwrap();
 
     spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
 
     loop {
-        sx127x.set_device_mode(DeviceMode::CAD).await.unwrap();
+        sx127x.start_cad().await.unwrap();
         dio3.wait_for_high().await;
         info!("CadDone triggered");
 
-        if !sx127x.irq_flag::<CadDetected>().await.unwrap() {
-            sx127x.transmit("howdy".as_bytes()).await.unwrap();
+        if !sx127x.interrupt_flag::<CadDetected>().await.unwrap() {
+            sx127x.tx("howdy".as_bytes()).await.unwrap();
 
             dio0.wait_for_high().await;
             info!("TxDone triggered");
-            sx127x.clear_irq::<TxDone>().await.unwrap();
+            sx127x.clear_interrupt::<TxDone>().await.unwrap();
 
             PULSE_LED.signal(Led::Green);
         } else {
             info!("CadDetected triggered so TX not attempted");
-            sx127x.clear_irq::<CadDetected>().await.unwrap();
+            sx127x.clear_interrupt::<CadDetected>().await.unwrap();
         }
-        sx127x.clear_irq::<CadDone>().await.unwrap();
+        sx127x.clear_interrupt::<CadDone>().await.unwrap();
         Timer::after_millis(TX_DELAY_MS).await;
     }
 }

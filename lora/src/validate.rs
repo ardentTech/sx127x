@@ -1,3 +1,5 @@
+use crate::types::{HeaderMode, SpreadingFactor};
+
 const BOOST_POWER_MIN: u8 = 2;
 const BOOST_POWER_MAX: u8 = 20;
 const RFO_POWER_MAX: u8 = 15;
@@ -22,6 +24,10 @@ pub(crate) fn rx_timeout_symbols(symbols: u16) -> bool {
     symbols >= RX_TIMEOUT_SYMBOLS_MIN && symbols <= RX_TIMEOUT_SYMBOLS_MAX
 }
 
+pub(crate) fn header_mode_sf(mode: HeaderMode, sf: SpreadingFactor) -> bool {
+    sf != SpreadingFactor::Sf6 || sf == SpreadingFactor::Sf6 && mode == HeaderMode::Implicit
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -39,6 +45,18 @@ mod tests {
     #[test]
     fn boost_power_ok() {
         assert!(boost_power(BOOST_POWER_MIN));
+    }
+
+    #[test]
+    fn header_mode_sf_invalid() {
+        assert!(!header_mode_sf(HeaderMode::Explicit, SpreadingFactor::Sf6));
+    }
+
+    #[test]
+    fn header_mode_sf_ok() {
+        assert!(header_mode_sf(HeaderMode::Explicit, SpreadingFactor::Sf8));
+        assert!(header_mode_sf(HeaderMode::Implicit, SpreadingFactor::Sf7));
+        assert!(header_mode_sf(HeaderMode::Implicit, SpreadingFactor::Sf6));
     }
 
     #[test]

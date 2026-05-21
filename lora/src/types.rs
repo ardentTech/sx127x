@@ -58,6 +58,7 @@ impl Bandwidth {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum CodingRate {
     #[default]

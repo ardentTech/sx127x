@@ -40,31 +40,32 @@ async fn main(spawner: Spawner) {
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
     let mut dio1 = Input::new(p.PIN_16, Pull::Down);
 
-    let mut config = Sx127xLoraConfig::default();
-    config.frequency = LORA_FREQUENCY_HZ;
-    let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
-
-    sx127x.set_dio0::<RxDone>().await.unwrap();
+    let mut sx127x = Sx127xLora::new(spi_dev, Sx127xLoraConfig::default()).await.unwrap();
+    sx127x.set_frequency(LORA_FREQUENCY_HZ).await.unwrap();
+    sx127x.map_dio0::<RxDone>().await.unwrap();
     sx127x.set_dio1::<RxTimeout>().await.unwrap();
 
     spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low)).unwrap());
 
     loop {
-        sx127x.receive(Some(TimeoutSymbols::max())).await.unwrap();
+        sx127x.rx(Some(TimeoutSymbols::max())).await.unwrap();
         match select(dio0.wait_for_high(), dio1.wait_for_high()).await {
             Either::First(_) => {
-                sx127x.clear_irq::<RxDone>().await.unwrap();
-                match sx127x.read_rx_data().await {
-                    Ok(buf) => {
-                        let len: usize = buf.iter().filter(|c| **c != 0).count();
-                        info!("rx buffer: {:a}", buf[..len])
-                    },
+                sx127x.clear_interrupt::<RxDone>().await.unwrap();
+                match sx127x.rx_payload().await {
+                    Ok(rxp) => {
+                        let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
+                        info!("rx payload: {:a}", rxp.payload[..len]);
+                        info!("rx coding rate: {}", rxp.coding_rate);
+                        info!("rx rssi: {}", rxp.rssi);
+                        info!("rx snr: {}", rxp.snr);
+                    }
                     Err(_) => error!("read_rx_data failed :(")
                 }
             }
             Either::Second(_) => {
                 info!("RxTimeout triggered");
-                sx127x.clear_irq::<RxTimeout>().await.unwrap();
+                sx127x.clear_interrupt::<RxTimeout>().await.unwrap();
             }
         }
     }

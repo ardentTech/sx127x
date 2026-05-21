@@ -26,8 +26,18 @@ pub(crate) fn ocp_imax(trim: u8) -> u8 {
     } else { 240 }
 }
 
-pub(crate) fn symbol_rate(bandwidth: u32, spreading_factor: u32) -> u32 {
-    bandwidth / 2u32.pow(spreading_factor)
+/// Calculates the symbol period (Ts) in milliseconds.
+///
+/// See: datasheet section 4.1.1.7
+pub(crate) fn symbol_period(symbol_rate: f32) -> f32 {
+    (1f32 / symbol_rate) * 1000f32
+}
+
+/// Calculates the symbol rate (Rs)
+///
+/// See: datasheet section 4.1.1.5
+pub(crate) fn symbol_rate(bandwidth: u32, spreading_factor: u32) -> f32 {
+    bandwidth as f32 / 2u32.pow(spreading_factor) as f32
 }
 
 #[cfg(test)]
@@ -110,10 +120,15 @@ mod tests {
     }
 
     #[test]
+    fn symbol_period_ok() {
+        assert_relative_eq!(symbol_period(976.562), 1.024, epsilon=1e-3);
+    }
+
+    #[test]
     fn symbol_rate_ok() {
         let bandwidth = 125_000u32;
         let spreading_factor = 7u32;
         let symbol_rate = symbol_rate(bandwidth, spreading_factor);
-        assert_eq!(symbol_rate, 976u32);
+        assert_relative_eq!(symbol_rate, 976.562, epsilon=1e-3);
     }
 }

@@ -72,7 +72,7 @@ async fn main(spawner: Spawner) {
     sx127x.config_tx(TxConfig::new(20, PowerRamp::default(), false).unwrap()).await.unwrap();
 
     sx127x.map_dio0::<TxDone>().await.unwrap();
-    sx127x.set_dio3::<CadDone>().await.unwrap();
+    sx127x.map_dio3::<CadDone>().await.unwrap();
 
     spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
 

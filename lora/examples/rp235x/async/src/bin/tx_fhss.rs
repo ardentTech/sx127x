@@ -50,7 +50,7 @@ async fn main(_spawner: Spawner) {
     sx127x.config_tx(TxConfig::new(14, PowerRamp::default(), false).unwrap()).await.unwrap();
 
     sx127x.map_dio0::<TxDone>().await.unwrap();
-    sx127x.set_dio1::<FhssChangeChannel>().await.unwrap();
+    sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
     sx127x.set_hop_period(12).await.unwrap();
 
     let mut hops_completed: usize = 0;

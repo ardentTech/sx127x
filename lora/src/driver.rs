@@ -219,35 +219,35 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Maps the DIO1 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio1<S: Dio1Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn map_dio1<S: Dio1Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.map_dio(DIO_MAPPING_1, <S as Dio1Signal>::VALUE, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_OFFSET).await
     }
 
     /// Maps the DIO2 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio2<S: Dio2Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn map_dio2<S: Dio2Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.map_dio(DIO_MAPPING_1, <S as Dio2Signal>::VALUE, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_OFFSET).await
     }
 
     /// Maps the DIO3 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio3<S: Dio3Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn map_dio3<S: Dio3Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.map_dio(DIO_MAPPING_1, <S as Dio3Signal>::VALUE, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_OFFSET).await
     }
 
     /// Maps the DIO4 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio4<S: Dio4Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn map_dio4<S: Dio4Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.map_dio(DIO_MAPPING_2, <S as Dio4Signal>::VALUE, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_OFFSET).await
     }
 
     /// Maps the DIO5 pin signal source.
     ///
     /// See: datasheet table 18
-    pub async fn set_dio5<S: Dio5Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn map_dio5<S: Dio5Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.map_dio(DIO_MAPPING_2, <S as Dio5Signal>::VALUE, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_OFFSET).await
     }
 

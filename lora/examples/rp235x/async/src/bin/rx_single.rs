@@ -43,7 +43,7 @@ async fn main(spawner: Spawner) {
     let mut sx127x = Sx127xLora::new(spi_dev, Sx127xLoraConfig::default()).await.unwrap();
     sx127x.set_frequency(LORA_FREQUENCY_HZ).await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
-    sx127x.set_dio1::<RxTimeout>().await.unwrap();
+    sx127x.map_dio1::<RxTimeout>().await.unwrap();
 
     spawner.spawn(heartbeat(Output::new(p.PIN_21, Level::Low)).unwrap());
 

@@ -89,6 +89,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(driver)
     }
 
+    /// Clears all interrupts.
+    pub async fn clear_all_interrupts(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.write(IRQ_FLAGS, 0xff).await
+    }
+
     /// Sets the power amplifier (PA) to PA_HP on the PA_BOOST pin.
     ///
     /// See: datasheet section 3.4.2
@@ -262,7 +267,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_3, byte).await
     }
 
-    /// Sets the carrier frequency and configures band-specific registers.
+    /// Sets the carrier frequency.
     ///
     /// See: datasheet section 4.1.4, datasheet tables 43-44
     pub async fn set_frequency(&mut self, hz: Hz) -> Result<(), Sx127xError<SPI::Error>> {
@@ -271,11 +276,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(FRF_MID, (frf >> 8) as u8).await?;
         self.write(FRF_LSB, frf as u8).await?;
 
-        if hz < LF_MAX_HZ {
-            self.set_low_frequency_mode(true).await?;
-        } else if hz > HF_MIN_HZ {
-            self.set_low_frequency_mode(false).await?;
-        }
         Ok(())
     }
 

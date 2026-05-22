@@ -294,7 +294,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Transmits a `payload` of up to 255 bytes. Will automatically transition to STDBY when done.
     ///
     /// See: datasheet figure 9
-    // TODO use Packet structure instead?
     pub async fn tx(&mut self, payload: &[u8]) -> Result<(), Sx127xError<SPI::Error>> {
         let payload_len = payload.len();
         if payload_len > PAYLOAD_SIZE {
@@ -412,27 +411,33 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(PA_RAMP, byte | pa_ramp as u8).await
     }
 
-    /// Sets the spreading factor.
+    /// Sets the spreading factor. If SF6, implicit header mode must already be set.
     ///
     /// See: datasheet section 4.1.1.2
     async fn set_spreading_factor(&mut self, spreading_factor: SpreadingFactor) -> Result<(), Sx127xError<SPI::Error>> {
-        // let mut modem_config_2 = self.read(MODEM_CONFIG_2).await?;
-        // set_bits(&mut modem_config_2, spreading_factor as u8, MODEM_CONFIG_2_SPREADING_FACTOR_MASK, MODEM_CONFIG_2_SPREADING_FACTOR_OFFSET);
-        // self.write(MODEM_CONFIG_2, modem_config_2).await?;
-        //
-        // let mut detect_optimize = self.read(DETECT_OPTIMIZE).await?;
-        // detect_optimize &= !DETECT_OPTIMIZE_DETECTION_OPTIMIZE_MASK;
-        //
-        // if spreading_factor == SpreadingFactor::Sf6 {
-        //     self.set_header_mode(HeaderMode::Implicit).await?;
-        //     detect_optimize |= DETECT_OPTIMIZE_DETECTION_OPTIMIZE_SF6;
-        //     self.write(DETECTION_THRESHOLD, DETECTION_THRESHOLD_SF6).await?;
-        // } else {
-        //     detect_optimize |= DETECT_OPTIMIZE_DETECTION_OPTIMIZE_SF7_TO_SF12;
-        //     self.write(DETECTION_THRESHOLD, DETECTION_THRESHOLD_SF7_TO_SF12).await?;
-        // }
-        // self.write(DETECT_OPTIMIZE, detect_optimize).await
-        Ok(())
+        if spreading_factor == SpreadingFactor::Sf6 {
+            let byte = self.read(MODEM_CONFIG_1).await?;
+            let header_mode = HeaderMode::from(get_bits(byte, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_OFFSET));
+            if header_mode != HeaderMode::Implicit {
+                return Err(Sx127xError::SF6RequiresImplicitHeaderMode);
+            }
+        }
+
+        let mut modem_config_2 = self.read(MODEM_CONFIG_2).await?;
+        set_bits(&mut modem_config_2, spreading_factor as u8, MODEM_CONFIG_2_SPREADING_FACTOR_MASK, MODEM_CONFIG_2_SPREADING_FACTOR_OFFSET);
+        self.write(MODEM_CONFIG_2, modem_config_2).await?;
+
+        let mut detect_optimize = self.read(DETECT_OPTIMIZE).await?;
+        detect_optimize &= !DETECT_OPTIMIZE_DETECTION_OPTIMIZE_MASK;
+
+        if spreading_factor == SpreadingFactor::Sf6 {
+            detect_optimize |= DETECT_OPTIMIZE_DETECTION_OPTIMIZE_SF6;
+            self.write(DETECTION_THRESHOLD, DETECTION_THRESHOLD_SF6).await?;
+        } else {
+            detect_optimize |= DETECT_OPTIMIZE_DETECTION_OPTIMIZE_SF7_TO_SF12;
+            self.write(DETECTION_THRESHOLD, DETECTION_THRESHOLD_SF7_TO_SF12).await?;
+        }
+        self.write(DETECT_OPTIMIZE, detect_optimize).await
     }
 
     /// Gets the spreading factor.

@@ -3,13 +3,13 @@ use defmt::error;
 
 use embedded_hal_async::spi::SpiDevice;
 pub use sx127x_common::error::Sx127xError;
-use sx127x_common::{Hz, CHIP_VERSION, DEFAULT_FREQUENCY_HZ, FSTEP};
+use sx127x_common::{Hz, Modem, CHIP_VERSION, FSTEP};
 use sx127x_common::bits::{get_bits, set_bits};
-use sx127x_common::error::Sx127xError::{InvalidState, InvalidVersion};
+use sx127x_common::error::Sx127xError::InvalidVersion;
 use sx127x_common::spi::Sx127xSpi;
 use crate::registers::*;
 use crate::types::*;
-use crate::{calculate, validate};
+use crate::validate;
 
 // note: no reset impl bc manual depends on phys pin
 
@@ -17,8 +17,6 @@ use crate::{calculate, validate};
 const PAYLOAD_SIZE: usize = 256;
 #[cfg(not(feature = "half_duplex"))]
 const PAYLOAD_SIZE: usize = 128;
-
-const LF_MAX_HZ: u32 = 525_000_000;
 const HF_MIN_HZ: u32 = 779_000_000;
 
 // TODO move this to types
@@ -38,6 +36,7 @@ impl Sx127xLoraConfig {
         use_crc: bool,
     ) -> Result<Self, Sx127xError<()>> {
         if !validate::header_mode_sf(header_mode, spreading_factor) {
+            // TODO is this still needed if reg level methods also check?
             return Err(Sx127xError::InvalidInput);
         }
         Ok(Self { bandwidth, coding_rate, header_mode, spreading_factor, use_crc })
@@ -83,7 +82,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             return Err(InvalidVersion)
         }
 
-        driver.use_lora_modem().await?;
+        driver.set_modem(Modem::LoRa).await?;
         driver.config(config).await?;
 
         Ok(driver)
@@ -92,6 +91,16 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Clears all interrupts.
     pub async fn clear_all_interrupts(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.write(IRQ_FLAGS, 0xff).await
+    }
+
+    /// Configure band-specific registers 0x61-0x73 based upon the currently programmed frequency.
+    ///
+    /// See: datasheet section 4.3
+    pub async fn config_band_specific_registers(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        let frequency = self.frequency().await?;
+        let mut byte = self.read(OP_MODE).await?;
+        set_bits(&mut byte, (frequency > HF_MIN_HZ) as u8, OP_MODE_LOW_FREQUENCY_MODE_ON_MASK, OP_MODE_LOW_FREQUENCY_MODE_ON_OFFSET);
+        self.write(OP_MODE, byte).await
     }
 
     /// Sets the power amplifier (PA) to PA_HP on the PA_BOOST pin.
@@ -114,12 +123,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS, byte | <I as IRQ>::MASK).await
     }
 
-    /// Gets the device mode.
+    /// Gets the carrier frequency in Hz.
     ///
-    /// See: datasheet table 16
-    async fn device_mode(&mut self) -> Result<DeviceMode, Sx127xError<SPI::Error>> {
-        let op_mode = self.read(OP_MODE).await?;
-        Ok(DeviceMode::from(get_bits(op_mode, OP_MODE_MODE_MASK, OP_MODE_MODE_OFFSET)))
+    /// See: datasheet section 4.1.4
+    pub async fn frequency(&mut self) -> Result<u32, Sx127xError<SPI::Error>> {
+        let msb = self.read(FRF_MSB).await? as u32;
+        let mid = self.read(FRF_MID).await? as u32;
+        let lsb = self.read(FRF_LSB).await? as u32;
+        Ok((msb << 16) | (mid << 8) | lsb)
     }
 
     /// Gets the current hop channel.
@@ -155,7 +166,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             irq_flags_bits & 0xc == 0 && irq_flags_bits & 0x1 == 0
         };
         if !rx_packet_termination_ok {
-            // TODO error!
+            error!("RX packet termination failed");
             return Err(Sx127xError::PacketTermination)
         }
 
@@ -187,22 +198,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet pages 40-42
     pub async fn rx(&mut self, timeout: Option<TimeoutSymbols>) -> Result<(), Sx127xError<SPI::Error>> {
-        let device_mode = self.device_mode().await?;
-        #[cfg(feature = "half_duplex")]
-        {
-            if device_mode == DeviceMode::RXSINGLE || device_mode == DeviceMode::RXCONTINUOUS || device_mode == DeviceMode::TX {
-                // TODO error!
-                return Err(InvalidState)
-            }
-        }
-        #[cfg(not(feature = "half_duplex"))]
-        {
-            if device_mode == DeviceMode::RXSINGLE || device_mode == DeviceMode::RXCONTINUOUS {
-                // TODO error!
-                return Err(InvalidState)
-            }
-        }
-
         self.set_device_mode(DeviceMode::STDBY).await?;
         let mut mode = DeviceMode::RXCONTINUOUS;
 
@@ -267,6 +262,15 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_3, byte).await
     }
 
+    /// Sets cyclic redundancy check (CRC) generation and verification on rx/tx payloads on/off.
+    ///
+    /// See: section 4.1.1.6
+    pub async fn set_crc(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_2).await?;
+        set_bits(&mut byte, on as u8, MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK, MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_OFFSET);
+        self.write(MODEM_CONFIG_2, byte).await
+    }
+
     /// Sets the carrier frequency.
     ///
     /// See: datasheet section 4.1.4, datasheet tables 43-44
@@ -274,9 +278,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let frf = sx127x_common::calculate::frf(hz, FSTEP);
         self.write(FRF_MSB, (frf >> 16) as u8).await?;
         self.write(FRF_MID, (frf >> 8) as u8).await?;
-        self.write(FRF_LSB, frf as u8).await?;
-
-        Ok(())
+        self.write(FRF_LSB, frf as u8).await
     }
 
     /// Sets the symbol period between frequency hops. If `period` > 0 FHSS will be enabled.
@@ -300,29 +302,17 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             return Err(Sx127xError::InvalidPayloadLength);
         }
 
-        let device_mode = self.device_mode().await?;
         #[cfg(feature = "half_duplex")]
-        {
-            if device_mode == DeviceMode::RXSINGLE || device_mode == DeviceMode::RXCONTINUOUS {
-                return Err(InvalidState)
-            }
-            self.write(FIFO_TX_BASE_ADDR, 0x00).await?;
-        }
+        self.write(FIFO_TX_BASE_ADDR, 0x00).await?;
         #[cfg(not(feature = "half_duplex"))]
-        {
-            self.write(FIFO_TX_BASE_ADDR, 0x80).await?;
-        }
-
-        if device_mode == DeviceMode::TX {
-            return Err(InvalidState)
-        }
+        self.write(FIFO_TX_BASE_ADDR, 0x80).await?;
 
         self.set_device_mode(DeviceMode::STDBY).await?;
         self.write(FIFO_ADDR_PTR, FIFO_TX_BASE_ADDR).await?;
         for &byte in payload.iter().take(PAYLOAD_SIZE) {
             self.write(FIFO, byte).await?;
         }
-        self.write(PAYLOAD_LENGTH, payload.len() as u8).await?;
+        self.write(PAYLOAD_LENGTH, payload_len as u8).await?;
         self.set_device_mode(DeviceMode::TX).await
     }
 
@@ -333,6 +323,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_coding_rate(config.coding_rate).await?;
         self.set_header_mode(config.header_mode).await?;
         self.set_spreading_factor(config.spreading_factor).await
+    }
+
+    /// Gets the device mode.
+    ///
+    /// See: datasheet table 16
+    async fn device_mode(&mut self) -> Result<DeviceMode, Sx127xError<SPI::Error>> {
+        let op_mode = self.read(OP_MODE).await?;
+        Ok(DeviceMode::from(get_bits(op_mode, OP_MODE_MODE_MASK, OP_MODE_MODE_OFFSET)))
     }
 
     async fn map_dio(&mut self, register: u8, value: u8, mask: u8, offset: u8) -> Result<(), Sx127xError<SPI::Error>> {
@@ -364,15 +362,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_1, byte).await
     }
 
-    /// Sets CRC generation and check on payload on/off.
-    ///
-    /// See: section 4.1.1.6
-    async fn set_crc(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.read(MODEM_CONFIG_2).await?;
-        set_bits(&mut byte, on as u8, MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK, MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_OFFSET);
-        self.write(MODEM_CONFIG_2, byte).await
-    }
-
     /// Sets the device mode.
     ///
     /// See: datasheet table 16
@@ -394,15 +383,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         set_bits(&mut byte, mode as u8, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_OFFSET);
         self.write(MODEM_CONFIG_1, byte).await
-    }
-
-    /// Configure band-specific registers 0x61-0x73.
-    ///
-    /// See: datasheet section 4.3
-    async fn set_low_frequency_mode(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.read(OP_MODE).await?;
-        set_bits(&mut byte, on as u8, OP_MODE_LOW_FREQUENCY_MODE_ON_MASK, OP_MODE_LOW_FREQUENCY_MODE_ON_OFFSET);
-        self.write(OP_MODE, byte).await
     }
 
     /// Sets the rise/fall time of the power amplifier (PA).
@@ -445,10 +425,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(SpreadingFactor::from(get_bits(self.read(MODEM_CONFIG_2).await?, MODEM_CONFIG_2_SPREADING_FACTOR_MASK, MODEM_CONFIG_2_SPREADING_FACTOR_OFFSET)))
     }
 
-    async fn use_lora_modem(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    async fn set_modem(&mut self, modem: Modem) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::SLEEP).await?;
-        let byte = self.read(OP_MODE).await?;
-        self.write(OP_MODE, byte | OP_MODE_LONG_RANGE_MODE_MASK).await?;
+
+        let mut byte = self.read(OP_MODE).await?;
+        set_bits(&mut byte, modem as u8, OP_MODE_LONG_RANGE_MODE_MASK, OP_MODE_LONG_RANGE_MODE_OFFSET);
+        self.write(OP_MODE, byte).await?;
+
         self.set_device_mode(DeviceMode::STDBY).await
     }
 

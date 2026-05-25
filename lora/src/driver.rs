@@ -1,3 +1,4 @@
+use defmt::debug;
 #[cfg(feature = "defmt")]
 use defmt::error;
 
@@ -75,17 +76,27 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn new(spi: SPI, config: Sx127xLoraConfig) -> Result<Sx127xLora<SPI>, Sx127xError<SPI::Error>> {
         let mut driver = Self { spi: Sx127xSpi::new(spi) };
 
-        let version = driver.spi.read(VERSION).await?;
-        if version != CHIP_VERSION {
-            #[cfg(feature = "defmt")]
-            error!("InvalidVersion: {} != {}", version, CHIP_VERSION);
-            return Err(InvalidVersion)
-        }
+        // let version = driver.spi.read(VERSION).await?;
+        // if version != CHIP_VERSION {
+        //     #[cfg(feature = "defmt")]
+        //     error!("InvalidVersion: {} != {}", version, CHIP_VERSION);
+        //     return Err(InvalidVersion)
+        // }
 
         driver.set_modem(Modem::LoRa).await?;
         driver.config(config).await?;
 
         Ok(driver)
+    }
+
+    /// Triggers the IQ and RSSI calibration when set in Standby mode. Takes ~10ms.
+    ///
+    /// See: datasheet section 2.1.3.8
+    pub async fn calibrate(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        let mut image_cal = self.read(IMAGE_CAL).await?;
+        image_cal |= IMAGE_CAL_IMAGE_CAL_START_MASK;
+        self.write(IMAGE_CAL, image_cal).await
     }
 
     /// Clears all interrupts.
@@ -161,8 +172,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
         let irq_flags_bits = self.read(IRQ_FLAGS).await? >> 4;
         let rx_packet_termination_ok = if crc_on_payload {
+            #[cfg(feature = "defmt")]
+            debug!("CRC on payload");
             irq_flags_bits & 0xf == 0
         } else {
+            #[cfg(feature = "defmt")]
+            debug!("CRC not on payload");
             irq_flags_bits & 0xc == 0 && irq_flags_bits & 0x1 == 0
         };
         if !rx_packet_termination_ok {
@@ -171,9 +186,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
 
         let rx_fifo_addr = self.read(FIFO_RX_CURRENT_ADDR).await?;
+        #[cfg(feature = "defmt")]
+        debug!("rx_fifo_addr: {}", rx_fifo_addr);
         self.write(FIFO_ADDR_PTR, rx_fifo_addr).await?;
 
         let num_bytes = self.read(RX_NB_BYTES).await?;
+        #[cfg(feature = "defmt")]
+        debug!("num_bytes: {}", num_bytes);
         if num_bytes > PAYLOAD_SIZE as u8 {
             #[cfg(feature = "defmt")]
             error!("received {} bytes but buffer size is only {} bytes", num_bytes, PAYLOAD_SIZE);
@@ -181,9 +200,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
 
         let mut buffer = [0; PAYLOAD_SIZE];
-        for i in 0..PAYLOAD_SIZE {
+        for i in 0..num_bytes {
             let byte = self.read(FIFO).await?;
-            buffer[i] = byte;
+            #[cfg(feature = "defmt")]
+            debug!("RX read FIFO byte: {}", byte);
+            buffer[i as usize] = byte;
         }
 
         let coding_rate = CodingRate::from(get_bits(self.read(MODEM_STAT).await?, MODEM_STAT_RX_CODING_RATE_MASK, MODEM_STAT_RX_CODING_RATE_OFFSET));
@@ -197,6 +218,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// enter RXSINGLE mode, else RXCONTINUOUS mode.
     ///
     /// See: datasheet pages 40-42
+    // TODO? p.40 "It is therefore necessary for the companion microcontroller to handle the
+    // address pointer to make sure the FIFO data buffer is never full"
     pub async fn rx(&mut self, timeout: Option<TimeoutSymbols>) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
         let mut mode = DeviceMode::RXCONTINUOUS;
@@ -262,6 +285,17 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_3, byte).await
     }
 
+    /// Sets the temperature monitor operation flag. This will switch to the FSK/OOK modem,
+    /// set/unset the temp monitor flag, then switch back to the LoRa modem before returning.
+    ///
+    /// See: datasheet section 2.1.3.8
+    pub async fn set_auto_temp_monitor(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_modem(Modem::Fsk).await?;
+        let image_cal = self.read(IMAGE_CAL).await?;
+        self.write(IMAGE_CAL, image_cal | !on as u8).await?;
+        self.set_modem(Modem::LoRa).await
+    }
+
     /// Sets cyclic redundancy check (CRC) generation and verification on rx/tx payloads on/off.
     ///
     /// See: section 4.1.1.6
@@ -299,6 +333,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn tx(&mut self, payload: &[u8]) -> Result<(), Sx127xError<SPI::Error>> {
         let payload_len = payload.len();
         if payload_len > PAYLOAD_SIZE {
+            #[cfg(feature = "defmt")]
+            error!("payload len {} is greater than max {}", payload_len, PAYLOAD_SIZE);
             return Err(Sx127xError::InvalidPayloadLength);
         }
 
@@ -322,7 +358,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_bandwidth(config.bandwidth).await?;
         self.set_coding_rate(config.coding_rate).await?;
         self.set_header_mode(config.header_mode).await?;
-        self.set_spreading_factor(config.spreading_factor).await
+        self.set_spreading_factor(config.spreading_factor).await?;
+        self.set_crc(config.use_crc).await
     }
 
     /// Gets the device mode.

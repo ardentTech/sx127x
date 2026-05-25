@@ -18,6 +18,7 @@ use crate::validate;
 const PAYLOAD_SIZE: usize = 256;
 #[cfg(not(feature = "half_duplex"))]
 const PAYLOAD_SIZE: usize = 128;
+
 const HF_MIN_HZ: u32 = 779_000_000;
 
 // TODO move this to types
@@ -76,12 +77,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn new(spi: SPI, config: Sx127xLoraConfig) -> Result<Sx127xLora<SPI>, Sx127xError<SPI::Error>> {
         let mut driver = Self { spi: Sx127xSpi::new(spi) };
 
-        // let version = driver.spi.read(VERSION).await?;
-        // if version != CHIP_VERSION {
-        //     #[cfg(feature = "defmt")]
-        //     error!("InvalidVersion: {} != {}", version, CHIP_VERSION);
-        //     return Err(InvalidVersion)
-        // }
+        let version = driver.spi.read(VERSION).await?;
+        if version != CHIP_VERSION {
+            #[cfg(feature = "defmt")]
+            error!("InvalidVersion: {} != {}", version, CHIP_VERSION);
+            return Err(InvalidVersion)
+        }
 
         driver.set_modem(Modem::LoRa).await?;
         driver.config(config).await?;
@@ -201,10 +202,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
         let mut buffer = [0; PAYLOAD_SIZE];
         for i in 0..num_bytes {
-            let byte = self.read(FIFO).await?;
-            #[cfg(feature = "defmt")]
-            debug!("RX read FIFO byte: {}", byte);
-            buffer[i as usize] = byte;
+            buffer[i as usize] = self.read(FIFO).await?;
         }
 
         let coding_rate = CodingRate::from(get_bits(self.read(MODEM_STAT).await?, MODEM_STAT_RX_CODING_RATE_MASK, MODEM_STAT_RX_CODING_RATE_OFFSET));
@@ -234,8 +232,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             self.write(SYMB_TIMEOUT_LSB, (timeout.0 & 0xff) as u8).await?;
         }
 
-        self.write(FIFO_RX_BASE_ADDR, 0x00).await?;
-        self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR).await?;
+        self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR_VALUE).await?;
         self.set_device_mode(mode).await
     }
 
@@ -338,13 +335,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             return Err(Sx127xError::InvalidPayloadLength);
         }
 
-        #[cfg(feature = "half_duplex")]
-        self.write(FIFO_TX_BASE_ADDR, 0x00).await?;
-        #[cfg(not(feature = "half_duplex"))]
-        self.write(FIFO_TX_BASE_ADDR, 0x80).await?;
+        self.write(FIFO_TX_BASE_ADDR, FIFO_TX_BASE_ADDR_VALUE).await?;
 
         self.set_device_mode(DeviceMode::STDBY).await?;
-        self.write(FIFO_ADDR_PTR, FIFO_TX_BASE_ADDR).await?;
+        self.write(FIFO_ADDR_PTR, FIFO_TX_BASE_ADDR_VALUE).await?;
         for &byte in payload.iter().take(PAYLOAD_SIZE) {
             self.write(FIFO, byte).await?;
         }
@@ -360,14 +354,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_header_mode(config.header_mode).await?;
         self.set_spreading_factor(config.spreading_factor).await?;
         self.set_crc(config.use_crc).await
-    }
-
-    /// Gets the device mode.
-    ///
-    /// See: datasheet table 16
-    async fn device_mode(&mut self) -> Result<DeviceMode, Sx127xError<SPI::Error>> {
-        let op_mode = self.read(OP_MODE).await?;
-        Ok(DeviceMode::from(get_bits(op_mode, OP_MODE_MODE_MASK, OP_MODE_MODE_OFFSET)))
     }
 
     async fn map_dio(&mut self, register: u8, value: u8, mask: u8, offset: u8) -> Result<(), Sx127xError<SPI::Error>> {

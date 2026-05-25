@@ -52,7 +52,7 @@ async fn main(spawner: Spawner) {
         match sx127x.rx_payload().await {
             Ok(rxp) => {
                 let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
-                info!("rx payload: {}", rxp.payload[..len]);
+                info!("rx payload: {:a}", rxp.payload[..len]);
                 info!("rx coding rate: {}", rxp.coding_rate);
                 info!("rx rssi: {}", rxp.rssi);
                 info!("rx snr: {}", rxp.snr);

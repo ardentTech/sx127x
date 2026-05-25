@@ -47,7 +47,7 @@ async fn main(spawner: Spawner) {
     sx127x.optimize_for_low_data_rate(true).await.unwrap();
     sx127x.set_auto_temp_monitor(false).await.unwrap();
 
-    //sx127x.config_tx(TxConfig::new(20, PowerRamp::default(), false).unwrap()).await.unwrap();
+    sx127x.config_tx(TxConfig::new(20, PowerRamp::default(), false).unwrap()).await.unwrap();
 
     sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.map_dio3::<CadDone>().await.unwrap();

@@ -38,7 +38,7 @@ pub async fn heartbeat(mut pin: Output<'static>) {
 
 pub fn debug_config() -> Sx127xLoraConfig {
     Sx127xLoraConfig::new(
-        Bandwidth::Bw62_5kHz,
+        Bandwidth::Bw125kHz,
         CodingRate::Cr4_7,
         HeaderMode::Explicit,
         SpreadingFactor::Sf11,

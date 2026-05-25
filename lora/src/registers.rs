@@ -12,7 +12,12 @@ pub const OP_MODE_MODE_OFFSET: u8 = 0x0;
 // -------------------------------------------------------------------------------------------------
 pub const FIFO_ADDR_PTR: u8 = 0x0d;
 pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;
+#[cfg(feature = "half_duplex")]
+pub const FIFO_TX_BASE_ADDR_VALUE: u8 = 0x0;
+#[cfg(not(feature = "half_duplex"))]
+pub const FIFO_TX_BASE_ADDR_VALUE: u8 = 0x80;
 pub const FIFO_RX_BASE_ADDR: u8 = 0x0f;
+pub const FIFO_RX_BASE_ADDR_VALUE: u8 = 0x0;
 pub const FIFO_RX_CURRENT_ADDR: u8 = 0x10;
 pub const IRQ_FLAGS_MASK: u8 = 0x11;
 

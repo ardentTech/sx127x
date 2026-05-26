@@ -1,6 +1,5 @@
-use defmt::debug;
 #[cfg(feature = "defmt")]
-use defmt::error;
+use defmt::{debug, error};
 
 use embedded_hal_async::spi::SpiDevice;
 pub use sx127x_common::error::Sx127xError;
@@ -8,6 +7,8 @@ use sx127x_common::{Hz, Modem, CHIP_VERSION, FSTEP};
 use sx127x_common::bits::{get_bits, set_bits};
 use sx127x_common::error::Sx127xError::InvalidVersion;
 use sx127x_common::spi::Sx127xSpi;
+use crate::calculate::{symbol_period, symbol_rate};
+use crate::evaluate::should_optimize;
 use crate::registers::*;
 use crate::types::*;
 use crate::validate;
@@ -182,6 +183,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             irq_flags_bits & 0xc == 0 && irq_flags_bits & 0x1 == 0
         };
         if !rx_packet_termination_ok {
+            #[cfg(feature = "defmt")]
             error!("RX packet termination failed");
             return Err(Sx127xError::PacketTermination)
         }
@@ -273,10 +275,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Enables/disables low data rate optimization.
     ///
-    /// "Its use is mandated when the symbol duration exceeds 16ms."
-    ///
     /// See: datasheet section 4.1.1.6
-    pub async fn optimize_for_low_data_rate(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn optimize_low_data_rate(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = self.read(MODEM_CONFIG_3).await?;
         set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET);
         self.write(MODEM_CONFIG_3, byte).await
@@ -317,6 +317,15 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// See: datasheet section 4.1.1.8
     pub async fn set_hop_period(&mut self, period: u8) -> Result<(), Sx127xError<SPI::Error>> {
         self.write(HOP_PERIOD, period).await
+    }
+
+    /// Determines if low data rate optimization is necessary.
+    ///
+    /// See: datasheet section 4.1.1.6
+    pub async fn should_optimize_low_data_rate(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
+        let bw = Bandwidth::from((self.read(MODEM_CONFIG_1).await? & MODEM_CONFIG_1_BW_MASK) >> MODEM_CONFIG_1_BW_OFFSET).hz();
+        let sf = get_bits(self.read(MODEM_CONFIG_2).await?, MODEM_CONFIG_2_SPREADING_FACTOR_MASK, MODEM_CONFIG_2_SPREADING_FACTOR_OFFSET);
+        Ok(should_optimize(symbol_period(symbol_rate(bw, sf as u32))))
     }
 
     /// Starts the Channel Activity Detector (CAD).
@@ -373,7 +382,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         set_bits(&mut byte, bandwidth as u8, MODEM_CONFIG_1_BW_MASK, MODEM_CONFIG_1_BW_OFFSET);
         self.write(MODEM_CONFIG_1, byte).await
-        // TODO self.optimize_bandwidth().await
+        // TODO self.optimize_bandwidth().await (see: errata section 2.1)
+        // TODO optimize_low_data_rate
     }
 
     /// Sets the cyclic error coding rate.
@@ -441,6 +451,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             self.write(DETECTION_THRESHOLD, DETECTION_THRESHOLD_SF7_TO_SF12).await?;
         }
         self.write(DETECT_OPTIMIZE, detect_optimize).await
+        // TODO optimize_low_data_rate?
     }
 
     /// Gets the spreading factor.

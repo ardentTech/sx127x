@@ -5,3 +5,4 @@ pub mod types;
 pub mod registers;
 pub mod calculate;
 mod validate;
+mod evaluate;

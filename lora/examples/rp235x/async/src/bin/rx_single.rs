@@ -17,7 +17,7 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{heartbeat, LORA_FREQUENCY_HZ};
+use common::heartbeat;
 use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
 use sx127xlora::types::{RxDone, RxTimeout, TimeoutSymbols};
 
@@ -41,7 +41,6 @@ async fn main(spawner: Spawner) {
     let mut dio1 = Input::new(p.PIN_16, Pull::Down);
 
     let mut sx127x = Sx127xLora::new(spi_dev, Sx127xLoraConfig::default()).await.unwrap();
-    sx127x.set_frequency(LORA_FREQUENCY_HZ).await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
     sx127x.map_dio1::<RxTimeout>().await.unwrap();
 

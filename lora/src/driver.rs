@@ -3,17 +3,15 @@ use defmt::{debug, error};
 
 use embedded_hal_async::spi::SpiDevice;
 pub use sx127x_common::error::Sx127xError;
-use sx127x_common::{Hz, Modem, CHIP_VERSION, FSTEP};
+use sx127x_common::{Hz, Modem, CHIP_VERSION, DEFAULT_FREQUENCY_HZ, FSTEP};
 use sx127x_common::bits::{get_bits, set_bits};
 use sx127x_common::error::Sx127xError::InvalidVersion;
 use sx127x_common::spi::Sx127xSpi;
 use crate::calculate::{symbol_period, symbol_rate};
-use crate::evaluate::should_optimize;
+use crate::evaluate;
 use crate::registers::*;
 use crate::types::*;
 use crate::validate;
-
-// note: no reset impl bc manual depends on phys pin
 
 #[cfg(feature = "half_duplex")]
 const PAYLOAD_SIZE: usize = 256;
@@ -26,23 +24,32 @@ const HF_MIN_HZ: u32 = 779_000_000;
 pub struct Sx127xLoraConfig {
     pub bandwidth: Bandwidth,
     pub coding_rate: CodingRate,
+    pub frequency: Hz,
     pub header_mode: HeaderMode,
     pub spreading_factor: SpreadingFactor,
+    /// Whether or not to use the full automated (temperature-dependent) calibration.
+    ///
+    /// See: datasheet section 2.1.3.8
+    pub use_auto_temp_calibration: bool,
+    /// Whether or not to use the cyclic redundancy check (CRC) generation and verification on rx/tx payloads.
     pub use_crc: bool,
 }
 impl Sx127xLoraConfig {
     pub fn new(
         bandwidth: Bandwidth,
         coding_rate: CodingRate,
+        frequency: Hz,
         header_mode: HeaderMode,
         spreading_factor: SpreadingFactor,
+        use_auto_temp_calibration: bool,
         use_crc: bool,
     ) -> Result<Self, Sx127xError<()>> {
         if !validate::header_mode_sf(header_mode, spreading_factor) {
-            // TODO is this still needed if reg level methods also check?
+            #[cfg(feature = "defmt")]
+            error!("SF6 requires implicit header mode");
             return Err(Sx127xError::InvalidInput);
         }
-        Ok(Self { bandwidth, coding_rate, header_mode, spreading_factor, use_crc })
+        Ok(Self { bandwidth, coding_rate, frequency, header_mode, spreading_factor, use_auto_temp_calibration, use_crc })
     }
 }
 impl Default for Sx127xLoraConfig {
@@ -50,8 +57,10 @@ impl Default for Sx127xLoraConfig {
         Self {
             bandwidth: Bandwidth::default(),
             coding_rate: CodingRate::default(),
+            frequency: DEFAULT_FREQUENCY_HZ,
             header_mode: HeaderMode::default(),
             spreading_factor: SpreadingFactor::default(),
+            use_auto_temp_calibration: false,
             use_crc: false,
         }
     }
@@ -81,7 +90,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let version = driver.spi.read(VERSION).await?;
         if version != CHIP_VERSION {
             #[cfg(feature = "defmt")]
-            error!("InvalidVersion: {} != {}", version, CHIP_VERSION);
+            error!("invalid chip version: {} != {}", version, CHIP_VERSION);
             return Err(InvalidVersion)
         }
 
@@ -153,7 +162,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(self.read(HOP_CHANNEL).await? & HOP_CHANNEL_FHSS_PRESENT_CHANNEL_MASK)
     }
 
-    /// Gets an interrupt flag.
+    /// Gets the flag for interrupt `I`.
     pub async fn interrupt_flag<I: IRQ>(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
         Ok(self.read(IRQ_FLAGS).await? & <I as IRQ>::MASK == 1)
     }
@@ -163,6 +172,41 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// See: datasheet table 18
     pub async fn map_dio0<S: Dio0Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.map_dio(DIO_MAPPING_1, <S as Dio0Signal>::VALUE, DIO_MAPPING_1_DIO0_MASK, DIO_MAPPING_1_DIO0_OFFSET).await
+    }
+
+    /// Maps the DIO1 pin signal source.
+    ///
+    /// See: datasheet table 18
+    pub async fn map_dio1<S: Dio1Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.map_dio(DIO_MAPPING_1, <S as Dio1Signal>::VALUE, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_OFFSET).await
+    }
+
+    /// Maps the DIO2 pin signal source.
+    ///
+    /// See: datasheet table 18
+    pub async fn map_dio2<S: Dio2Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.map_dio(DIO_MAPPING_1, <S as Dio2Signal>::VALUE, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_OFFSET).await
+    }
+
+    /// Maps the DIO3 pin signal source.
+    ///
+    /// See: datasheet table 18
+    pub async fn map_dio3<S: Dio3Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.map_dio(DIO_MAPPING_1, <S as Dio3Signal>::VALUE, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_OFFSET).await
+    }
+
+    /// Maps the DIO4 pin signal source.
+    ///
+    /// See: datasheet table 18
+    pub async fn map_dio4<S: Dio4Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.map_dio(DIO_MAPPING_2, <S as Dio4Signal>::VALUE, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_OFFSET).await
+    }
+
+    /// Maps the DIO5 pin signal source.
+    ///
+    /// See: datasheet table 18
+    pub async fn map_dio5<S: Dio5Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        self.map_dio(DIO_MAPPING_2, <S as Dio5Signal>::VALUE, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_OFFSET).await
     }
 
     /// Gets N bytes from the FIFO buffer, depending upon the `half_duplex` feature flag.
@@ -218,8 +262,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// enter RXSINGLE mode, else RXCONTINUOUS mode.
     ///
     /// See: datasheet pages 40-42
-    // TODO? p.40 "It is therefore necessary for the companion microcontroller to handle the
-    // address pointer to make sure the FIFO data buffer is never full"
+    // TODO? p.40 "It is therefore necessary for the companion microcontroller to handle the address pointer to make sure the FIFO data buffer is never full"
     pub async fn rx(&mut self, timeout: Option<TimeoutSymbols>) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
         let mut mode = DeviceMode::RXCONTINUOUS;
@@ -238,55 +281,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_device_mode(mode).await
     }
 
-    /// Maps the DIO1 pin signal source.
-    ///
-    /// See: datasheet table 18
-    pub async fn map_dio1<S: Dio1Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        self.map_dio(DIO_MAPPING_1, <S as Dio1Signal>::VALUE, DIO_MAPPING_1_DIO1_MASK, DIO_MAPPING_1_DIO1_OFFSET).await
-    }
-
-    /// Maps the DIO2 pin signal source.
-    ///
-    /// See: datasheet table 18
-    pub async fn map_dio2<S: Dio2Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        self.map_dio(DIO_MAPPING_1, <S as Dio2Signal>::VALUE, DIO_MAPPING_1_DIO2_MASK, DIO_MAPPING_1_DIO2_OFFSET).await
-    }
-
-    /// Maps the DIO3 pin signal source.
-    ///
-    /// See: datasheet table 18
-    pub async fn map_dio3<S: Dio3Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        self.map_dio(DIO_MAPPING_1, <S as Dio3Signal>::VALUE, DIO_MAPPING_1_DIO3_MASK, DIO_MAPPING_1_DIO3_OFFSET).await
-    }
-
-    /// Maps the DIO4 pin signal source.
-    ///
-    /// See: datasheet table 18
-    pub async fn map_dio4<S: Dio4Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        self.map_dio(DIO_MAPPING_2, <S as Dio4Signal>::VALUE, DIO_MAPPING_2_DIO4_MASK, DIO_MAPPING_2_DIO4_OFFSET).await
-    }
-
-    /// Maps the DIO5 pin signal source.
-    ///
-    /// See: datasheet table 18
-    pub async fn map_dio5<S: Dio5Signal>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        self.map_dio(DIO_MAPPING_2, <S as Dio5Signal>::VALUE, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_OFFSET).await
-    }
-
-    /// Enables/disables low data rate optimization.
-    ///
-    /// See: datasheet section 4.1.1.6
-    pub async fn optimize_low_data_rate(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.read(MODEM_CONFIG_3).await?;
-        set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET);
-        self.write(MODEM_CONFIG_3, byte).await
-    }
-
     /// Sets the temperature monitor operation flag. This will switch to the FSK/OOK modem,
     /// set/unset the temp monitor flag, then switch back to the LoRa modem before returning.
     ///
     /// See: datasheet section 2.1.3.8
-    pub async fn set_auto_temp_monitor(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+    async fn set_auto_temp_calibration(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_modem(Modem::Fsk).await?;
         let image_cal = self.read(IMAGE_CAL).await?;
         self.write(IMAGE_CAL, image_cal | !on as u8).await?;
@@ -319,15 +318,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(HOP_PERIOD, period).await
     }
 
-    /// Determines if low data rate optimization is necessary.
-    ///
-    /// See: datasheet section 4.1.1.6
-    pub async fn should_optimize_low_data_rate(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
-        let bw = Bandwidth::from((self.read(MODEM_CONFIG_1).await? & MODEM_CONFIG_1_BW_MASK) >> MODEM_CONFIG_1_BW_OFFSET).hz();
-        let sf = get_bits(self.read(MODEM_CONFIG_2).await?, MODEM_CONFIG_2_SPREADING_FACTOR_MASK, MODEM_CONFIG_2_SPREADING_FACTOR_OFFSET);
-        Ok(should_optimize(symbol_period(symbol_rate(bw, sf as u32))))
-    }
-
     /// Starts the Channel Activity Detector (CAD).
     pub async fn start_cad(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::CAD).await
@@ -357,18 +347,64 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     // PRIVATE -------------------------------------------------------------------------------------
 
+    async fn bandwidth(&mut self) -> Result<Bandwidth, Sx127xError<SPI::Error>> {
+        Ok(Bandwidth::from((self.read(MODEM_CONFIG_1).await? & MODEM_CONFIG_1_BW_MASK) >> MODEM_CONFIG_1_BW_OFFSET))
+    }
+
     async fn config(&mut self, config: Sx127xLoraConfig) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_bandwidth(config.bandwidth).await?;
         self.set_coding_rate(config.coding_rate).await?;
+        self.set_frequency(config.frequency).await?;
         self.set_header_mode(config.header_mode).await?;
         self.set_spreading_factor(config.spreading_factor).await?;
-        self.set_crc(config.use_crc).await
+        self.set_auto_temp_calibration(config.use_auto_temp_calibration).await?;
+        self.set_crc(config.use_crc).await?;
+
+        if config.frequency != DEFAULT_FREQUENCY_HZ {
+            self.calibrate().await?;
+        }
+        Ok(())
+    }
+
+    async fn header_mode(&mut self) -> Result<HeaderMode, Sx127xError<SPI::Error>> {
+        let byte = self.read(MODEM_CONFIG_1).await?;
+        Ok(HeaderMode::from(get_bits(byte, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_OFFSET)))
     }
 
     async fn map_dio(&mut self, register: u8, value: u8, mask: u8, offset: u8) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = self.read(register).await?;
         set_bits(&mut byte, value, mask, offset);
         self.write(register, byte).await
+    }
+
+    /// See: errata section 2.1
+    async fn optimize_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
+        if bandwidth == Bandwidth::Bw500kHz {
+            match self.frequency().await? {
+                410_000_000..=525_000_000 => {
+                    self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
+                    self.write(HIGH_BW_OPTIMIZE_2, 0x7f).await
+                }
+                862_000_000..=1_020_000_000 => {
+                    self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
+                    self.write(HIGH_BW_OPTIMIZE_2, 0x64).await
+                }
+                _ => Ok(())
+            }
+        } else {
+            self.write(HIGH_BW_OPTIMIZE_1, 0x03).await
+        }
+    }
+
+    /// Enables/disables low data rate optimization.
+    ///
+    /// See: datasheet section 4.1.1.6
+    async fn optimize_data_rate(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        let on = self.should_optimize_low_data_rate().await?;
+
+        let mut byte = self.read(MODEM_CONFIG_3).await?;
+        set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET);
+        self.write(MODEM_CONFIG_3, byte).await
     }
 
     async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
@@ -381,9 +417,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     async fn set_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         set_bits(&mut byte, bandwidth as u8, MODEM_CONFIG_1_BW_MASK, MODEM_CONFIG_1_BW_OFFSET);
-        self.write(MODEM_CONFIG_1, byte).await
-        // TODO self.optimize_bandwidth().await (see: errata section 2.1)
-        // TODO optimize_low_data_rate
+        self.write(MODEM_CONFIG_1, byte).await?;
+
+        self.optimize_bandwidth(bandwidth).await?;
+        self.optimize_data_rate().await // TODO this reads bw again
     }
 
     /// Sets the cyclic error coding rate.
@@ -410,6 +447,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     async fn set_header_mode(&mut self, mode: HeaderMode) -> Result<(), Sx127xError<SPI::Error>> {
         let sf = self.spreading_factor().await?;
         if !validate::header_mode_sf(mode, sf) {
+            #[cfg(feature = "defmt")]
+            error!("SF6 requires implicit header mode");
             return Err(Sx127xError::InvalidInput);
         }
 
@@ -429,9 +468,9 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// See: datasheet section 4.1.1.2
     async fn set_spreading_factor(&mut self, spreading_factor: SpreadingFactor) -> Result<(), Sx127xError<SPI::Error>> {
         if spreading_factor == SpreadingFactor::Sf6 {
-            let byte = self.read(MODEM_CONFIG_1).await?;
-            let header_mode = HeaderMode::from(get_bits(byte, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_OFFSET));
-            if header_mode != HeaderMode::Implicit {
+            if self.header_mode().await? != HeaderMode::Implicit {
+                #[cfg(feature = "defmt")]
+                error!("SF6 requires implicit header mode");
                 return Err(Sx127xError::SF6RequiresImplicitHeaderMode);
             }
         }
@@ -450,8 +489,24 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             detect_optimize |= DETECT_OPTIMIZE_DETECTION_OPTIMIZE_SF7_TO_SF12;
             self.write(DETECTION_THRESHOLD, DETECTION_THRESHOLD_SF7_TO_SF12).await?;
         }
-        self.write(DETECT_OPTIMIZE, detect_optimize).await
-        // TODO optimize_low_data_rate?
+        self.write(DETECT_OPTIMIZE, detect_optimize).await?;
+        self.optimize_data_rate().await // TODO this reads sf again
+    }
+
+    /// Determines if low data rate optimization is necessary.
+    ///
+    /// See: datasheet section 4.1.1.6
+    async fn should_optimize_low_data_rate(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
+        Ok(
+            evaluate::should_optimize_for_low_data_rate(
+                symbol_period(
+                    symbol_rate(
+                        self.bandwidth().await?.hz(),
+                        self.spreading_factor().await? as u32
+                    )
+                )
+            )
+        )
     }
 
     /// Gets the spreading factor.

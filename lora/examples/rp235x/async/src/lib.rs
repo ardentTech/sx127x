@@ -40,8 +40,10 @@ pub fn debug_config() -> Sx127xLoraConfig {
     Sx127xLoraConfig::new(
         Bandwidth::Bw125kHz,
         CodingRate::Cr4_7,
+        LORA_FREQUENCY_HZ,
         HeaderMode::Explicit,
         SpreadingFactor::Sf11,
+        false,
         true
     ).unwrap()
 }

@@ -84,10 +84,9 @@ async fn main(_spawner: Spawner) {
     let mut config = Sx127xLoraConfig::default();
     config.bandwidth = Bandwidth::Bw250kHz;
     config.coding_rate = CodingRate::Cr4_5;
+    config.frequency = FHSS_CHANNELS[0];
     config.spreading_factor = SpreadingFactor::Sf10;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
-    sx127x.set_frequency(FHSS_CHANNELS[0]).await.unwrap();
-    sx127x.optimize_for_low_data_rate(true).await.unwrap();
     sx127x.config_tx(TxConfig::new(14, PowerRamp::default(), false).unwrap()).await.unwrap();
     sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();

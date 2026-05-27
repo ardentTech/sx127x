@@ -311,7 +311,7 @@ impl From<u8> for Lna {
 
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum ModemStatus {
+pub enum RxStatus {
     SignalDetected,
     SignalSynchronized,
     RxOnGoing,
@@ -319,14 +319,14 @@ pub enum ModemStatus {
     #[default]
     ModemClear,
 }
-impl From<u8> for ModemStatus {
+impl From<u8> for RxStatus {
     fn from(value: u8) -> Self {
         match value {
-            registers::MODEM_STAT_MODEM_STATUS_SIGNAL_DETECTED => ModemStatus::SignalDetected,
-            registers::MODEM_STAT_MODEM_STATUS_SIGNAL_SYNCHRONIZED => ModemStatus::SignalSynchronized,
-            registers::MODEM_STAT_MODEM_STATUS_RX_ONGOING_MASK => ModemStatus::RxOnGoing,
-            registers::MODEM_STAT_MODEM_STATUS_HEADER_INFO_VALID_MASK => ModemStatus::HeaderInfoValid,
-            _ => ModemStatus::ModemClear,
+            registers::MODEM_STAT_MODEM_STATUS_SIGNAL_DETECTED => RxStatus::SignalDetected,
+            registers::MODEM_STAT_MODEM_STATUS_SIGNAL_SYNCHRONIZED => RxStatus::SignalSynchronized,
+            registers::MODEM_STAT_MODEM_STATUS_RX_ONGOING_MASK => RxStatus::RxOnGoing,
+            registers::MODEM_STAT_MODEM_STATUS_HEADER_INFO_VALID_MASK => RxStatus::HeaderInfoValid,
+            _ => RxStatus::ModemClear,
         }
     }
 }
@@ -347,6 +347,11 @@ impl Default for Ocp {
         // TODO should these go in common since reg, masks and offsets are in there?
         Self { on: true, imax: 100 }
     }
+}
+
+// -------------------------------------------------------------------------------------------------
+pub struct RxConfig {
+    pub(crate) preamble_length: PreambleLength
 }
 
 // -------------------------------------------------------------------------------------------------

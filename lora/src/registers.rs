@@ -135,6 +135,7 @@ pub const DETECTION_THRESHOLD_SF7_TO_SF12: u8 = 0x0a;
 
 // -------------------------------------------------------------------------------------------------
 pub const SYNC_WORD: u8 = 0x39;
+pub const SYNC_WORD_DEFAULT: u8 = 0x12;
 pub const HIGH_BW_OPTIMIZE_2: u8 = 0x3a;
 
 // RegInvertIQ2 ------------------------------------------------------------------------------------

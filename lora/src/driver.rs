@@ -5,7 +5,7 @@ use embedded_hal_async::spi::SpiDevice;
 pub use sx127x_common::error::Sx127xError;
 use sx127x_common::{Hz, Modem, CHIP_VERSION, DEFAULT_FREQUENCY_HZ, FSTEP};
 use sx127x_common::bits::{get_bits, set_bits};
-use sx127x_common::error::Sx127xError::InvalidVersion;
+use sx127x_common::error::Sx127xError::{InvalidState, InvalidVersion};
 use sx127x_common::spi::Sx127xSpi;
 use crate::{calculate, check};
 use crate::registers::*;
@@ -26,6 +26,7 @@ pub struct Sx127xLoraConfig {
     pub frequency: Hz,
     pub header_mode: HeaderMode,
     pub spreading_factor: SpreadingFactor,
+    pub sync_word: u8,
     /// Whether or not to use the full automated (temperature-dependent) calibration.
     ///
     /// See: datasheet section 2.1.3.8
@@ -40,6 +41,7 @@ impl Sx127xLoraConfig {
         frequency: Hz,
         header_mode: HeaderMode,
         spreading_factor: SpreadingFactor,
+        sync_word: u8,
         use_auto_temp_calibration: bool,
         use_crc: bool,
     ) -> Result<Self, Sx127xError<()>> {
@@ -48,7 +50,7 @@ impl Sx127xLoraConfig {
             error!("SF6 requires implicit header mode");
             return Err(Sx127xError::InvalidInput);
         }
-        Ok(Self { bandwidth, coding_rate, frequency, header_mode, spreading_factor, use_auto_temp_calibration, use_crc })
+        Ok(Self { bandwidth, coding_rate, frequency, header_mode, spreading_factor, sync_word, use_auto_temp_calibration, use_crc })
     }
 }
 impl Default for Sx127xLoraConfig {
@@ -59,6 +61,7 @@ impl Default for Sx127xLoraConfig {
             frequency: DEFAULT_FREQUENCY_HZ,
             header_mode: HeaderMode::default(),
             spreading_factor: SpreadingFactor::default(),
+            sync_word: SYNC_WORD_DEFAULT,
             use_auto_temp_calibration: false,
             use_crc: false,
         }
@@ -218,6 +221,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.map_dio(DIO_MAPPING_2, <S as Dio5Signal>::VALUE, DIO_MAPPING_2_DIO5_MASK, DIO_MAPPING_2_DIO5_OFFSET).await
     }
 
+    /// Masks an interrupt
+    ///
+    /// See: datasheet section 4.1.2.4
+    pub async fn mask_interrupt<I: IRQ>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        let byte = self.read(IRQ_FLAGS_MASK).await?;
+        self.write(IRQ_FLAGS_MASK, byte | <I as IRQ>::MASK).await
+    }
+
     /// Gets N bytes from the FIFO buffer, depending upon the `half_duplex` feature flag.
     ///
     /// See: datasheet figure 10
@@ -288,6 +299,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
         self.write(FIFO_ADDR_PTR, FIFO_RX_BASE_ADDR_VALUE).await?;
         self.set_device_mode(mode).await
+    }
+
+    /// Gets the modem rx status.
+    ///
+    /// See: datasheet section 2.0.2
+    pub async fn rx_status(&mut self) -> Result<RxStatus, Sx127xError<SPI::Error>> {
+        Ok(RxStatus::try_from(self.read(MODEM_STAT).await? & MODEM_STAT_MODEM_STATUS_MASK).map_err(|_| InvalidState)?)
     }
 
     /// Sets the temperature monitor operation flag. This will switch to the FSK/OOK modem,
@@ -362,6 +380,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_device_mode(DeviceMode::TX).await
     }
 
+    /// Unmasks an interrupt.
+    ///
+    /// See: datasheet section 4.1.2.4
+    pub async fn unmask_interrupt<I: IRQ>(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        let byte = self.read(IRQ_FLAGS_MASK).await?;
+        self.write(IRQ_FLAGS_MASK, byte & !<I as IRQ>::MASK).await
+    }
+
     // PRIVATE -------------------------------------------------------------------------------------
 
     /// Gets the bandwidth.
@@ -385,6 +411,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_frequency(config.frequency).await?;
         self.set_header_mode(config.header_mode).await?;
         self.set_spreading_factor(config.spreading_factor).await?;
+        self.set_sync_word(config.sync_word).await?;
         self.set_auto_temp_calibration(config.use_auto_temp_calibration).await?;
         self.set_crc(config.use_crc).await?;
 
@@ -533,6 +560,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
         self.write(DETECT_OPTIMIZE, detect_optimize).await?;
         self.optimize_data_rate().await // TODO this reads sf again
+    }
+
+    /// Sets the LoRa sync word.
+    async fn set_sync_word(&mut self, sync_word: u8) -> Result<(), Sx127xError<SPI::Error>> {
+        self.write(SYNC_WORD, sync_word).await
     }
 
     /// Determines if low data rate optimization is necessary.

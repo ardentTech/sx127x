@@ -351,18 +351,20 @@ impl Default for Ocp {
 
 // -------------------------------------------------------------------------------------------------
 pub struct RxConfig {
+    pub(crate) invert_iq: bool,
     pub(crate) preamble_length: PreambleLength
 }
 
 // -------------------------------------------------------------------------------------------------
 pub struct TxConfig {
+    pub(crate) invert_iq: bool,
     pub(crate) power: u8,
     pub(crate) preamble_length: PreambleLength,
     pub(crate) ramp: PowerRamp,
     pub(crate) use_rfo: bool
 }
 impl TxConfig {
-    pub fn new(mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
+    pub fn new(invert_iq: bool, mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
         if use_rfo {
             if !validate::rfo_power(power) { return Err(InvalidInput) }
         } else {
@@ -370,7 +372,7 @@ impl TxConfig {
             power -= 2;
             if power > 17 { power -= 3 }
         }
-        Ok(Self { power, preamble_length, ramp, use_rfo })
+        Ok(Self { invert_iq, power, preamble_length, ramp, use_rfo })
     }
 }
 // TODO impl Default for TxConfig?

@@ -132,6 +132,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 3.4.2
     pub async fn config_tx(&mut self, config: TxConfig) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_tx_invert_iq(config.invert_iq).await?;
         if config.use_rfo {
             self.write(PA_CONFIG, 0x70 | config.power).await?;
             self.write(PA_DAC, 0x04).await?;
@@ -404,7 +405,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(CodingRate::from(get_bits(self.read(MODEM_CONFIG_1).await?, MODEM_CONFIG_1_CODING_RATE_MASK, MODEM_CONFIG_1_CODING_RATE_OFFSET)))
     }
 
-    /// Applies LoRa driver config.
+    /// Configures the LoRa driver.
     async fn config(&mut self, config: Sx127xLoraConfig) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_bandwidth(config.bandwidth).await?;
         self.set_coding_rate(config.coding_rate).await?;
@@ -565,6 +566,16 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Sets the LoRa sync word.
     async fn set_sync_word(&mut self, sync_word: u8) -> Result<(), Sx127xError<SPI::Error>> {
         self.write(SYNC_WORD, sync_word).await
+    }
+
+    /// Inverts the I and Q signals in the TX path.
+    async fn set_tx_invert_iq(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = self.read(INVERT_IQ).await?;
+        set_bits(&mut byte, on as u8, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET);
+        self.write(INVERT_IQ, byte).await?;
+
+        // optimize
+        self.write(INVERT_IQ_2, if on { INVERT_IQ_2_ON } else { INVERT_IQ_2_OFF }).await
     }
 
     /// Determines if low data rate optimization is necessary.

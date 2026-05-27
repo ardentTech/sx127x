@@ -68,19 +68,20 @@ impl Default for Sx127xLoraConfig {
     }
 }
 
-// rssi, snr, cr
+// -------------------------------------------------------------------------------------------------
 pub struct RxPayload {
     pub coding_rate: CodingRate,
+    /// Signal strength of received packet in dBm.
+    pub packet_strength: i16,
     pub payload: [u8; PAYLOAD_SIZE],
-    pub rssi: u8,
-    pub snr: i8,
 }
 impl RxPayload {
-    pub(crate) fn new(coding_rate: CodingRate, payload: [u8; PAYLOAD_SIZE], rssi: u8, snr: i8) -> Self {
-        Self { coding_rate, payload, rssi, snr }
+    pub(crate) fn new(coding_rate: CodingRate, packet_strength: i16, payload: [u8; PAYLOAD_SIZE]) -> Self {
+        Self { coding_rate, packet_strength, payload }
     }
 }
 
+// -------------------------------------------------------------------------------------------------
 /// Sx127x driver with LoRa modem.
 pub struct Sx127xLora<SPI> {
     pub spi: Sx127xSpi<SPI>
@@ -174,11 +175,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Gets the carrier frequency in Hz.
     ///
     /// See: datasheet section 4.1.4
-    pub async fn frequency(&mut self) -> Result<u32, Sx127xError<SPI::Error>> {
+    pub async fn frequency(&mut self) -> Result<Hz, Sx127xError<SPI::Error>> {
         let msb = self.read(FRF_MSB).await? as u32;
         let mid = self.read(FRF_MID).await? as u32;
         let lsb = self.read(FRF_LSB).await? as u32;
-        Ok((msb << 16) | (mid << 8) | lsb)
+        let frf = ((msb << 16) | (mid << 8) | lsb) as f32;
+        Ok((frf * FSTEP) as Hz)
     }
 
     /// Gets the current hop channel.
@@ -252,12 +254,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
         let irq_flags_bits = self.read(IRQ_FLAGS).await? >> 4;
         let rx_packet_termination_ok = if crc_on_payload {
-            #[cfg(feature = "defmt")]
-            debug!("CRC on payload");
             irq_flags_bits & 0xf == 0
         } else {
-            #[cfg(feature = "defmt")]
-            debug!("CRC not on payload");
             irq_flags_bits & 0xc == 0 && irq_flags_bits & 0x1 == 0
         };
         if !rx_packet_termination_ok {
@@ -267,13 +265,9 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
 
         let rx_fifo_addr = self.read(FIFO_RX_CURRENT_ADDR).await?;
-        #[cfg(feature = "defmt")]
-        debug!("rx_fifo_addr: {}", rx_fifo_addr);
         self.write(FIFO_ADDR_PTR, rx_fifo_addr).await?;
 
         let num_bytes = self.read(RX_NB_BYTES).await?;
-        #[cfg(feature = "defmt")]
-        debug!("num_bytes: {}", num_bytes);
         if num_bytes > PAYLOAD_SIZE as u8 {
             #[cfg(feature = "defmt")]
             error!("received {} bytes but buffer size is only {} bytes", num_bytes, PAYLOAD_SIZE);
@@ -286,10 +280,21 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
 
         let coding_rate = CodingRate::from(get_bits(self.read(MODEM_STAT).await?, MODEM_STAT_RX_CODING_RATE_MASK, MODEM_STAT_RX_CODING_RATE_OFFSET));
-        let rssi = self.read(PKT_RSSI_VALUE).await?;
-        let snr = self.read(PKT_SNR_VALUE).await? as i8 >> 2;
+        let snr = (self.read(PKT_SNR_VALUE).await? >> 2) as i16;
+        let frequency = self.frequency().await?;
+        let constant = if frequency >= HF_MIN_HZ { -157 } else { -164 };
+        #[cfg(feature = "defmt")]
+        debug!("frequency: {}, constant: {}", frequency, constant);
+        // see Table 13
+        let packet_strength = if snr >= 0 {
+            let rssi = self.read(RSSI_VALUE).await?;
+            constant + rssi as i16
+        } else {
+            let rssi = self.read(PKT_RSSI_VALUE).await?;
+            constant + rssi as i16 + snr
+        };
 
-        Ok(RxPayload::new(coding_rate, buffer, rssi, snr))
+        Ok(RxPayload::new(coding_rate, packet_strength, buffer))
     }
 
     /// Enables receive mode and searches for a preamble. If a `timeout` is specified, the device

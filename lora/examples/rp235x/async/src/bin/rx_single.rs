@@ -55,9 +55,8 @@ async fn main(spawner: Spawner) {
                     Ok(rxp) => {
                         let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
                         info!("rx payload: {:a}", rxp.payload[..len]);
+                        info!("rx packet strength: {} dBm", rxp.packet_strength);
                         info!("rx coding rate: {}", rxp.coding_rate);
-                        info!("rx rssi: {}", rxp.rssi);
-                        info!("rx snr: {}", rxp.snr);
                     }
                     Err(_) => error!("read_rx_data failed :(")
                 }

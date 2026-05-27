@@ -2,6 +2,7 @@ use sx127x_common::bits::get_bits;
 use sx127x_common::error::Sx127xError;
 use sx127x_common::error::Sx127xError::InvalidInput;
 use crate::registers;
+use crate::registers::PREAMBLE_LENGTH_DEFAULT;
 use crate::types::PowerRamp::*;
 use crate::validate;
 use crate::validate::{RX_TIMEOUT_SYMBOLS_MAX, RX_TIMEOUT_SYMBOLS_MIN};
@@ -351,11 +352,12 @@ impl Default for Ocp {
 // -------------------------------------------------------------------------------------------------
 pub struct TxConfig {
     pub(crate) power: u8,
+    pub(crate) preamble_length: PreambleLength,
     pub(crate) ramp: PowerRamp,
     pub(crate) use_rfo: bool
 }
 impl TxConfig {
-    pub fn new(mut power: u8, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
+    pub fn new(mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
         if use_rfo {
             if !validate::rfo_power(power) { return Err(InvalidInput) }
         } else {
@@ -363,9 +365,10 @@ impl TxConfig {
             power -= 2;
             if power > 17 { power -= 3 }
         }
-        Ok(Self { power, ramp, use_rfo })
+        Ok(Self { power, preamble_length, ramp, use_rfo })
     }
 }
+// TODO impl Default for TxConfig?
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PowerRamp {
@@ -429,6 +432,9 @@ impl PreambleLength {
         }
         Ok(PreambleLength(length))
     }
+}
+impl Default for PreambleLength {
+    fn default() -> Self { Self(PREAMBLE_LENGTH_DEFAULT) }
 }
 
 // -------------------------------------------------------------------------------------------------

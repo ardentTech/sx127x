@@ -87,6 +87,7 @@ pub const MODEM_CONFIG_2_SYMB_TIMEOUT_OFFSET: u8 = 0x0;
 pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 pub const PREAMBLE_MSB: u8 = 0x20;
 pub const PREAMBLE_LSB: u8 = 0x21;
+pub const PREAMBLE_LENGTH_DEFAULT: u16 = 0x8;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
 pub const MAX_PAYLOAD_LENGTH: u8 = 0x23;
 pub const HOP_PERIOD: u8 = 0x24;

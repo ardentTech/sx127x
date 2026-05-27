@@ -158,6 +158,19 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(calculate::data_rate(symbol_rate, spreading_factor, coding_rate))
     }
 
+    /// Calculates the frequency error indicatino (FEI) in Hz and ppm.
+    pub async fn fei(&mut self) -> Result<FEI, Sx127xError<SPI::Error>> {
+        let msb = self.read(FEI_MSB).await?;
+        let mid = self.read(FEI_MID).await?;
+        let lsb = self.read(FEI_LSB).await?;
+        let fei = (((msb as u32) << 16) | ((mid as u32) << 8) | (lsb as u32)) as i32;
+
+        let bandwidth = self.bandwidth().await?;
+        let frequency = self.frequency().await?;
+
+        Ok(FEI::new(bandwidth, fei, frequency))
+    }
+
     /// Gets the carrier frequency in Hz.
     ///
     /// See: datasheet section 4.1.4

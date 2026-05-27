@@ -1,7 +1,7 @@
 use sx127x_common::bits::get_bits;
 use sx127x_common::error::Sx127xError;
 use sx127x_common::error::Sx127xError::InvalidInput;
-use crate::registers;
+use crate::{calculate, registers};
 use crate::registers::PREAMBLE_LENGTH_DEFAULT;
 use crate::types::PowerRamp::*;
 use crate::validate;
@@ -431,7 +431,25 @@ pub enum PLLBandwidth {
 }
 
 // -------------------------------------------------------------------------------------------------
+/// Frequency Error Indication (FEI)
+pub struct FEI {
+    hz: f64,
+    ppm: f64
+}
+
+impl FEI {
+    pub fn new(bandwidth: Bandwidth, fei: i32, frequency: u32) -> Self {
+        let hz = calculate::fei_hz(fei, bandwidth.khz());
+        Self {
+            hz,
+            ppm: calculate::fei_ppm(hz, frequency)
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 pub struct PreambleLength(pub(crate) u16);
+
 impl PreambleLength {
     pub fn new(length: u16) -> Result<Self, Sx127xError<()>> {
         if !validate::preamble_length(length) {
@@ -440,6 +458,7 @@ impl PreambleLength {
         Ok(PreambleLength(length))
     }
 }
+
 impl Default for PreambleLength {
     fn default() -> Self { Self(PREAMBLE_LENGTH_DEFAULT) }
 }

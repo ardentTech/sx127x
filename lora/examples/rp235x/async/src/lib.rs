@@ -43,6 +43,7 @@ pub fn debug_config() -> Sx127xLoraConfig {
         LORA_FREQUENCY_HZ,
         HeaderMode::Explicit,
         SpreadingFactor::Sf11,
+        0x12,
         false,
         true
     ).unwrap()

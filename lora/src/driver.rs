@@ -359,6 +359,16 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(HOP_PERIOD, period).await
     }
 
+    /// Sets the gain and high frequency boost for the low noise receiver amplifier (LNA).
+    ///
+    /// See: datasheet page 110
+    pub async fn set_lna(&mut self, lna: LNA) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = self.read(LNA).await?;
+        set_bits(&mut byte, lna.boost_hf as u8, LNA_BOOST_HF_MASK, LNA_BOOST_HF_OFFSET);
+        set_bits(&mut byte, lna.gain as u8, LNA_GAIN_MASK, LNA_GAIN_OFFSET);
+        self.write(LNA, byte).await
+    }
+
     /// Starts the Channel Activity Detector (CAD).
     pub async fn start_cad(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::CAD).await

@@ -264,7 +264,7 @@ impl From<u8> for InvertIQ {
 
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum LnaGain {
+pub enum LNAGain {
     #[default]
     G1 = 0x1,
     G2 = 0x2,
@@ -273,38 +273,38 @@ pub enum LnaGain {
     G5 = 0x5,
     G6 = 0x6
 }
-impl From<u8> for LnaGain {
+impl From<u8> for LNAGain {
     fn from(value: u8) -> Self {
         match value {
-            0x2 => LnaGain::G2,
-            0x3 => LnaGain::G3,
-            0x4 => LnaGain::G4,
-            0x5 => LnaGain::G5,
-            0x6 => LnaGain::G6,
-            _ => LnaGain::G1,
+            0x2 => LNAGain::G2,
+            0x3 => LNAGain::G3,
+            0x4 => LNAGain::G4,
+            0x5 => LNAGain::G5,
+            0x6 => LNAGain::G6,
+            _ => LNAGain::G1,
         }
     }
 }
 
-pub struct Lna {
+pub struct LNA {
     pub boost_hf: bool,
-    pub gain: LnaGain,
+    pub gain: LNAGain,
 }
-impl Lna {
-    pub fn new(boost_hf: bool, gain: LnaGain) -> Self {
+impl LNA {
+    pub fn new(boost_hf: bool, gain: LNAGain) -> Self {
         Self { boost_hf, gain }
     }
 }
-impl Default for Lna {
+impl Default for LNA {
     fn default() -> Self {
-        Self { boost_hf: false, gain: LnaGain::default() }
+        Self { boost_hf: false, gain: LNAGain::default() }
     }
 }
-impl From<u8> for Lna {
+impl From<u8> for LNA {
     fn from(value: u8) -> Self {
         Self {
             boost_hf: get_bits(value, registers::LNA_BOOST_HF_MASK, registers::LNA_BOOST_HF_OFFSET) == 1,
-            gain: LnaGain::from(get_bits(value, registers::LNA_GAIN_MASK, registers::LNA_GAIN_OFFSET))
+            gain: LNAGain::from(get_bits(value, registers::LNA_GAIN_MASK, registers::LNA_GAIN_OFFSET))
         }
     }
 }

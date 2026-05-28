@@ -247,6 +247,19 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS_MASK, byte | <I as IRQ>::MASK).await
     }
 
+    /// Gets the received signal strength indicator (RSSI) in dBm.
+    ///
+    /// See: datasheet section 3.5.5
+    pub async fn rssi(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
+        let frequency = self.frequency().await?;
+        Ok((if frequency >= HF_MIN_HZ { -157 } else { -164 }) + self.read(RSSI_VALUE).await? as i16)
+    }
+
+    /// Gets the received signal strength indicator (RSSI) wideband measurement.
+    pub async fn rssi_wideband(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
+        self.read(RSSI_WIDEBAND).await
+    }
+
     /// Gets N bytes from the FIFO buffer, depending upon the `half_duplex` feature flag.
     ///
     /// See: datasheet figure 10
@@ -286,6 +299,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let frequency = self.frequency().await?;
         let constant = if frequency >= HF_MIN_HZ { -157 } else { -164 };
 
+        // TODO use self.rssi()?
         let mut rssi = (if snr >= 0 { self.read(RSSI_VALUE).await? } else { self.read(PKT_RSSI_VALUE).await? }) as i16;
         rssi += if snr >= 0 { constant } else { constant + snr };
 

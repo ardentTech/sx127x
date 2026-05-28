@@ -72,12 +72,14 @@ impl Default for Sx127xLoraConfig {
 pub struct RxPayload {
     pub coding_rate: CodingRate,
     /// Signal strength of received packet in dBm.
-    pub packet_strength: i16,
+    //pub packet_strength: i16,
     pub payload: [u8; PAYLOAD_SIZE],
+    pub rssi: i16,
+    pub snr: i16,
 }
 impl RxPayload {
-    pub(crate) fn new(coding_rate: CodingRate, packet_strength: i16, payload: [u8; PAYLOAD_SIZE]) -> Self {
-        Self { coding_rate, packet_strength, payload }
+    pub(crate) fn new(coding_rate: CodingRate, payload: [u8; PAYLOAD_SIZE], rssi: i16, snr: i16) -> Self {
+        Self { coding_rate, payload, rssi, snr }
     }
 }
 
@@ -283,18 +285,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let snr = (self.read(PKT_SNR_VALUE).await? >> 2) as i16;
         let frequency = self.frequency().await?;
         let constant = if frequency >= HF_MIN_HZ { -157 } else { -164 };
-        #[cfg(feature = "defmt")]
-        debug!("frequency: {}, constant: {}", frequency, constant);
-        // see Table 13
-        let packet_strength = if snr >= 0 {
-            let rssi = self.read(RSSI_VALUE).await?;
-            constant + rssi as i16
-        } else {
-            let rssi = self.read(PKT_RSSI_VALUE).await?;
-            constant + rssi as i16 + snr
-        };
 
-        Ok(RxPayload::new(coding_rate, packet_strength, buffer))
+        let mut rssi = (if snr >= 0 { self.read(RSSI_VALUE).await? } else { self.read(PKT_RSSI_VALUE).await? }) as i16;
+        rssi += if snr >= 0 { constant } else { constant + snr };
+
+        Ok(RxPayload::new(coding_rate, buffer, rssi, snr))
     }
 
     /// Enables receive mode and searches for a preamble. If a `timeout` is specified, the device

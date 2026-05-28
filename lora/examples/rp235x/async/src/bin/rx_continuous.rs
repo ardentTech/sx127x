@@ -50,8 +50,7 @@ async fn main(spawner: Spawner) {
             Ok(rxp) => {
                 let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
                 info!("rx payload: {:a}", rxp.payload[..len]);
-                info!("rx packet strength: {} dBm", rxp.packet_strength);
-                info!("rx coding rate: {}", rxp.coding_rate);
+                info!("rx coding rate: {}, rssi: {} dBm, snr: {} dB", rxp.coding_rate, rxp.rssi, rxp.snr);
                 PULSE_LED.signal(Led::Green);
             }
             Err(_) => error!("read_rx_data failed :(")

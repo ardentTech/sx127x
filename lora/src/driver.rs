@@ -61,11 +61,15 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(OP_MODE, byte).await
     }
 
-    /// Sets the power amplifier (PA) to PA_HP on the PA_BOOST pin.
-    ///
-    /// See: datasheet section 3.4.2
+    /// Configures RX settings.
+    pub async fn config_rx(&mut self, config: RxConfig) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_invert_iq(config.invert_iq, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET).await?;
+        self.set_preamble_length(config.preamble_length).await
+    }
+
+    /// Configures TX settings.
     pub async fn config_tx(&mut self, config: TxConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_tx_invert_iq(config.invert_iq).await?;
+        self.set_invert_iq(config.invert_iq, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET).await?;
         if config.use_rfo {
             self.write(PA_CONFIG, 0x70 | config.power).await?;
             self.write(PA_DAC, 0x04).await?;
@@ -559,10 +563,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(SYNC_WORD, sync_word).await
     }
 
-    /// Inverts the I and Q signals in the TX path.
-    async fn set_tx_invert_iq(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+    /// Sets the invert I and Q signals in the Rx or TX path.
+    async fn set_invert_iq(&mut self, on: bool, mask: u8, offset: u8) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = self.read(INVERT_IQ).await?;
-        set_bits(&mut byte, on as u8, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET);
+        set_bits(&mut byte, on as u8, mask, offset);
         self.write(INVERT_IQ, byte).await?;
 
         // optimize

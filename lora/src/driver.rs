@@ -78,7 +78,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             self.write(PA_DAC, if config.power > 17 { 0x07 } else { 0x04 }).await?;
         }
         self.set_power_ramp(config.ramp).await?;
-        self.set_preamble_length(config.preamble_length).await
+        self.set_preamble_length(config.preamble_length).await?;
+        self.set_ocp(config.ocp).await
     }
 
     /// Clears an interrupt.
@@ -524,6 +525,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let mut byte = self.read(MODEM_CONFIG_1).await?;
         set_bits(&mut byte, mode as u8, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_OFFSET);
         self.write(MODEM_CONFIG_1, byte).await
+    }
+
+    async fn set_ocp(&mut self, ocp: OCP) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = ocp.trim();
+        set_bits(&mut byte, ocp.on as u8, OCP_ON_MASK, OCP_ON_OFFSET);
+        self.write(OCP, byte).await
     }
 
     /// Sets the rise/fall time of the power amplifier (PA).

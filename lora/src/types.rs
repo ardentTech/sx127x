@@ -338,24 +338,6 @@ impl From<u8> for RxStatus {
 }
 
 // -------------------------------------------------------------------------------------------------
-#[derive(Clone, Copy, Debug)]
-pub struct Ocp {
-    pub on: bool,
-    pub imax: u8,
-}
-impl Ocp {
-    pub fn new(on: bool, imax: u8) -> Self {
-        Self { on, imax }
-    }
-}
-impl Default for Ocp {
-    fn default() -> Self {
-        // TODO should these go in common since reg, masks and offsets are in there?
-        Self { on: true, imax: 100 }
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
 pub struct RxConfig {
     pub(crate) invert_iq: bool,
     pub(crate) preamble_length: PreambleLength
@@ -424,27 +406,27 @@ impl Default for Sx127xLoraConfig {
 }
 
 // -------------------------------------------------------------------------------------------------
-pub struct TxConfig {
-    pub(crate) invert_iq: bool,
-    pub(crate) power: u8,
-    pub(crate) preamble_length: PreambleLength,
-    pub(crate) ramp: PowerRamp,
-    pub(crate) use_rfo: bool
+#[derive(Clone, Copy, Debug)]
+pub struct OCP {
+    pub on: bool,
+    pub imax: u8,
 }
-impl TxConfig {
-    pub fn new(invert_iq: bool, mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
-        if use_rfo {
-            if !validate::rfo_power(power) { return Err(InvalidInput) }
-        } else {
-            if !validate::boost_power(power) { return Err(InvalidInput) }
-            power -= 2;
-            if power > 17 { power -= 3 }
-        }
-        Ok(Self { invert_iq, power, preamble_length, ramp, use_rfo })
+impl OCP {
+    pub fn new(on: bool, imax: u8) -> Self {
+        Self { on, imax }
+    }
+
+    pub fn trim(&self) -> u8 {
+        calculate::ocp_trim(self.imax)
     }
 }
-// TODO impl Default for TxConfig?
+impl Default for OCP {
+    fn default() -> Self {
+        Self { on: true, imax: 100 }
+    }
+}
 
+// -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PowerRamp {
     Ms3_4 = 0x0,
@@ -488,15 +470,27 @@ impl From<u8> for PowerRamp {
     }
 }
 
-// -------------------------------------------------------------------------------------------------
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum PLLBandwidth {
-    Bw75kHz = 0x0,
-    Bw150kHz = 0x1,
-    Bw225kHz = 0x2,
-    #[default]
-    Bw300kHz = 0x3,
+pub struct TxConfig {
+    pub(crate) invert_iq: bool,
+    pub(crate) ocp: OCP,
+    pub(crate) power: u8,
+    pub(crate) preamble_length: PreambleLength,
+    pub(crate) ramp: PowerRamp,
+    pub(crate) use_rfo: bool
 }
+impl TxConfig {
+    pub fn new(invert_iq: bool, ocp: OCP, mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
+        if use_rfo {
+            if !validate::rfo_power(power) { return Err(InvalidInput) }
+        } else {
+            if !validate::boost_power(power) { return Err(InvalidInput) }
+            power -= 2;
+            if power > 17 { power -= 3 }
+        }
+        Ok(Self { invert_iq, ocp, power, preamble_length, ramp, use_rfo })
+    }
+}
+// TODO impl Default for TxConfig?
 
 // -------------------------------------------------------------------------------------------------
 /// Frequency Error Indication (FEI)

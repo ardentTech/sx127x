@@ -16,6 +16,18 @@ pub(crate) fn fei_ppm(hz: f64, frf: u32) -> f64 {
     hz * (10u32.pow(6) / frf) as f64
 }
 
+pub(crate) fn ocp_trim(imax: u8) -> u8 {
+    if imax == 0 {
+        0
+    } else if imax <= 120 {
+        (imax - 45) / 5
+    } else if imax <= 240 {
+        (((imax as u16) + 30) / 10) as u8
+    } else {
+        27
+    }
+}
+
 pub(crate) fn rssi_constant(frequency: Hz) -> i16 {
     if frequency >= HF_MIN_HZ { RSSI_HF_CONSTANT } else { RSSI_LF_CONSTANT }
 }
@@ -35,22 +47,6 @@ pub(crate) fn last_packet_rssi_dbm(
     } else {
         rssi_dbm(frequency, last_packet_rssi) + last_packet_snr
     }
-}
-
-pub(crate) fn ocp_trim(imax: u8) -> u8 {
-    if imax < 130 {
-        (imax - 45) / 5
-    } else {
-        (imax + 30) / 10
-    }
-}
-
-pub(crate) fn ocp_imax(trim: u8) -> u8 {
-    if trim <= 15 {
-        45 + (5 * trim)
-    } else if 15 < trim && trim <= 27 {
-        ((10u16 * trim as u16) - 30u16) as u8
-    } else { 240 }
 }
 
 /// Calculates the symbol period (Ts) in milliseconds.
@@ -115,45 +111,51 @@ mod tests {
     }
 
     #[test]
-    fn ocp_trim_high_ok() {
-        let res = ocp_trim(140);
-        assert_eq!(res, 17);
+    fn ocp_trim_imax_0() {
+        let res = ocp_trim(0);
+        assert_eq!(res, 0);
     }
 
     #[test]
-    fn ocp_imax_0_ok() {
-        let res = ocp_imax(0);
-        assert_eq!(res, 45);
+    fn ocp_trim_imax_45() {
+        let res = ocp_trim(45);
+        assert_eq!(res, 0);
     }
 
     #[test]
-    fn ocp_imax_15_ok() {
-        let res = ocp_imax(15);
-        assert_eq!(res, 120);
+    fn ocp_trim_imax_50() {
+        let res = ocp_trim(50);
+        assert_eq!(res, 1);
     }
 
     #[test]
-    fn ocp_imax_16_ok() {
-        let res = ocp_imax(16);
-        assert_eq!(res, 130);
+    fn ocp_trim_imax_120() {
+        let res = ocp_trim(120);
+        assert_eq!(res, 15);
     }
 
     #[test]
-    fn ocp_imax_27_ok() {
-        let res = ocp_imax(27);
-        assert_eq!(res, 240);
+    fn ocp_trim_imax_125() {
+        let res = ocp_trim(125);
+        assert_eq!(res, 15);
     }
 
     #[test]
-    fn ocp_imax_28_ok() {
-        let res = ocp_imax(28);
-        assert_eq!(res, 240);
-    }
-
-    #[test]
-    fn ocp_trim_low_ok() {
-        let res = ocp_trim(129);
+    fn ocp_trim_imax_130() {
+        let res = ocp_trim(130);
         assert_eq!(res, 16);
+    }
+
+    #[test]
+    fn ocp_trim_imax_230() {
+        let res = ocp_trim(230);
+        assert_eq!(res, 26);
+    }
+
+    #[test]
+    fn ocp_trim_imax_240() {
+        let res = ocp_trim(240);
+        assert_eq!(res, 27);
     }
 
     #[test]

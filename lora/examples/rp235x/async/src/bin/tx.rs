@@ -18,7 +18,7 @@ use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 use common::{debug_config, led_task, Led, PULSE_LED};
 use sx127xlora::driver::{Sx127xLora};
-use sx127xlora::types::{CadDetected, CadDone, PowerRamp, PreambleLength, SpreadingFactor, TxConfig, TxDone};
+use sx127xlora::types::{CadDetected, CadDone, PowerRamp, PreambleLength, SpreadingFactor, TxConfig, TxDone, OCP};
 
 const TX_DELAY_MS: u64 = 3_000;
 
@@ -42,7 +42,7 @@ async fn main(spawner: Spawner) {
     let mut dio3 = Input::new(p.PIN_18, Pull::Down);
 
     let mut sx127x = Sx127xLora::new(spi_dev, debug_config()).await.unwrap();
-    sx127x.config_tx(TxConfig::new(false, 20, PreambleLength::default(), PowerRamp::default(), false).unwrap()).await.unwrap();
+    sx127x.config_tx(TxConfig::new(false, OCP::default(), 20, PreambleLength::default(), PowerRamp::default(), false).unwrap()).await.unwrap();
 
     sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.map_dio3::<CadDone>().await.unwrap();

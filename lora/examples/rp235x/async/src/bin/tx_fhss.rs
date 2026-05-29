@@ -17,8 +17,8 @@ use static_cell::StaticCell;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 use common::{FHSS_CHANNELS, FHSS_CHANNELS_SIZE};
-use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{Bandwidth, CodingRate, FhssChangeChannel, PowerRamp, SpreadingFactor, TxConfig, TxDone};
+use sx127xlora::driver::Sx127xLora;
+use sx127xlora::types::{Bandwidth, CodingRate, FhssChangeChannel, PowerRamp, PreambleLength, SpreadingFactor, Sx127xLoraConfig, TxConfig, TxDone, OCP};
 
 type Spi1Bus = Mutex<CriticalSectionRawMutex, Spi<'static, SPI1, Async>>;
 type Lora = Mutex<CriticalSectionRawMutex, RefCell<Sx127xLora<SpiDevice<'static, CriticalSectionRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>>>;
@@ -87,7 +87,7 @@ async fn main(_spawner: Spawner) {
     config.frequency = FHSS_CHANNELS[0];
     config.spreading_factor = SpreadingFactor::Sf10;
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
-    sx127x.config_tx(TxConfig::new(14, PowerRamp::default(), false).unwrap()).await.unwrap();
+    sx127x.config_tx(TxConfig::new(false, OCP::default(), 14, PreambleLength::default(), PowerRamp::default(), false).unwrap()).await.unwrap();
     sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
     sx127x.set_hop_period(12).await.unwrap();

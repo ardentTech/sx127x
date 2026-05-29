@@ -51,7 +51,7 @@ async fn main(spawner: Spawner) {
         match select(dio0.wait_for_high(), dio1.wait_for_high()).await {
             Either::First(_) => {
                 sx127x.clear_interrupt::<RxDone>().await.unwrap();
-                match sx127x.rx_payload().await {
+                match sx127x.rx_packet().await {
                     Ok(rxp) => {
                         let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
                         info!("rx payload: {:a}", rxp.payload[..len]);

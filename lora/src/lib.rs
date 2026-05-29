@@ -6,3 +6,4 @@ pub mod registers;
 pub mod calculate;
 mod validate;
 mod check;
+mod constants;

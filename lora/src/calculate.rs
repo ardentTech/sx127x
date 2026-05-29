@@ -1,3 +1,9 @@
+use sx127x_common::Hz;
+use crate::constants::HF_MIN_HZ;
+
+const RSSI_LF_CONSTANT: i16 = -164; // TODO see p87 note2
+const RSSI_HF_CONSTANT: i16 = -157; // TODO see p87 note2
+
 pub(crate) fn data_rate(symbol_rate: f32, spreading_factor: f32, coding_rate: f32) -> u16 {
     (symbol_rate * spreading_factor * coding_rate) as u16
 }
@@ -8,6 +14,27 @@ pub(crate) fn fei_hz(fei: i32, bandwidth_khz: f32) -> f64 {
 
 pub(crate) fn fei_ppm(hz: f64, frf: u32) -> f64 {
     hz * (10u32.pow(6) / frf) as f64
+}
+
+pub(crate) fn rssi_constant(frequency: Hz) -> i16 {
+    if frequency >= HF_MIN_HZ { RSSI_HF_CONSTANT } else { RSSI_LF_CONSTANT }
+}
+
+pub(crate) fn rssi_dbm(frequency: Hz, rssi: i16) -> i16 {
+    rssi_constant(frequency) + rssi
+}
+
+pub(crate) fn last_packet_rssi_dbm(
+    frequency: Hz,
+    last_packet_rssi: i16,
+    last_packet_snr: i16,
+    rssi: i16,
+) -> i16 {
+    if last_packet_snr >= 0 {
+        rssi_dbm(frequency, rssi)
+    } else {
+        rssi_dbm(frequency, last_packet_rssi) + last_packet_snr
+    }
 }
 
 pub(crate) fn ocp_trim(imax: u8) -> u8 {
@@ -78,6 +105,16 @@ mod tests {
     }
 
     #[test]
+    fn last_packet_rssi_dbm_snr_neg() {
+        assert_eq!(last_packet_rssi_dbm(HF_MIN_HZ - 1, 46, -2, 42), -120);
+    }
+
+    #[test]
+    fn last_packet_rssi_dbm_snr_pos() {
+        assert_eq!(last_packet_rssi_dbm(HF_MIN_HZ, 46, 10, 42), -115);
+    }
+
+    #[test]
     fn ocp_trim_high_ok() {
         let res = ocp_trim(140);
         assert_eq!(res, 17);
@@ -117,6 +154,26 @@ mod tests {
     fn ocp_trim_low_ok() {
         let res = ocp_trim(129);
         assert_eq!(res, 16);
+    }
+
+    #[test]
+    fn rssi_constant_hf() {
+        assert_eq!(rssi_constant(HF_MIN_HZ), -157);
+    }
+
+    #[test]
+    fn rssi_constant_lf() {
+        assert_eq!(rssi_constant(HF_MIN_HZ - 1), -164);
+    }
+
+    #[test]
+    fn rssi_dbm_hf() {
+        assert_eq!(rssi_dbm(HF_MIN_HZ, 42), -115);
+    }
+
+    #[test]
+    fn rssi_dbm_lf() {
+        assert_eq!(rssi_dbm(HF_MIN_HZ - 1, 42), -122);
     }
 
     #[test]

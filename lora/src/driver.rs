@@ -1,5 +1,5 @@
 #[cfg(feature = "defmt")]
-use defmt::{debug, error};
+use defmt::error;
 
 use embedded_hal_async::spi::SpiDevice;
 pub use sx127x_common::error::Sx127xError;
@@ -8,16 +8,10 @@ use sx127x_common::bits::{get_bits, set_bits};
 use sx127x_common::error::Sx127xError::{InvalidState, InvalidVersion};
 use sx127x_common::spi::Sx127xSpi;
 use crate::{calculate, check};
+use crate::constants::{HF_MIN_HZ, PAYLOAD_SIZE};
 use crate::registers::*;
 use crate::types::*;
 use crate::validate;
-
-#[cfg(feature = "half_duplex")]
-const PAYLOAD_SIZE: usize = 256;
-#[cfg(not(feature = "half_duplex"))]
-const PAYLOAD_SIZE: usize = 128;
-
-const HF_MIN_HZ: u32 = 779_000_000;
 
 // TODO move this to types
 pub struct Sx127xLoraConfig {
@@ -69,15 +63,13 @@ impl Default for Sx127xLoraConfig {
 }
 
 // -------------------------------------------------------------------------------------------------
-pub struct RxPayload {
+pub struct RxPacket {
     pub coding_rate: CodingRate,
-    /// Signal strength of received packet in dBm.
-    //pub packet_strength: i16,
     pub payload: [u8; PAYLOAD_SIZE],
     pub rssi: i16,
     pub snr: i16,
 }
-impl RxPayload {
+impl RxPacket {
     pub(crate) fn new(coding_rate: CodingRate, payload: [u8; PAYLOAD_SIZE], rssi: i16, snr: i16) -> Self {
         Self { coding_rate, payload, rssi, snr }
     }
@@ -247,12 +239,28 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS_MASK, byte | <I as IRQ>::MASK).await
     }
 
+    /// Gets the received signal strength indicator (RSSI) in dBm of the last packet received.
+    ///
+    /// See: datasheet section 3.5.5
+    pub async fn last_packet_rssi(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
+        // TODO p87 note3
+        Ok(calculate::last_packet_rssi_dbm(
+            self.frequency().await?,
+            self.read(PKT_RSSI_VALUE).await? as i16,
+            self.last_packet_snr().await?,
+            self.read(RSSI_VALUE).await? as i16
+        ))
+    }
+
+    pub async fn last_packet_snr(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
+        Ok((self.read(PKT_SNR_VALUE).await? >> 2) as i16)
+    }
+
     /// Gets the received signal strength indicator (RSSI) in dBm.
     ///
     /// See: datasheet section 3.5.5
     pub async fn rssi(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
-        let frequency = self.frequency().await?;
-        Ok((if frequency >= HF_MIN_HZ { -157 } else { -164 }) + self.read(RSSI_VALUE).await? as i16)
+        Ok(calculate::rssi_dbm(self.frequency().await?, self.read(RSSI_VALUE).await? as i16))
     }
 
     /// Gets the received signal strength indicator (RSSI) wideband measurement.
@@ -263,7 +271,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Gets N bytes from the FIFO buffer, depending upon the `half_duplex` feature flag.
     ///
     /// See: datasheet figure 10
-    pub async fn rx_payload(&mut self) -> Result<RxPayload, Sx127xError<SPI::Error>> {
+    pub async fn rx_packet(&mut self) -> Result<RxPacket, Sx127xError<SPI::Error>> {
         let reg_hop_channel = self.read(HOP_CHANNEL).await?;
         let crc_on_payload = get_bits(reg_hop_channel, HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, HOP_CHANNEL_CRC_ON_PAYLOAD_OFFSET) == 1;
 
@@ -295,15 +303,9 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
 
         let coding_rate = CodingRate::from(get_bits(self.read(MODEM_STAT).await?, MODEM_STAT_RX_CODING_RATE_MASK, MODEM_STAT_RX_CODING_RATE_OFFSET));
-        let snr = (self.read(PKT_SNR_VALUE).await? >> 2) as i16;
-        let frequency = self.frequency().await?;
-        let constant = if frequency >= HF_MIN_HZ { -157 } else { -164 };
-
-        // TODO use self.rssi()?
-        let mut rssi = (if snr >= 0 { self.read(RSSI_VALUE).await? } else { self.read(PKT_RSSI_VALUE).await? }) as i16;
-        rssi += if snr >= 0 { constant } else { constant + snr };
-
-        Ok(RxPayload::new(coding_rate, buffer, rssi, snr))
+        let snr = self.last_packet_snr().await?;
+        let rssi = self.last_packet_rssi().await?;
+        Ok(RxPacket::new(coding_rate, buffer, rssi, snr))
     }
 
     /// Enables receive mode and searches for a preamble. If a `timeout` is specified, the device

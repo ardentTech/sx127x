@@ -31,6 +31,13 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "echo"
+path = "src/bin/echo.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "rx_continuous"
 path = "src/bin/rx_continuous.rs"
 test = false

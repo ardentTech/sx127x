@@ -4,7 +4,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::{info};
+use defmt::{info, warn};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
@@ -52,18 +52,16 @@ async fn main(spawner: Spawner) {
     loop {
         sx127x.start_cad().await.unwrap();
         dio3.wait_for_high().await;
-        info!("CadDone triggered");
 
         if !sx127x.interrupt_flag::<CadDetected>().await.unwrap() {
             sx127x.tx("howdy".as_bytes()).await.unwrap();
 
             dio0.wait_for_high().await;
-            info!("TxDone triggered");
             sx127x.clear_interrupt::<TxDone>().await.unwrap();
 
             PULSE_LED.signal(Led::Green);
         } else {
-            info!("CadDetected triggered so TX not attempted");
+            warn!("CadDetected triggered so TX not attempted");
             sx127x.clear_interrupt::<CadDetected>().await.unwrap();
         }
         sx127x.clear_interrupt::<CadDone>().await.unwrap();

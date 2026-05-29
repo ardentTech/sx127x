@@ -323,7 +323,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn set_lna(&mut self, lna: LNA) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = self.read(LNA).await?;
         set_bits(&mut byte, lna.boost_hf as u8, LNA_BOOST_HF_MASK, LNA_BOOST_HF_OFFSET);
-        set_bits(&mut byte, lna.gain as u8, LNA_GAIN_MASK, LNA_GAIN_OFFSET);
+        if lna.gain == LNAGain::Auto {
+            self.set_agc_auto(true).await?;
+        } else {
+            self.set_agc_auto(false).await?;
+            set_bits(&mut byte, lna.gain as u8, LNA_GAIN_MASK, LNA_GAIN_OFFSET);
+        }
         self.write(LNA, byte).await
     }
 
@@ -464,6 +469,15 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Performs a SPI read.
     async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
         self.spi.read(addr).await
+    }
+
+    /// Sets the automatic gain control (AGC) on/off. Turning this on will drive the LNA gain by the AGC loop as opposed to the configured LnaGain.
+    ///
+    /// See: datasheet table 24
+    async fn set_agc_auto(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_3).await?;
+        set_bits(&mut byte, on as u8, MODEM_CONFIG_3_AGC_AUTO_ON_MASK, MODEM_CONFIG_3_AGC_AUTO_ON_OFFSET);
+        self.write(MODEM_CONFIG_3, byte).await
     }
 
     /// Sets the bandwidth and then optimizes the sensitivity of the modem.

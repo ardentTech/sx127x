@@ -97,6 +97,8 @@ pub const FIFO_RX_BYTE_ADDR: u8 = 0x25;
 pub const MODEM_CONFIG_3: u8 = 0x26;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK: u8 = 0x08;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET: u8 = 0x3;
+pub const MODEM_CONFIG_3_AGC_AUTO_ON_MASK: u8 = 0x4;
+pub const MODEM_CONFIG_3_AGC_AUTO_ON_OFFSET: u8 = 0x2;
 
 // -------------------------------------------------------------------------------------------------
 pub const FEI_MSB: u8 = 0x28;

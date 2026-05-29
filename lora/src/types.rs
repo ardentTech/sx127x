@@ -270,6 +270,7 @@ impl From<u8> for InvertIQ {
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum LNAGain {
+    Auto,
     #[default]
     G1 = 0x1,
     G2 = 0x2,

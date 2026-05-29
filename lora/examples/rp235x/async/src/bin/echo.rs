@@ -37,6 +37,7 @@ async fn main(spawner: Spawner) {
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
 
     let mut sx127x = Sx127xLora::new(spi_dev, debug_config()).await.unwrap();
+
     spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
 
     loop {
@@ -46,12 +47,16 @@ async fn main(spawner: Spawner) {
         sx127x.clear_interrupt::<RxDone>().await.unwrap();
         match sx127x.rx_packet().await {
             Ok(rxp) => {
+                let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
+                info!("rx payload: {:a}", rxp.payload[..len]);
+                info!("rx coding rate: {}, rssi: {} dBm, snr: {} dB", rxp.coding_rate, rxp.rssi, rxp.snr);
                 PULSE_LED.signal(Led::Green);
+
                 sx127x.map_dio0::<TxDone>().await.unwrap();
                 sx127x.tx(&rxp.payload).await.unwrap();
                 dio0.wait_for_high().await;
-                PULSE_LED.signal(Led::Red);
                 sx127x.clear_interrupt::<TxDone>().await.unwrap();
+                PULSE_LED.signal(Led::Red);
             }
             Err(_) => error!("read_rx_data failed :(")
         }

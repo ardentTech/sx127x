@@ -13,68 +13,6 @@ use crate::registers::*;
 use crate::types::*;
 use crate::validate;
 
-// TODO move this to types
-pub struct Sx127xLoraConfig {
-    pub bandwidth: Bandwidth,
-    pub coding_rate: CodingRate,
-    pub frequency: Hz,
-    pub header_mode: HeaderMode,
-    pub spreading_factor: SpreadingFactor,
-    pub sync_word: u8,
-    /// Whether or not to use the full automated (temperature-dependent) calibration.
-    ///
-    /// See: datasheet section 2.1.3.8
-    pub use_auto_temp_calibration: bool,
-    /// Whether or not to use the cyclic redundancy check (CRC) generation and verification on rx/tx payloads.
-    pub use_crc: bool,
-}
-impl Sx127xLoraConfig {
-    pub fn new(
-        bandwidth: Bandwidth,
-        coding_rate: CodingRate,
-        frequency: Hz,
-        header_mode: HeaderMode,
-        spreading_factor: SpreadingFactor,
-        sync_word: u8,
-        use_auto_temp_calibration: bool,
-        use_crc: bool,
-    ) -> Result<Self, Sx127xError<()>> {
-        if !validate::header_mode_sf(header_mode, spreading_factor) {
-            #[cfg(feature = "defmt")]
-            error!("SF6 requires implicit header mode");
-            return Err(Sx127xError::InvalidInput);
-        }
-        Ok(Self { bandwidth, coding_rate, frequency, header_mode, spreading_factor, sync_word, use_auto_temp_calibration, use_crc })
-    }
-}
-impl Default for Sx127xLoraConfig {
-    fn default() -> Self {
-        Self {
-            bandwidth: Bandwidth::default(),
-            coding_rate: CodingRate::default(),
-            frequency: DEFAULT_FREQUENCY_HZ,
-            header_mode: HeaderMode::default(),
-            spreading_factor: SpreadingFactor::default(),
-            sync_word: SYNC_WORD_DEFAULT,
-            use_auto_temp_calibration: false,
-            use_crc: false,
-        }
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
-pub struct RxPacket {
-    pub coding_rate: CodingRate,
-    pub payload: [u8; PAYLOAD_SIZE],
-    pub rssi: i16,
-    pub snr: i16,
-}
-impl RxPacket {
-    pub(crate) fn new(coding_rate: CodingRate, payload: [u8; PAYLOAD_SIZE], rssi: i16, snr: i16) -> Self {
-        Self { coding_rate, payload, rssi, snr }
-    }
-}
-
 // -------------------------------------------------------------------------------------------------
 /// Sx127x driver with LoRa modem.
 pub struct Sx127xLora<SPI> {

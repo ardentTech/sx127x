@@ -428,6 +428,20 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS_MASK, byte & !<I as IRQ>::MASK).await
     }
 
+    /// Gets the number of valid headers received since last transition into Rx mode. Counter is reset in Sleep mode.
+    pub async fn valid_rx_headers(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
+        let msb = self.read(RX_HEADER_CNT_VALUE_MSB).await? as u16;
+        let lsb = self.read(RX_HEADER_CNT_VALUE_LSB).await? as u16;
+        Ok((msb << 8) | lsb)
+    }
+
+    /// Gets the number of valid packets received since last transition into Rx mode. Counter is reset in Sleep mode.
+    pub async fn valid_rx_packets(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
+        let msb = self.read(RX_PACKET_CNT_VALUE_MSB).await? as u16;
+        let lsb = self.read(RX_PACKET_CNT_VALUE_LSB).await? as u16;
+        Ok((msb << 8) | lsb)
+    }
+
     // PRIVATE -------------------------------------------------------------------------------------
 
     /// Gets the bandwidth.

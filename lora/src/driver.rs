@@ -1,6 +1,5 @@
-use defmt::debug;
 #[cfg(feature = "defmt")]
-use defmt::error;
+use defmt::{debug, error};
 
 use embedded_hal_async::spi::SpiDevice;
 pub use sx127x_common::error::Sx127xError;
@@ -65,6 +64,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Configures RX settings.
     pub async fn config_rx(&mut self, config: RxConfig) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_invert_iq(config.invert_iq, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET).await?;
+        self.set_optimize_rx_response(config.optimize_response).await?;
         self.set_preamble_length(config.preamble_length).await
     }
 
@@ -531,6 +531,49 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let mut byte = ocp.trim();
         set_bits(&mut byte, ocp.on as u8, OCP_ON_MASK, OCP_ON_OFFSET);
         self.write(OCP, byte).await
+    }
+
+    /// Optimize receiver response for spurious reception of LoRa signal.
+    ///
+    /// See: errata section 2.3
+    async fn set_optimize_rx_response(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        // TODO handle off
+        if on {
+            match self.bandwidth().await? {
+                Bandwidth::Bw7_8kHz => self.optimize_rx_response(false, 0x48, 0x00, Some(7_810)).await,
+                Bandwidth::Bw10_4kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(10_420)).await,
+                Bandwidth::Bw15_6kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(15_620)).await,
+                Bandwidth::Bw20_8kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(20_830)).await,
+                Bandwidth::Bw31_25kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(31_250)).await,
+                Bandwidth::Bw41_7kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(41_670)).await,
+                Bandwidth::Bw62_5kHz => self.optimize_rx_response(false, 0x40, 0x00, None).await,
+                Bandwidth::Bw125kHz => self.optimize_rx_response(false, 0x40, 0x00, None).await,
+                Bandwidth::Bw250kHz => self.optimize_rx_response(false, 0x40, 0x00, None).await,
+                Bandwidth::Bw500kHz => self.set_automatic_if(true).await,
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    async fn optimize_rx_response(&mut self, automatic_if: bool, if_freq_2: u8, if_freq_1: u8, frequency_offset: Option<i32>) -> Result<(), Sx127xError<SPI::Error>> {
+        self.set_device_mode(DeviceMode::STDBY).await?;
+
+        if let Some(offset) = frequency_offset {
+            let mut frequency = self.frequency().await?;
+            frequency = (frequency as i32 + offset) as u32;
+            self.set_frequency(frequency).await?;
+        }
+
+        self.set_automatic_if(automatic_if).await?;
+        self.write(IF_FREQ_2, if_freq_2).await?; // 0x2f
+        self.write(IF_FREQ_1, if_freq_1).await // 0x30
+    }
+
+    async fn set_automatic_if(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = self.read(MODEM_CONFIG_3).await?;
+        set_bits(&mut byte, on as u8, DETECT_OPTIMIZE_AUTOMATIC_IF_ON_MASK, DETECT_OPTIMIZE_AUTOMATIC_IF_ON_OFFSET);
+        self.write(MODEM_CONFIG_3, byte).await
     }
 
     /// Sets the rise/fall time of the power amplifier (PA).

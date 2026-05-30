@@ -340,16 +340,19 @@ impl From<u8> for RxStatus {
 // -------------------------------------------------------------------------------------------------
 pub struct RxConfig {
     pub(crate) invert_iq: bool,
+    pub(crate) optimize_response: bool,
     pub(crate) preamble_length: PreambleLength
 }
+
 impl RxConfig {
-    pub fn new(invert_iq: bool, preamble_length: PreambleLength) -> Self {
-        Self { invert_iq, preamble_length }
+    pub fn new(invert_iq: bool, optimize_response: bool, preamble_length: PreambleLength) -> Self {
+        Self { invert_iq, optimize_response, preamble_length }
     }
 }
+
 impl Default for RxConfig {
     fn default() -> Self {
-        Self { invert_iq: false, preamble_length: PreambleLength::default() }
+        Self { invert_iq: false, optimize_response: false, preamble_length: PreambleLength::default() }
     }
 }
 

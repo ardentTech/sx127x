@@ -342,6 +342,16 @@ pub struct RxConfig {
     pub(crate) invert_iq: bool,
     pub(crate) preamble_length: PreambleLength
 }
+impl RxConfig {
+    pub fn new(invert_iq: bool, preamble_length: PreambleLength) -> Self {
+        Self { invert_iq, preamble_length }
+    }
+}
+impl Default for RxConfig {
+    fn default() -> Self {
+        Self { invert_iq: false, preamble_length: PreambleLength::default() }
+    }
+}
 
 // -------------------------------------------------------------------------------------------------
 pub struct RxPacket {

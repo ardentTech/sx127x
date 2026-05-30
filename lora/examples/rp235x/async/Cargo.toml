@@ -45,6 +45,13 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "rx_fhss"
+path = "src/bin/rx_fhss.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "rx_single"
 path = "src/bin/rx_single.rs"
 test = false

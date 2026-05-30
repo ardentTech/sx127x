@@ -1,3 +1,4 @@
+use defmt::debug;
 #[cfg(feature = "defmt")]
 use defmt::error;
 
@@ -461,7 +462,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// See: datasheet section 4.1.1.6
     async fn optimize_data_rate(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         let on = self.should_optimize_low_data_rate().await?;
-
         let mut byte = self.read(MODEM_CONFIG_3).await?;
         set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET);
         self.write(MODEM_CONFIG_3, byte).await
@@ -596,7 +596,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Determines if low data rate optimization is necessary.
     ///
-    /// See: datasheet section 4.1.1.6
+    /// See: datasheet page 31 section Low Data Rate Optimization
     async fn should_optimize_low_data_rate(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
         Ok(
             check::should_optimize_for_low_data_rate(

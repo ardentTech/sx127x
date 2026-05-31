@@ -13,7 +13,6 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, SPI1};
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex};
 use embassy_sync::mutex::Mutex;
-use embassy_time::Timer;
 use static_cell::StaticCell;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
@@ -43,14 +42,26 @@ unsafe fn SWI_IRQ_0() {
 }
 
 #[embassy_executor::task]
+async fn tx_task(lora: &'static Lora, mut pin: Input<'static>) {
+    loop {
+        pin.wait_for_rising_edge().await;
+        {
+            let lora_unlocked = lora.lock().await;
+            lora_unlocked.borrow_mut().tx(&"pingpong".as_bytes()).await.unwrap();
+        }
+    }
+}
+
+#[embassy_executor::task]
 async fn tx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;
             sx127x_unlocked.borrow_mut().clear_interrupt::<TxDone>().await.unwrap();
+            sx127x_unlocked.borrow_mut().set_frequency(FHSS_CHANNELS[0]).await.unwrap();
         }
-        info!("TxDone triggered!");
+        info!("TxDone triggered!\n");
         PULSE_LED.signal(Led::Green);
     }
 }
@@ -97,17 +108,11 @@ async fn main(_spawner: Spawner) {
     interrupt::SWI_IRQ_1.set_priority(Priority::P2);
     let spawner = EXECUTOR_HIGH.start(interrupt::SWI_IRQ_1);
     spawner.spawn(unwrap!(tx_done_task(lora, Input::new(p.PIN_15, Pull::Down))));
+    spawner.spawn(unwrap!(tx_task(lora, Input::new(p.PIN_14, Pull::Down))));
 
     // Medium-priority executor: SWI_IRQ_0, priority level 3
     interrupt::SWI_IRQ_0.set_priority(Priority::P3);
     let spawner = EXECUTOR_MED.start(interrupt::SWI_IRQ_0);
     spawner.spawn(unwrap!(change_channel_task(lora, Input::new(p.PIN_16, Pull::Down))));
     spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
-
-    // kick-start the whole process
-    {
-        Timer::after_secs(1).await;
-        let lora_unlocked = lora.lock().await;
-        lora_unlocked.borrow_mut().tx(&"pingpong".as_bytes()).await.unwrap();
-    }
 }

@@ -138,24 +138,6 @@ impl From<u8> for HeaderMode {
     }
 }
 
-// -------------------------------------------------------------------------------------------------
-// TODO not sure this struct is needed
-#[derive(Clone, Copy, Debug)]
-pub struct HopChannel {
-    pll_timeout: bool,
-    crc_on_payload: bool,
-    fhss_present_channel: u8
-}
-impl From<u8> for HopChannel {
-    fn from(value: u8) -> Self {
-        Self {
-            pll_timeout: get_bits(value, registers::HOP_CHANNEL_PLL_TIMEOUT_MASK, registers::HOP_CHANNEL_PLL_TIMEOUT_OFFSET) == 1,
-            crc_on_payload: get_bits(value, registers::HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, registers::HOP_CHANNEL_CRC_ON_PAYLOAD_OFFSET) == 1,
-            fhss_present_channel: get_bits(value, registers::HOP_CHANNEL_FHSS_PRESENT_CHANNEL_MASK, registers::HOP_CHANNEL_FHSS_PRESENT_CHANNEL_OFFSET)
-        }
-    }
-}
-
 // IRQs --------------------------------------------------------------------------------------------
 pub trait IRQ: private::Sealed {
     const MASK: u8;
@@ -338,6 +320,7 @@ impl From<u8> for RxStatus {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct RxConfig {
     pub(crate) invert_iq: bool,
     pub(crate) optimize_response: bool,
@@ -347,12 +330,6 @@ pub struct RxConfig {
 impl RxConfig {
     pub fn new(invert_iq: bool, optimize_response: bool, preamble_length: PreambleLength) -> Self {
         Self { invert_iq, optimize_response, preamble_length }
-    }
-}
-
-impl Default for RxConfig {
-    fn default() -> Self {
-        Self { invert_iq: false, optimize_response: false, preamble_length: PreambleLength::default() }
     }
 }
 
@@ -508,8 +485,8 @@ impl TxConfig {
 // -------------------------------------------------------------------------------------------------
 /// Frequency Error Indication (FEI)
 pub struct FEI {
-    hz: f64,
-    ppm: f64
+    pub hz: f64,
+    pub ppm: f64
 }
 
 impl FEI {
@@ -523,12 +500,13 @@ impl FEI {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PreambleLength(pub(crate) u16);
 
 impl PreambleLength {
     pub fn new(length: u16) -> Result<Self, Sx127xError<()>> {
         if !validate::preamble_length(length) {
-            return Err(Sx127xError::InvalidInput)
+            return Err(InvalidInput)
         }
         Ok(PreambleLength(length))
     }

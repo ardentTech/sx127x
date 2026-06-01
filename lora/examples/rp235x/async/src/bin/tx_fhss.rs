@@ -1,4 +1,5 @@
-//! TODO include all math
+//! This example shows how to transmit a packet using frequency hopping spread spectrum (FHSS). An external push button connected to GPIO 14 is used to
+//! initiate transmission.
 #![no_std]
 #![no_main]
 
@@ -100,7 +101,7 @@ async fn main(_spawner: Spawner) {
     sx127x.config_tx(TxConfig::new(false, OCP::default(), 20, PreambleLength::default(), PowerRamp::default(), false).unwrap()).await.unwrap();
     sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
-    sx127x.set_hop_period(16).await.unwrap();
+    sx127x.set_hop_period(24).await.unwrap();
 
     let lora = LORA.init(Mutex::new(RefCell::new(sx127x)));
 

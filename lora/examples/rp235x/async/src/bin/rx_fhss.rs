@@ -1,4 +1,4 @@
-//! TODO include all math
+//! This example shows how to receive a packet using frequency hopping spread spectrum (FHSS).
 #![no_std]
 #![no_main]
 

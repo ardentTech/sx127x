@@ -1,7 +1,13 @@
+#[cfg(feature = "defmt")]
+use defmt::error;
+
 use sx127x_common::bits::get_bits;
 use sx127x_common::error::Sx127xError;
 use sx127x_common::error::Sx127xError::InvalidInput;
-use crate::registers;
+use sx127x_common::{Hz, DEFAULT_FREQUENCY_HZ};
+use crate::{calculate, registers};
+use crate::constants::PAYLOAD_SIZE;
+use crate::registers::{PREAMBLE_LENGTH_DEFAULT, SYNC_WORD_DEFAULT};
 use crate::types::PowerRamp::*;
 use crate::validate;
 use crate::validate::{RX_TIMEOUT_SYMBOLS_MAX, RX_TIMEOUT_SYMBOLS_MIN};
@@ -58,6 +64,7 @@ impl Bandwidth {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum CodingRate {
     #[default]
@@ -127,24 +134,6 @@ impl From<u8> for HeaderMode {
         match value {
             0x0 => HeaderMode::Explicit,
             _ => HeaderMode::Implicit,
-        }
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
-// TODO not sure this struct is needed
-#[derive(Clone, Copy, Debug)]
-pub struct HopChannel {
-    pll_timeout: bool,
-    crc_on_payload: bool,
-    fhss_present_channel: u8
-}
-impl From<u8> for HopChannel {
-    fn from(value: u8) -> Self {
-        Self {
-            pll_timeout: get_bits(value, registers::HOP_CHANNEL_PLL_TIMEOUT_MASK, registers::HOP_CHANNEL_PLL_TIMEOUT_OFFSET) == 1,
-            crc_on_payload: get_bits(value, registers::HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, registers::HOP_CHANNEL_CRC_ON_PAYLOAD_OFFSET) == 1,
-            fhss_present_channel: get_bits(value, registers::HOP_CHANNEL_FHSS_PRESENT_CHANNEL_MASK, registers::HOP_CHANNEL_FHSS_PRESENT_CHANNEL_OFFSET)
         }
     }
 }
@@ -262,7 +251,8 @@ impl From<u8> for InvertIQ {
 
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum LnaGain {
+pub enum LNAGain {
+    Auto,
     #[default]
     G1 = 0x1,
     G2 = 0x2,
@@ -271,45 +261,45 @@ pub enum LnaGain {
     G5 = 0x5,
     G6 = 0x6
 }
-impl From<u8> for LnaGain {
+impl From<u8> for LNAGain {
     fn from(value: u8) -> Self {
         match value {
-            0x2 => LnaGain::G2,
-            0x3 => LnaGain::G3,
-            0x4 => LnaGain::G4,
-            0x5 => LnaGain::G5,
-            0x6 => LnaGain::G6,
-            _ => LnaGain::G1,
+            0x2 => LNAGain::G2,
+            0x3 => LNAGain::G3,
+            0x4 => LNAGain::G4,
+            0x5 => LNAGain::G5,
+            0x6 => LNAGain::G6,
+            _ => LNAGain::G1,
         }
     }
 }
 
-pub struct Lna {
+pub struct LNA {
     pub boost_hf: bool,
-    pub gain: LnaGain,
+    pub gain: LNAGain,
 }
-impl Lna {
-    pub fn new(boost_hf: bool, gain: LnaGain) -> Self {
+impl LNA {
+    pub fn new(boost_hf: bool, gain: LNAGain) -> Self {
         Self { boost_hf, gain }
     }
 }
-impl Default for Lna {
+impl Default for LNA {
     fn default() -> Self {
-        Self { boost_hf: false, gain: LnaGain::default() }
+        Self { boost_hf: false, gain: LNAGain::default() }
     }
 }
-impl From<u8> for Lna {
+impl From<u8> for LNA {
     fn from(value: u8) -> Self {
         Self {
             boost_hf: get_bits(value, registers::LNA_BOOST_HF_MASK, registers::LNA_BOOST_HF_OFFSET) == 1,
-            gain: LnaGain::from(get_bits(value, registers::LNA_GAIN_MASK, registers::LNA_GAIN_OFFSET))
+            gain: LNAGain::from(get_bits(value, registers::LNA_GAIN_MASK, registers::LNA_GAIN_OFFSET))
         }
     }
 }
 
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum ModemStatus {
+pub enum RxStatus {
     SignalDetected,
     SignalSynchronized,
     RxOnGoing,
@@ -317,55 +307,116 @@ pub enum ModemStatus {
     #[default]
     ModemClear,
 }
-impl From<u8> for ModemStatus {
+impl From<u8> for RxStatus {
     fn from(value: u8) -> Self {
         match value {
-            registers::MODEM_STAT_MODEM_STATUS_SIGNAL_DETECTED => ModemStatus::SignalDetected,
-            registers::MODEM_STAT_MODEM_STATUS_SIGNAL_SYNCHRONIZED => ModemStatus::SignalSynchronized,
-            registers::MODEM_STAT_MODEM_STATUS_RX_ONGOING_MASK => ModemStatus::RxOnGoing,
-            registers::MODEM_STAT_MODEM_STATUS_HEADER_INFO_VALID_MASK => ModemStatus::HeaderInfoValid,
-            _ => ModemStatus::ModemClear,
+            registers::MODEM_STAT_MODEM_STATUS_SIGNAL_DETECTED => RxStatus::SignalDetected,
+            registers::MODEM_STAT_MODEM_STATUS_SIGNAL_SYNCHRONIZED => RxStatus::SignalSynchronized,
+            registers::MODEM_STAT_MODEM_STATUS_RX_ONGOING_MASK => RxStatus::RxOnGoing,
+            registers::MODEM_STAT_MODEM_STATUS_HEADER_INFO_VALID_MASK => RxStatus::HeaderInfoValid,
+            _ => RxStatus::ModemClear,
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct RxConfig {
+    pub(crate) invert_iq: bool,
+    pub(crate) optimize_response: bool,
+    pub(crate) preamble_length: PreambleLength
+}
+
+impl RxConfig {
+    pub fn new(invert_iq: bool, optimize_response: bool, preamble_length: PreambleLength) -> Self {
+        Self { invert_iq, optimize_response, preamble_length }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+pub struct RxPacket {
+    pub coding_rate: CodingRate,
+    pub payload: [u8; PAYLOAD_SIZE],
+    pub rssi: i16,
+    pub snr: i16,
+}
+impl RxPacket {
+    pub(crate) fn new(coding_rate: CodingRate, payload: [u8; PAYLOAD_SIZE], rssi: i16, snr: i16) -> Self {
+        Self { coding_rate, payload, rssi, snr }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+pub struct Sx127xLoraConfig {
+    pub bandwidth: Bandwidth,
+    pub coding_rate: CodingRate,
+    pub frequency: Hz,
+    pub header_mode: HeaderMode,
+    pub spreading_factor: SpreadingFactor,
+    pub sync_word: u8,
+    /// Whether or not to use the full automated (temperature-dependent) calibration.
+    ///
+    /// See: datasheet section 2.1.3.8
+    pub use_auto_temp_calibration: bool,
+    /// Whether or not to use the cyclic redundancy check (CRC) generation and verification on rx/tx payloads.
+    pub use_crc: bool,
+}
+impl Sx127xLoraConfig {
+    pub fn new(
+        bandwidth: Bandwidth,
+        coding_rate: CodingRate,
+        frequency: Hz,
+        header_mode: HeaderMode,
+        spreading_factor: SpreadingFactor,
+        sync_word: u8,
+        use_auto_temp_calibration: bool,
+        use_crc: bool,
+    ) -> Result<Self, Sx127xError<()>> {
+        if !validate::header_mode_sf(header_mode, spreading_factor) {
+            #[cfg(feature = "defmt")]
+            error!("SF6 requires implicit header mode");
+            return Err(Sx127xError::InvalidInput);
+        }
+        Ok(Self { bandwidth, coding_rate, frequency, header_mode, spreading_factor, sync_word, use_auto_temp_calibration, use_crc })
+    }
+}
+impl Default for Sx127xLoraConfig {
+    fn default() -> Self {
+        Self {
+            bandwidth: Bandwidth::default(),
+            coding_rate: CodingRate::default(),
+            frequency: DEFAULT_FREQUENCY_HZ,
+            header_mode: HeaderMode::default(),
+            spreading_factor: SpreadingFactor::default(),
+            sync_word: SYNC_WORD_DEFAULT,
+            use_auto_temp_calibration: false,
+            use_crc: false,
         }
     }
 }
 
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug)]
-pub struct Ocp {
+pub struct OCP {
     pub on: bool,
     pub imax: u8,
 }
-impl Ocp {
+impl OCP {
     pub fn new(on: bool, imax: u8) -> Self {
         Self { on, imax }
     }
+
+    pub fn trim(&self) -> u8 {
+        calculate::ocp_trim(self.imax)
+    }
 }
-impl Default for Ocp {
+impl Default for OCP {
     fn default() -> Self {
-        // TODO should these go in common since reg, masks and offsets are in there?
         Self { on: true, imax: 100 }
     }
 }
 
 // -------------------------------------------------------------------------------------------------
-pub struct TxConfig {
-    pub(crate) power: u8,
-    pub(crate) ramp: PowerRamp,
-    pub(crate) use_rfo: bool
-}
-impl TxConfig {
-    pub fn new(mut power: u8, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
-        if use_rfo {
-            if !validate::rfo_power(power) { return Err(InvalidInput) }
-        } else {
-            if !validate::boost_power(power) { return Err(InvalidInput) }
-            power -= 2;
-            if power > 17 { power -= 3 }
-        }
-        Ok(Self { power, ramp, use_rfo })
-    }
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PowerRamp {
     Ms3_4 = 0x0,
@@ -409,25 +460,60 @@ impl From<u8> for PowerRamp {
     }
 }
 
+pub struct TxConfig {
+    pub(crate) invert_iq: bool,
+    pub(crate) ocp: OCP,
+    pub(crate) power: u8,
+    pub(crate) preamble_length: PreambleLength,
+    pub(crate) ramp: PowerRamp,
+    pub(crate) use_rfo: bool
+}
+impl TxConfig {
+    pub fn new(invert_iq: bool, ocp: OCP, mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
+        if use_rfo {
+            if !validate::rfo_power(power) { return Err(InvalidInput) }
+        } else {
+            if !validate::boost_power(power) { return Err(InvalidInput) }
+            power -= 2;
+            if power > 17 { power -= 3 }
+        }
+        Ok(Self { invert_iq, ocp, power, preamble_length, ramp, use_rfo })
+    }
+}
+// TODO impl Default for TxConfig?
+
 // -------------------------------------------------------------------------------------------------
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum PLLBandwidth {
-    Bw75kHz = 0x0,
-    Bw150kHz = 0x1,
-    Bw225kHz = 0x2,
-    #[default]
-    Bw300kHz = 0x3,
+/// Frequency Error Indication (FEI)
+pub struct FEI {
+    pub hz: f64,
+    pub ppm: f64
+}
+
+impl FEI {
+    pub fn new(bandwidth: Bandwidth, fei: i32, frequency: u32) -> Self {
+        let hz = calculate::fei_hz(fei, bandwidth.khz());
+        Self {
+            hz,
+            ppm: calculate::fei_ppm(hz, frequency)
+        }
+    }
 }
 
 // -------------------------------------------------------------------------------------------------
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PreambleLength(pub(crate) u16);
+
 impl PreambleLength {
     pub fn new(length: u16) -> Result<Self, Sx127xError<()>> {
         if !validate::preamble_length(length) {
-            return Err(Sx127xError::InvalidInput)
+            return Err(InvalidInput)
         }
         Ok(PreambleLength(length))
     }
+}
+
+impl Default for PreambleLength {
+    fn default() -> Self { Self(PREAMBLE_LENGTH_DEFAULT) }
 }
 
 // -------------------------------------------------------------------------------------------------

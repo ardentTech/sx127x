@@ -1,3 +1,9 @@
+use sx127x_common::Hz;
+use crate::constants::HF_MIN_HZ;
+
+const RSSI_LF_CONSTANT: i16 = -164; // TODO see p87 note2
+const RSSI_HF_CONSTANT: i16 = -157; // TODO see p87 note2
+
 pub(crate) fn data_rate(symbol_rate: f32, spreading_factor: f32, coding_rate: f32) -> u16 {
     (symbol_rate * spreading_factor * coding_rate) as u16
 }
@@ -11,19 +17,36 @@ pub(crate) fn fei_ppm(hz: f64, frf: u32) -> f64 {
 }
 
 pub(crate) fn ocp_trim(imax: u8) -> u8 {
-    if imax < 130 {
+    if imax == 0 {
+        0
+    } else if imax <= 120 {
         (imax - 45) / 5
+    } else if imax <= 240 {
+        (((imax as u16) + 30) / 10) as u8
     } else {
-        (imax + 30) / 10
+        27
     }
 }
 
-pub(crate) fn ocp_imax(trim: u8) -> u8 {
-    if trim <= 15 {
-        45 + (5 * trim)
-    } else if 15 < trim && trim <= 27 {
-        ((10u16 * trim as u16) - 30u16) as u8
-    } else { 240 }
+pub(crate) fn rssi_constant(frequency: Hz) -> i16 {
+    if frequency >= HF_MIN_HZ { RSSI_HF_CONSTANT } else { RSSI_LF_CONSTANT }
+}
+
+pub(crate) fn rssi_dbm(frequency: Hz, rssi: i16) -> i16 {
+    rssi_constant(frequency) + rssi
+}
+
+pub(crate) fn last_packet_rssi_dbm(
+    frequency: Hz,
+    last_packet_rssi: i16,
+    last_packet_snr: i16,
+    rssi: i16,
+) -> i16 {
+    if last_packet_snr >= 0 {
+        rssi_dbm(frequency, rssi)
+    } else {
+        rssi_dbm(frequency, last_packet_rssi) + last_packet_snr
+    }
 }
 
 /// Calculates the symbol period (Ts) in milliseconds.
@@ -78,45 +101,81 @@ mod tests {
     }
 
     #[test]
-    fn ocp_trim_high_ok() {
-        let res = ocp_trim(140);
-        assert_eq!(res, 17);
+    fn last_packet_rssi_dbm_snr_neg() {
+        assert_eq!(last_packet_rssi_dbm(HF_MIN_HZ - 1, 46, -2, 42), -120);
     }
 
     #[test]
-    fn ocp_imax_0_ok() {
-        let res = ocp_imax(0);
-        assert_eq!(res, 45);
+    fn last_packet_rssi_dbm_snr_pos() {
+        assert_eq!(last_packet_rssi_dbm(HF_MIN_HZ, 46, 10, 42), -115);
     }
 
     #[test]
-    fn ocp_imax_15_ok() {
-        let res = ocp_imax(15);
-        assert_eq!(res, 120);
+    fn ocp_trim_imax_0() {
+        let res = ocp_trim(0);
+        assert_eq!(res, 0);
     }
 
     #[test]
-    fn ocp_imax_16_ok() {
-        let res = ocp_imax(16);
-        assert_eq!(res, 130);
+    fn ocp_trim_imax_45() {
+        let res = ocp_trim(45);
+        assert_eq!(res, 0);
     }
 
     #[test]
-    fn ocp_imax_27_ok() {
-        let res = ocp_imax(27);
-        assert_eq!(res, 240);
+    fn ocp_trim_imax_50() {
+        let res = ocp_trim(50);
+        assert_eq!(res, 1);
     }
 
     #[test]
-    fn ocp_imax_28_ok() {
-        let res = ocp_imax(28);
-        assert_eq!(res, 240);
+    fn ocp_trim_imax_120() {
+        let res = ocp_trim(120);
+        assert_eq!(res, 15);
     }
 
     #[test]
-    fn ocp_trim_low_ok() {
-        let res = ocp_trim(129);
+    fn ocp_trim_imax_125() {
+        let res = ocp_trim(125);
+        assert_eq!(res, 15);
+    }
+
+    #[test]
+    fn ocp_trim_imax_130() {
+        let res = ocp_trim(130);
         assert_eq!(res, 16);
+    }
+
+    #[test]
+    fn ocp_trim_imax_230() {
+        let res = ocp_trim(230);
+        assert_eq!(res, 26);
+    }
+
+    #[test]
+    fn ocp_trim_imax_240() {
+        let res = ocp_trim(240);
+        assert_eq!(res, 27);
+    }
+
+    #[test]
+    fn rssi_constant_hf() {
+        assert_eq!(rssi_constant(HF_MIN_HZ), -157);
+    }
+
+    #[test]
+    fn rssi_constant_lf() {
+        assert_eq!(rssi_constant(HF_MIN_HZ - 1), -164);
+    }
+
+    #[test]
+    fn rssi_dbm_hf() {
+        assert_eq!(rssi_dbm(HF_MIN_HZ, 42), -115);
+    }
+
+    #[test]
+    fn rssi_dbm_lf() {
+        assert_eq!(rssi_dbm(HF_MIN_HZ - 1, 42), -122);
     }
 
     #[test]

@@ -14,8 +14,10 @@ embassy-futures = { workspace = true }
 embassy-rp = { workspace = true, features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp235xa", "binary-info"] }
 embassy-sync = { workspace = true }
 embassy-time = { workspace = true, features = ["defmt", "defmt-timestamp-uptime"] }
-sx127xlora = { path = "../../../", features = ["defmt"] }
 panic-probe = { workspace = true, features = ["print-defmt"] }
+static_cell = "2.1.1"
+sx127xlora = { path = "../../../", features = ["defmt"] }
+critical-section = "1.2.0"
 
 [profile.release]
 # Enable generation of debug symbols even on release builds
@@ -29,8 +31,22 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "echo"
+path = "src/bin/echo.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "rx_continuous"
 path = "src/bin/rx_continuous.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
+name = "rx_fhss"
+path = "src/bin/rx_fhss.rs"
 test = false
 doctest = false
 bench = false

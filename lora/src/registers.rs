@@ -12,7 +12,12 @@ pub const OP_MODE_MODE_OFFSET: u8 = 0x0;
 // -------------------------------------------------------------------------------------------------
 pub const FIFO_ADDR_PTR: u8 = 0x0d;
 pub const FIFO_TX_BASE_ADDR: u8 = 0x0e;
+#[cfg(feature = "half_duplex")]
+pub const FIFO_TX_BASE_ADDR_VALUE: u8 = 0x0;
+#[cfg(not(feature = "half_duplex"))]
+pub const FIFO_TX_BASE_ADDR_VALUE: u8 = 0x80;
 pub const FIFO_RX_BASE_ADDR: u8 = 0x0f;
+pub const FIFO_RX_BASE_ADDR_VALUE: u8 = 0x0;
 pub const FIFO_RX_CURRENT_ADDR: u8 = 0x10;
 pub const IRQ_FLAGS_MASK: u8 = 0x11;
 
@@ -82,6 +87,7 @@ pub const MODEM_CONFIG_2_SYMB_TIMEOUT_OFFSET: u8 = 0x0;
 pub const SYMB_TIMEOUT_LSB: u8 = 0x1f;
 pub const PREAMBLE_MSB: u8 = 0x20;
 pub const PREAMBLE_LSB: u8 = 0x21;
+pub const PREAMBLE_LENGTH_DEFAULT: u16 = 0x8;
 pub const PAYLOAD_LENGTH: u8 = 0x22;
 pub const MAX_PAYLOAD_LENGTH: u8 = 0x23;
 pub const HOP_PERIOD: u8 = 0x24;
@@ -91,6 +97,8 @@ pub const FIFO_RX_BYTE_ADDR: u8 = 0x25;
 pub const MODEM_CONFIG_3: u8 = 0x26;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK: u8 = 0x08;
 pub const MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET: u8 = 0x3;
+pub const MODEM_CONFIG_3_AGC_AUTO_ON_MASK: u8 = 0x4;
+pub const MODEM_CONFIG_3_AGC_AUTO_ON_OFFSET: u8 = 0x2;
 
 // -------------------------------------------------------------------------------------------------
 pub const FEI_MSB: u8 = 0x28;
@@ -129,6 +137,7 @@ pub const DETECTION_THRESHOLD_SF7_TO_SF12: u8 = 0x0a;
 
 // -------------------------------------------------------------------------------------------------
 pub const SYNC_WORD: u8 = 0x39;
+pub const SYNC_WORD_DEFAULT: u8 = 0x12;
 pub const HIGH_BW_OPTIMIZE_2: u8 = 0x3a;
 
 // RegInvertIQ2 ------------------------------------------------------------------------------------

@@ -1,6 +1,3 @@
-#[cfg(feature = "defmt")]
-use defmt::Format;
-
 use sx127x_common::bits::get_bits;
 use sx127x_common::error::Sx127xError;
 use crate::registers::*;

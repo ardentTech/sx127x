@@ -1,7 +1,10 @@
 #![no_std]
 
 use embassy_rp::gpio::Output;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::signal::Signal;
 use embassy_time::Timer;
+use sx127xlora::types::{Bandwidth, CodingRate, HeaderMode, SpreadingFactor, Sx127xLoraConfig};
 
 pub const FHSS_CHANNELS_SIZE: usize = 13;
 pub const FHSS_CHANNELS: [u32; FHSS_CHANNELS_SIZE] = [
@@ -29,5 +32,57 @@ pub async fn heartbeat(mut pin: Output<'static>) {
         Timer::after_millis(250).await;
         pin.set_low();
         Timer::after_millis(750).await;
+    }
+}
+
+pub fn debug_config() -> Sx127xLoraConfig {
+    Sx127xLoraConfig::new(
+        Bandwidth::Bw125kHz,
+        CodingRate::Cr4_7,
+        LORA_FREQUENCY_HZ,
+        HeaderMode::Explicit,
+        SpreadingFactor::Sf11,
+        0x12,
+        false,
+        true
+    ).unwrap()
+}
+
+/// BW = 125_000 kHz
+/// SF = 11
+/// Rs = 61.03515625 (Rs = BW / 2 ** SF)
+/// Ts = 16.384ms (Ts = (1 / Rs) * 1000)
+/// HoppingPeriod: 400ms (FCC dwell time)
+/// FreqHoppingPeriod = 24.4 (400ms / 16.384)
+pub fn fhss_config() -> Sx127xLoraConfig {
+    Sx127xLoraConfig::new(
+        Bandwidth::Bw125kHz,
+        CodingRate::Cr4_7,
+        LORA_FREQUENCY_HZ,
+        HeaderMode::Explicit,
+        SpreadingFactor::Sf11,
+        0x12,
+        false,
+        true
+    ).unwrap()
+}
+
+pub enum Led {
+    Green,
+    Red
+}
+
+pub static PULSE_LED: Signal<CriticalSectionRawMutex, Led> = Signal::new();
+
+#[embassy_executor::task]
+pub async fn led_task(mut green: Output<'static>, mut red: Output<'static>) {
+    loop {
+        let pin = match PULSE_LED.wait().await {
+            Led::Green => &mut green,
+            Led::Red => &mut red
+        };
+        pin.set_high();
+        Timer::after(embassy_time::Duration::from_millis(250)).await;
+        pin.set_low();
     }
 }

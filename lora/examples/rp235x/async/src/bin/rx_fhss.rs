@@ -1,10 +1,9 @@
-//! This example shows how to transmit a packet using frequency hopping spread spectrum (FHSS). An external push button connected to GPIO 14 is used to
-//! initiate transmission.
+//! This example shows how to receive a packet using frequency hopping spread spectrum (FHSS).
 #![no_std]
 #![no_main]
 
 use core::cell::RefCell;
-use defmt::{debug, info, unwrap};
+use defmt::{debug, error, info, unwrap};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::{InterruptExecutor, Spawner};
 use embassy_rp::{bind_interrupts, interrupt};
@@ -19,7 +18,7 @@ use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
 use common::{fhss_config, led_task, Led, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, PULSE_LED};
 use sx127xlora::driver::Sx127xLora;
-use sx127xlora::types::{FhssChangeChannel, PowerRamp, PreambleLength, TxConfig, TxDone, OCP};
+use sx127xlora::types::{FhssChangeChannel, PreambleLength, RxConfig, RxDone};
 
 type Lora = Mutex<CriticalSectionRawMutex, RefCell<Sx127xLora<SpiDevice<'static, CriticalSectionRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>>>;
 
@@ -43,33 +42,30 @@ unsafe fn SWI_IRQ_0() {
 }
 
 #[embassy_executor::task]
-async fn tx_task(lora: &'static Lora, mut pin: Input<'static>) {
+async fn rx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
-        pin.wait_for_rising_edge().await;
-        {
-            let lora_unlocked = lora.lock().await;
-            lora_unlocked.borrow_mut().tx(&"pingpong".as_bytes()).await.unwrap();
-        }
-    }
-}
-
-#[embassy_executor::task]
-async fn tx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
-    loop {
+        info!("waiting for RxDone...");
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;
-            sx127x_unlocked.borrow_mut().clear_interrupt::<TxDone>().await.unwrap();
-            sx127x_unlocked.borrow_mut().set_frequency(FHSS_CHANNELS[0]).await.unwrap();
+            sx127x_unlocked.borrow_mut().clear_interrupt::<RxDone>().await.unwrap();
+            match sx127x_unlocked.borrow_mut().rx_packet().await {
+                Ok(rxp) => {
+                    let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
+                    info!("rx payload: {:a}", rxp.payload[..len]);
+                    info!("rx coding rate: {}, rssi: {} dBm, snr: {} dB", rxp.coding_rate, rxp.rssi, rxp.snr);
+                    PULSE_LED.signal(Led::Green);
+                }
+                Err(_) => error!("read_rx_data failed :(")
+            }
         }
-        info!("TxDone triggered!\n");
-        PULSE_LED.signal(Led::Green);
     }
 }
 
 #[embassy_executor::task]
 async fn change_channel_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
+        info!("waiting for FhssChangeChannel...");
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;
@@ -98,22 +94,27 @@ async fn main(_spawner: Spawner) {
     let mut config = fhss_config();
     config.frequency = FHSS_CHANNELS[0];
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
-    sx127x.config_tx(TxConfig::new(false, OCP::default(), 20, PreambleLength::default(), PowerRamp::default(), false).unwrap()).await.unwrap();
-    sx127x.map_dio0::<TxDone>().await.unwrap();
+    sx127x.config_rx(RxConfig::new(false, true, PreambleLength::default())).await.unwrap();
+    sx127x.map_dio0::<RxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
-    sx127x.set_hop_period(24).await.unwrap();
+    sx127x.set_hop_period(16).await.unwrap();
 
     let lora = LORA.init(Mutex::new(RefCell::new(sx127x)));
 
     // High-priority executor: SWI_IRQ_1, priority level 2
     interrupt::SWI_IRQ_1.set_priority(Priority::P2);
     let spawner = EXECUTOR_HIGH.start(interrupt::SWI_IRQ_1);
-    spawner.spawn(unwrap!(tx_done_task(lora, Input::new(p.PIN_15, Pull::Down))));
-    spawner.spawn(unwrap!(tx_task(lora, Input::new(p.PIN_14, Pull::Down))));
+    spawner.spawn(unwrap!(rx_done_task(lora, Input::new(p.PIN_15, Pull::Down))));
 
     // Medium-priority executor: SWI_IRQ_0, priority level 3
     interrupt::SWI_IRQ_0.set_priority(Priority::P3);
     let spawner = EXECUTOR_MED.start(interrupt::SWI_IRQ_0);
     spawner.spawn(unwrap!(change_channel_task(lora, Input::new(p.PIN_16, Pull::Down))));
     spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
+
+    // kick-start the whole process
+    {
+        let lora_unlocked = lora.lock().await;
+        lora_unlocked.borrow_mut().rx(None).await.unwrap();
+    }
 }

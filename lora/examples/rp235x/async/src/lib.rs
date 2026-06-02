@@ -4,7 +4,7 @@ use embassy_rp::gpio::Output;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::Timer;
-use sx127xlora::types::{Bandwidth, CodingRate, HeaderMode, SpreadingFactor, Sx127xLoraConfig};
+use sx127xlora::types::{Bandwidth, CodingRate, HeaderMode, PreambleLength, SpreadingFactor, Sx127xLoraConfig};
 
 pub const FHSS_CHANNELS_SIZE: usize = 13;
 pub const FHSS_CHANNELS: [u32; FHSS_CHANNELS_SIZE] = [
@@ -41,6 +41,7 @@ pub fn debug_config() -> Sx127xLoraConfig {
         CodingRate::Cr4_7,
         LORA_FREQUENCY_HZ,
         HeaderMode::Explicit,
+        PreambleLength::default(),
         SpreadingFactor::Sf11,
         0x12,
         false,
@@ -61,6 +62,7 @@ pub fn fhss_config() -> Sx127xLoraConfig {
         CodingRate::Cr4_7,
         LORA_FREQUENCY_HZ,
         HeaderMode::Explicit,
+        PreambleLength::default(),
         SpreadingFactor::Sf11,
         0x12,
         false,

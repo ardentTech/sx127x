@@ -61,12 +61,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(OP_MODE, byte).await
     }
 
-    /// Configures RX settings.
-    pub async fn config_rx(&mut self, config: RxConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_optimize_rx_response(config.optimize_response).await?;
-        self.set_preamble_length(config.preamble_length).await
-    }
-
     /// Configures TX settings.
     pub async fn config_tx(&mut self, config: TxConfig) -> Result<(), Sx127xError<SPI::Error>> {
         if config.use_rfo {
@@ -77,7 +71,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             self.write(PA_DAC, if config.power > 17 { 0x07 } else { 0x04 }).await?;
         }
         self.set_power_ramp(config.ramp).await?;
-        self.set_preamble_length(config.preamble_length).await?;
         self.set_ocp(config.ocp).await
     }
 
@@ -319,7 +312,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Sets the invert I and Q signals in the Rx or TX path.
     pub async fn set_invert_iq(&mut self, rx: bool, tx: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.read(INVERT_IQ).await?;
+        let mut byte = self.read(INVERT_IQ).await?; // TODO bit 0 (tx path) appears to default to 1 instead of 0 as documented?
         set_bits(&mut byte, rx as u8, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET);
         set_bits(&mut byte, tx as u8, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET);
         self.write(INVERT_IQ, byte).await?;
@@ -341,6 +334,24 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             set_bits(&mut byte, lna.gain as u8, LNA_GAIN_MASK, LNA_GAIN_OFFSET);
         }
         self.write(LNA, byte).await
+    }
+
+    /// Optimize receiver response for spurious reception of LoRa signal.
+    ///
+    /// See: errata section 2.3
+    pub async fn optimize_rx_response(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        match self.bandwidth().await? {
+            Bandwidth::Bw7_8kHz => self.set_optimize_rx_response(false, 0x48, 0x00, Some(7_810)).await,
+            Bandwidth::Bw10_4kHz => self.set_optimize_rx_response(false, 0x44, 0x00, Some(10_420)).await,
+            Bandwidth::Bw15_6kHz => self.set_optimize_rx_response(false, 0x44, 0x00, Some(15_620)).await,
+            Bandwidth::Bw20_8kHz => self.set_optimize_rx_response(false, 0x44, 0x00, Some(20_830)).await,
+            Bandwidth::Bw31_25kHz => self.set_optimize_rx_response(false, 0x44, 0x00, Some(31_250)).await,
+            Bandwidth::Bw41_7kHz => self.set_optimize_rx_response(false, 0x44, 0x00, Some(41_670)).await,
+            Bandwidth::Bw62_5kHz => self.set_optimize_rx_response(false, 0x40, 0x00, None).await,
+            Bandwidth::Bw125kHz => self.set_optimize_rx_response(false, 0x40, 0x00, None).await,
+            Bandwidth::Bw250kHz => self.set_optimize_rx_response(false, 0x40, 0x00, None).await,
+            Bandwidth::Bw500kHz => self.set_automatic_if(true).await,
+        }
     }
 
     /// Starts the Channel Activity Detector (CAD).
@@ -422,6 +433,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_coding_rate(config.coding_rate).await?;
         self.set_frequency(config.frequency).await?;
         self.set_header_mode(config.header_mode).await?;
+        self.set_preamble_length(config.preamble_length).await?;
         self.set_spreading_factor(config.spreading_factor).await?;
         self.set_sync_word(config.sync_word).await?;
         self.set_auto_temp_calibration(config.use_auto_temp_calibration).await?;
@@ -542,30 +554,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(OCP, byte).await
     }
 
-    /// Optimize receiver response for spurious reception of LoRa signal.
-    ///
-    /// See: errata section 2.3
-    async fn set_optimize_rx_response(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        // TODO handle off
-        if on {
-            match self.bandwidth().await? {
-                Bandwidth::Bw7_8kHz => self.optimize_rx_response(false, 0x48, 0x00, Some(7_810)).await,
-                Bandwidth::Bw10_4kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(10_420)).await,
-                Bandwidth::Bw15_6kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(15_620)).await,
-                Bandwidth::Bw20_8kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(20_830)).await,
-                Bandwidth::Bw31_25kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(31_250)).await,
-                Bandwidth::Bw41_7kHz => self.optimize_rx_response(false, 0x44, 0x00, Some(41_670)).await,
-                Bandwidth::Bw62_5kHz => self.optimize_rx_response(false, 0x40, 0x00, None).await,
-                Bandwidth::Bw125kHz => self.optimize_rx_response(false, 0x40, 0x00, None).await,
-                Bandwidth::Bw250kHz => self.optimize_rx_response(false, 0x40, 0x00, None).await,
-                Bandwidth::Bw500kHz => self.set_automatic_if(true).await,
-            }
-        } else {
-            Ok(())
-        }
-    }
-
-    async fn optimize_rx_response(&mut self, automatic_if: bool, if_freq_2: u8, if_freq_1: u8, frequency_offset: Option<i32>) -> Result<(), Sx127xError<SPI::Error>> {
+    async fn set_optimize_rx_response(&mut self, automatic_if: bool, if_freq_2: u8, if_freq_1: u8, frequency_offset: Option<i32>) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
 
         if let Some(offset) = frequency_offset {

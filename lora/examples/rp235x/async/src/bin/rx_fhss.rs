@@ -18,7 +18,7 @@ use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
 use common::{fhss_config, led_task, Led, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS, PULSE_LED};
 use sx127xlora::driver::Sx127xLora;
-use sx127xlora::types::{FhssChangeChannel, PreambleLength, RxConfig, RxDone};
+use sx127xlora::types::{FhssChangeChannel, RxDone};
 
 type Lora = Mutex<CriticalSectionRawMutex, RefCell<Sx127xLora<SpiDevice<'static, CriticalSectionRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>>>;
 
@@ -91,7 +91,7 @@ async fn main(_spawner: Spawner) {
     let mut config = fhss_config();
     config.frequency = FHSS_CHANNELS[0];
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
-    sx127x.config_rx(RxConfig::new(true, PreambleLength::default())).await.unwrap();
+    sx127x.optimize_rx_response().await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
     sx127x.set_hop_period(FREQ_HOP_PERIOD_MS).await.unwrap();

@@ -17,7 +17,7 @@ use embassy_sync::mutex::Mutex;
 use {defmt_rtt as _, panic_probe as _};
 use common::{debug_config, led_task, Led, PULSE_LED};
 use sx127xlora::driver::Sx127xLora;
-use sx127xlora::types::{PreambleLength, RxConfig, RxDone};
+use sx127xlora::types::RxDone;
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
@@ -38,8 +38,7 @@ async fn main(spawner: Spawner) {
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
 
     let mut sx127x = Sx127xLora::new(spi_dev, debug_config()).await.unwrap();
-    sx127x.config_rx(RxConfig::new(true, PreambleLength::default())).await.unwrap();
-
+    sx127x.optimize_rx_response().await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
     spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
     sx127x.rx(None).await.unwrap();

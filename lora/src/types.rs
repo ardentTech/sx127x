@@ -305,19 +305,6 @@ impl From<u8> for RxStatus {
 }
 
 // -------------------------------------------------------------------------------------------------
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct RxConfig {
-    pub(crate) optimize_response: bool,
-    pub(crate) preamble_length: PreambleLength
-}
-
-impl RxConfig {
-    pub fn new(optimize_response: bool, preamble_length: PreambleLength) -> Self {
-        Self { optimize_response, preamble_length }
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
 pub struct RxPacket {
     pub coding_rate: CodingRate,
     pub payload: [u8; PAYLOAD_SIZE],
@@ -336,6 +323,7 @@ pub struct Sx127xLoraConfig {
     pub coding_rate: CodingRate,
     pub frequency: Hz,
     pub header_mode: HeaderMode,
+    pub preamble_length: PreambleLength,
     pub spreading_factor: SpreadingFactor,
     pub sync_word: u8,
     /// Whether or not to use the full automated (temperature-dependent) calibration.
@@ -351,6 +339,7 @@ impl Sx127xLoraConfig {
         coding_rate: CodingRate,
         frequency: Hz,
         header_mode: HeaderMode,
+        preamble_length: PreambleLength,
         spreading_factor: SpreadingFactor,
         sync_word: u8,
         use_auto_temp_calibration: bool,
@@ -359,9 +348,9 @@ impl Sx127xLoraConfig {
         if !validate::header_mode_sf(header_mode, spreading_factor) {
             #[cfg(feature = "defmt")]
             error!("SF6 requires implicit header mode");
-            return Err(Sx127xError::InvalidInput);
+            return Err(InvalidInput);
         }
-        Ok(Self { bandwidth, coding_rate, frequency, header_mode, spreading_factor, sync_word, use_auto_temp_calibration, use_crc })
+        Ok(Self { bandwidth, coding_rate, frequency, header_mode, preamble_length, spreading_factor, sync_word, use_auto_temp_calibration, use_crc })
     }
 }
 impl Default for Sx127xLoraConfig {
@@ -371,6 +360,7 @@ impl Default for Sx127xLoraConfig {
             coding_rate: CodingRate::default(),
             frequency: DEFAULT_FREQUENCY_HZ,
             header_mode: HeaderMode::default(),
+            preamble_length: PreambleLength::default(),
             spreading_factor: SpreadingFactor::default(),
             sync_word: SYNC_WORD_DEFAULT,
             use_auto_temp_calibration: false,
@@ -447,12 +437,11 @@ impl From<u8> for PowerRamp {
 pub struct TxConfig {
     pub(crate) ocp: OCP,
     pub(crate) power: u8,
-    pub(crate) preamble_length: PreambleLength,
     pub(crate) ramp: PowerRamp,
     pub(crate) use_rfo: bool
 }
 impl TxConfig {
-    pub fn new(ocp: OCP, mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
+    pub fn new(ocp: OCP, mut power: u8, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
         if use_rfo {
             if !validate::rfo_power(power) { return Err(InvalidInput) }
         } else {
@@ -460,7 +449,7 @@ impl TxConfig {
             power -= 2;
             if power > 17 { power -= 3 }
         }
-        Ok(Self { ocp, power, preamble_length, ramp, use_rfo })
+        Ok(Self { ocp, power, ramp, use_rfo })
     }
 }
 // TODO impl Default for TxConfig?

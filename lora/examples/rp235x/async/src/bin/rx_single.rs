@@ -18,8 +18,8 @@ use embassy_sync::mutex::Mutex;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 use common::heartbeat;
-use sx127xlora::driver::{Sx127xLora, Sx127xLoraConfig};
-use sx127xlora::types::{RxDone, RxTimeout, TimeoutSymbols};
+use sx127xlora::driver::Sx127xLora;
+use sx127xlora::types::{RxDone, RxTimeout, Sx127xLoraConfig, TimeoutSymbols};
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
@@ -41,6 +41,7 @@ async fn main(spawner: Spawner) {
     let mut dio1 = Input::new(p.PIN_16, Pull::Down);
 
     let mut sx127x = Sx127xLora::new(spi_dev, Sx127xLoraConfig::default()).await.unwrap();
+    sx127x.optimize_rx_response().await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
     sx127x.map_dio1::<RxTimeout>().await.unwrap();
 

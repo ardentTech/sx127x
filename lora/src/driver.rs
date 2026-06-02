@@ -63,14 +63,14 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Configures RX settings.
     pub async fn config_rx(&mut self, config: RxConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_invert_iq(config.invert_iq, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET).await?;
+        //self.set_invert_iq(config.invert_iq, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET).await?;
         self.set_optimize_rx_response(config.optimize_response).await?;
         self.set_preamble_length(config.preamble_length).await
     }
 
     /// Configures TX settings.
     pub async fn config_tx(&mut self, config: TxConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        self.set_invert_iq(config.invert_iq, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET).await?;
+        //self.set_invert_iq(config.invert_iq, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET).await?;
         if config.use_rfo {
             self.write(PA_CONFIG, 0x70 | config.power).await?;
             self.write(PA_DAC, 0x04).await?;

@@ -63,14 +63,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Configures RX settings.
     pub async fn config_rx(&mut self, config: RxConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        //self.set_invert_iq(config.invert_iq, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET).await?;
         self.set_optimize_rx_response(config.optimize_response).await?;
         self.set_preamble_length(config.preamble_length).await
     }
 
     /// Configures TX settings.
     pub async fn config_tx(&mut self, config: TxConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        //self.set_invert_iq(config.invert_iq, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET).await?;
         if config.use_rfo {
             self.write(PA_CONFIG, 0x70 | config.power).await?;
             self.write(PA_DAC, 0x04).await?;
@@ -317,6 +315,21 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// See: datasheet section 4.1.1.8
     pub async fn set_hop_period(&mut self, period: u8) -> Result<(), Sx127xError<SPI::Error>> {
         self.write(HOP_PERIOD, period).await
+    }
+
+    /// Sets the invert I and Q signals in the Rx or TX path.
+    async fn set_invert_iq(&mut self, rx: bool, tx: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = self.read(INVERT_IQ).await?;
+        // #[cfg(feature = "defmt")]
+        // error!("RegInvertIQ raw: {=u8:08b}", byte);
+        set_bits(&mut byte, rx as u8, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET);
+        set_bits(&mut byte, tx as u8, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET);
+        // #[cfg(feature = "defmt")]
+        // error!("RegInvertIQ mod: {=u8:08b}", byte);
+        self.write(INVERT_IQ, byte).await?;
+
+        // optimize
+        self.write(INVERT_IQ_2, if rx || tx { INVERT_IQ_2_ON } else { INVERT_IQ_2_OFF }).await
     }
 
     /// Sets the gain and high frequency boost for the low noise receiver amplifier (LNA).
@@ -625,16 +638,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Sets the LoRa sync word.
     async fn set_sync_word(&mut self, sync_word: u8) -> Result<(), Sx127xError<SPI::Error>> {
         self.write(SYNC_WORD, sync_word).await
-    }
-
-    /// Sets the invert I and Q signals in the Rx or TX path.
-    async fn set_invert_iq(&mut self, on: bool, mask: u8, offset: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.read(INVERT_IQ).await?;
-        set_bits(&mut byte, on as u8, mask, offset);
-        self.write(INVERT_IQ, byte).await?;
-
-        // optimize
-        self.write(INVERT_IQ_2, if on { INVERT_IQ_2_ON } else { INVERT_IQ_2_OFF }).await
     }
 
     /// Determines if low data rate optimization is necessary.

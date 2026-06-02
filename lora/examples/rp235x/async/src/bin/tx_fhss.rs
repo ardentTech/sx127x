@@ -98,7 +98,7 @@ async fn main(_spawner: Spawner) {
     let mut config = fhss_config();
     config.frequency = FHSS_CHANNELS[0];
     let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
-    sx127x.config_tx(TxConfig::new(false, OCP::default(), 20, PreambleLength::default(), PowerRamp::default(), false).unwrap()).await.unwrap();
+    sx127x.config_tx(TxConfig::new(OCP::default(), 20, PreambleLength::default(), PowerRamp::default(), false).unwrap()).await.unwrap();
     sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
     sx127x.set_hop_period(24).await.unwrap();

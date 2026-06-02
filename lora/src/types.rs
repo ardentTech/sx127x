@@ -322,14 +322,13 @@ impl From<u8> for RxStatus {
 // -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct RxConfig {
-    pub(crate) invert_iq: bool,
     pub(crate) optimize_response: bool,
     pub(crate) preamble_length: PreambleLength
 }
 
 impl RxConfig {
-    pub fn new(invert_iq: bool, optimize_response: bool, preamble_length: PreambleLength) -> Self {
-        Self { invert_iq, optimize_response, preamble_length }
+    pub fn new(optimize_response: bool, preamble_length: PreambleLength) -> Self {
+        Self { optimize_response, preamble_length }
     }
 }
 
@@ -461,7 +460,6 @@ impl From<u8> for PowerRamp {
 }
 
 pub struct TxConfig {
-    pub(crate) invert_iq: bool,
     pub(crate) ocp: OCP,
     pub(crate) power: u8,
     pub(crate) preamble_length: PreambleLength,
@@ -469,7 +467,7 @@ pub struct TxConfig {
     pub(crate) use_rfo: bool
 }
 impl TxConfig {
-    pub fn new(invert_iq: bool, ocp: OCP, mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
+    pub fn new(ocp: OCP, mut power: u8, preamble_length: PreambleLength, ramp: PowerRamp, use_rfo: bool) -> Result<Self, Sx127xError<()>> {
         if use_rfo {
             if !validate::rfo_power(power) { return Err(InvalidInput) }
         } else {
@@ -477,7 +475,7 @@ impl TxConfig {
             power -= 2;
             if power > 17 { power -= 3 }
         }
-        Ok(Self { invert_iq, ocp, power, preamble_length, ramp, use_rfo })
+        Ok(Self { ocp, power, preamble_length, ramp, use_rfo })
     }
 }
 // TODO impl Default for TxConfig?

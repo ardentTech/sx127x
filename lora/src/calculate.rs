@@ -43,7 +43,7 @@ pub(crate) fn last_packet_rssi_dbm(
     rssi: i16,
 ) -> i16 {
     if last_packet_snr >= 0 {
-        rssi_dbm(frequency, rssi)
+        rssi_dbm(frequency, rssi * 16 / 15) // see datasheet page 87 note 3
     } else {
         rssi_dbm(frequency, last_packet_rssi) + last_packet_snr
     }
@@ -101,13 +101,13 @@ mod tests {
     }
 
     #[test]
-    fn last_packet_rssi_dbm_snr_neg() {
+    fn last_packet_rssi_dbm_snr_negative() {
         assert_eq!(last_packet_rssi_dbm(HF_MIN_HZ - 1, 46, -2, 42), -120);
     }
 
     #[test]
-    fn last_packet_rssi_dbm_snr_pos() {
-        assert_eq!(last_packet_rssi_dbm(HF_MIN_HZ, 46, 10, 42), -115);
+    fn last_packet_rssi_dbm_snr_positive() {
+        assert_eq!(last_packet_rssi_dbm(HF_MIN_HZ, 46, 10, 42), -113);
     }
 
     #[test]

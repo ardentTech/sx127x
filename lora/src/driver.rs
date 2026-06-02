@@ -178,7 +178,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 3.5.5
     pub async fn last_packet_rssi(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
-        // TODO p87 note3
         Ok(calculate::last_packet_rssi_dbm(
             self.frequency().await?,
             self.read(PKT_RSSI_VALUE).await? as i16,
@@ -191,7 +190,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok((self.read(PKT_SNR_VALUE).await? >> 2) as i16)
     }
 
-    /// Gets the received signal strength indicator (RSSI) in dBm.
+    /// Gets the received signal strength indicator (RSSI) in dBm. Can be read at any time (during packet reception or not), and should be averaged to give more
+    /// precise results.
     ///
     /// See: datasheet section 3.5.5
     pub async fn rssi(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
@@ -481,8 +481,11 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Enables/disables low data rate optimization.
     ///
     /// See: datasheet section 4.1.1.6
-    async fn optimize_data_rate(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        let on = self.should_optimize_low_data_rate().await?;
+    async fn optimize_data_rate(&mut self, bandwidth: Option<Bandwidth>, spreading_factor: Option<SpreadingFactor>) -> Result<(), Sx127xError<SPI::Error>> {
+        let bw = if let Some(bw) = bandwidth { bw } else { self.bandwidth().await? };
+        let sf = if let Some(sf) = spreading_factor { sf } else { self.spreading_factor().await? };
+
+        let on = self.should_optimize_low_data_rate(bw, sf).await?;
         let mut byte = self.read(MODEM_CONFIG_3).await?;
         set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET);
         self.write(MODEM_CONFIG_3, byte).await
@@ -511,7 +514,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_1, byte).await?;
 
         self.optimize_bandwidth(bandwidth).await?;
-        self.optimize_data_rate().await // TODO this reads bw again
+        self.optimize_data_rate(Some(bandwidth), None).await
     }
 
     /// Sets the cyclic error coding rate.
@@ -617,7 +620,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
             self.write(DETECTION_THRESHOLD, DETECTION_THRESHOLD_SF7_TO_SF12).await?;
         }
         self.write(DETECT_OPTIMIZE, detect_optimize).await?;
-        self.optimize_data_rate().await // TODO this reads sf again
+        self.optimize_data_rate(None, Some(spreading_factor)).await
     }
 
     /// Sets the LoRa sync word.
@@ -628,12 +631,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Determines if low data rate optimization is necessary.
     ///
     /// See: datasheet page 31 section Low Data Rate Optimization
-    async fn should_optimize_low_data_rate(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
+    async fn should_optimize_low_data_rate(&mut self, bandwidth: Bandwidth, spreading_factor: SpreadingFactor) -> Result<bool, Sx127xError<SPI::Error>> {
         Ok(
             check::should_optimize_for_low_data_rate(
                 calculate::symbol_period(
                     calculate::symbol_rate(
-                        self.bandwidth().await?.hz(),
+                        bandwidth.hz(),
                         self.spreading_factor().await? as u32
                     )
                 )

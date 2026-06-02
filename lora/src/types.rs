@@ -235,21 +235,6 @@ mod private {
 }
 
 // -------------------------------------------------------------------------------------------------
-#[derive(Clone, Copy, Debug)]
-pub struct InvertIQ {
-    pub rx_path: bool,
-    pub tx_path: bool,
-}
-impl From<u8> for InvertIQ {
-    fn from(value: u8) -> Self {
-        Self {
-            rx_path: get_bits(value, registers::INVERT_IQ_RX_MASK, 6) == 1,
-            tx_path: get_bits(value, registers::INVERT_IQ_TX_MASK, 0) == 1,
-        }
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum LNAGain {
     Auto,

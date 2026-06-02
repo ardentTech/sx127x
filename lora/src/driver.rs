@@ -318,14 +318,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Sets the invert I and Q signals in the Rx or TX path.
-    async fn set_invert_iq(&mut self, rx: bool, tx: bool) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn set_invert_iq(&mut self, rx: bool, tx: bool) -> Result<(), Sx127xError<SPI::Error>> {
         let mut byte = self.read(INVERT_IQ).await?;
-        // #[cfg(feature = "defmt")]
-        // error!("RegInvertIQ raw: {=u8:08b}", byte);
         set_bits(&mut byte, rx as u8, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET);
         set_bits(&mut byte, tx as u8, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET);
-        // #[cfg(feature = "defmt")]
-        // error!("RegInvertIQ mod: {=u8:08b}", byte);
         self.write(INVERT_IQ, byte).await?;
 
         // optimize

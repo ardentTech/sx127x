@@ -247,7 +247,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// enter RXSINGLE mode, else RXCONTINUOUS mode.
     ///
     /// See: datasheet pages 40-42
-    // TODO? p.40 "It is therefore necessary for the companion microcontroller to handle the address pointer to make sure the FIFO data buffer is never full"
     pub async fn rx(&mut self, timeout: Option<TimeoutSymbols>) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
         let mut mode = DeviceMode::RXCONTINUOUS;
@@ -312,7 +311,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Sets the invert I and Q signals in the Rx or TX path.
     pub async fn set_invert_iq(&mut self, rx: bool, tx: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.read(INVERT_IQ).await?; // TODO bit 0 (tx path) appears to default to 1 instead of 0 as documented?
+        let mut byte = self.read(INVERT_IQ).await?; // bit 0 (tx path) appears to default to 1 instead of 0 as documented?
         set_bits(&mut byte, rx as u8, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET);
         set_bits(&mut byte, tx as u8, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET);
         self.write(INVERT_IQ, byte).await?;

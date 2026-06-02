@@ -10,8 +10,8 @@
 
 ### Roadmap
 
-- [ ] async (in-progress)
-- [ ] async rp235x examples (in-progress)
+- [x] async
+- [x] async rp235x examples
 - [ ] sync
 - [ ] sync rp235x examples
 

@@ -16,7 +16,7 @@ use embassy_sync::mutex::Mutex;
 use static_cell::StaticCell;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{fhss_config, led_task, Led, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, PULSE_LED};
+use common::{fhss_config, led_task, Led, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS, PULSE_LED};
 use sx127xlora::driver::Sx127xLora;
 use sx127xlora::types::{FhssChangeChannel, PreambleLength, RxConfig, RxDone};
 
@@ -44,7 +44,6 @@ unsafe fn SWI_IRQ_0() {
 #[embassy_executor::task]
 async fn rx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
-        info!("waiting for RxDone...");
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;
@@ -65,7 +64,6 @@ async fn rx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
 #[embassy_executor::task]
 async fn change_channel_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
-        info!("waiting for FhssChangeChannel...");
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;
@@ -73,9 +71,8 @@ async fn change_channel_task(lora: &'static Lora, mut pin: Input<'static>) {
             let channel = sx127x.hop_channel().await.unwrap();
             sx127x.set_frequency(FHSS_CHANNELS[channel as usize % FHSS_CHANNELS_SIZE]).await.unwrap();
             sx127x.clear_interrupt::<FhssChangeChannel>().await.unwrap();
-            debug!("hop_channel: {}", FHSS_CHANNELS[channel as usize % FHSS_CHANNELS_SIZE]);
+            debug!("hop to channel: {}", FHSS_CHANNELS[channel as usize % FHSS_CHANNELS_SIZE]);
         }
-        info!("FhssChangeChannel triggered!");
     }
 }
 
@@ -97,7 +94,7 @@ async fn main(_spawner: Spawner) {
     sx127x.config_rx(RxConfig::new(true, PreambleLength::default())).await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
-    sx127x.set_hop_period(16).await.unwrap();
+    sx127x.set_hop_period(FREQ_HOP_PERIOD_MS).await.unwrap();
 
     let lora = LORA.init(Mutex::new(RefCell::new(sx127x)));
 

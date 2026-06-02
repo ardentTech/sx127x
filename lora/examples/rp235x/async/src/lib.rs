@@ -53,7 +53,8 @@ pub fn debug_config() -> Sx127xLoraConfig {
 /// Rs = 61.03515625 (Rs = BW / 2 ** SF)
 /// Ts = 16.384ms (Ts = (1 / Rs) * 1000)
 /// HoppingPeriod: 400ms (FCC dwell time)
-/// FreqHoppingPeriod = 24.4 (400ms / 16.384)
+/// FreqHoppingPeriod (max) = 24.4ms (400ms / 16.384)
+pub const FREQ_HOP_PERIOD_MS: u8 = 24;
 pub fn fhss_config() -> Sx127xLoraConfig {
     Sx127xLoraConfig::new(
         Bandwidth::Bw125kHz,

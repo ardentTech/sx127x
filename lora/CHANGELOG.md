@@ -7,11 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `crc` getter
+
 ### Changed
+
 - move IQ inversion out of `RxConfig` and `TxConfig` into dedicated `set_iq_inversion` driver method.
 - move preamble set to `Sx127xLoraConfig`
 - make `optimize_rx_response` public
 
 ### Removed
+
 - `RxConfig` struct
 - `config_rx` method

@@ -80,6 +80,13 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS, byte | <I as IRQ>::MASK).await
     }
 
+    /// Gets the cyclic redundancy check (CRC) on/off flag.
+    ///
+    /// See: section 4.1.1.6
+    pub async fn crc(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
+        Ok(get_bits(self.read(MODEM_CONFIG_2).await?, MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_MASK, MODEM_CONFIG_2_RX_PAYLOAD_CRC_ON_OFFSET) == 1)
+    }
+
     /// Calculates the data rate in bits/s.
     pub async fn data_rate(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
         let coding_rate: f32 = self.coding_rate().await?.into();

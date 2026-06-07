@@ -1378,6 +1378,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "sx127xlora-rp235x-async-half-duplex"
+version = "0.1.0"
+dependencies = [
+ "cortex-m-rt",
+ "critical-section",
+ "defmt",
+ "defmt-rtt",
+ "embassy-embedded-hal",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-rp",
+ "embassy-sync",
+ "embassy-time",
+ "panic-probe",
+ "static_cell",
+ "sx127xlora",
+]
+
+[[package]]
 name = "syn"
 version = "2.0.117"
 source = "registry+https://github.com/rust-lang/crates.io-index"

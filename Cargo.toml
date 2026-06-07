@@ -6,6 +6,7 @@ members = [
     "fsk/examples/rp235x/async",
     "lora",
     "lora/examples/rp235x/async",
+    "lora/examples/rp235x/async_half_duplex",
 ]
 
 [workspace.dependencies]

@@ -4,7 +4,7 @@
 #![no_main]
 
 use core::cell::RefCell;
-use defmt::{debug, info, unwrap};
+use defmt::{debug, unwrap};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::{InterruptExecutor, Spawner};
 use embassy_rp::{bind_interrupts, interrupt};
@@ -45,7 +45,6 @@ unsafe fn SWI_IRQ_0() {
 #[embassy_executor::task]
 async fn tx_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
-        info!("tx_task waiting...");
         pin.wait_for_rising_edge().await;
         {
             let lora_unlocked = lora.lock().await;
@@ -57,7 +56,6 @@ async fn tx_task(lora: &'static Lora, mut pin: Input<'static>) {
 #[embassy_executor::task]
 async fn tx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
-        info!("tx_done_task waiting...");
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;
@@ -71,7 +69,6 @@ async fn tx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
 #[embassy_executor::task]
 async fn change_channel_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
-        info!("change_channel_task waiting...");
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;

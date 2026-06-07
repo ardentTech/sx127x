@@ -377,6 +377,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Starts the Channel Activity Detector (CAD).
     pub async fn start_cad(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+        #[cfg(feature = "defmt")]
+        debug!("start_cad");
         self.set_device_mode(DeviceMode::CAD).await
     }
 
@@ -388,10 +390,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(calculate::symbol_rate(bandwidth.hz(), spreading_factor as u32) as u16)
     }
 
-    /// Transmits a `payload` of up to 255 bytes. Will automatically transition to STDBY when done.
+    /// Transmits a `payload` of 128 bytes in full duplex mode, or 256 bytes in half duplex mode. Will automatically transition to STDBY when done.
     ///
     /// See: datasheet figure 9
     pub async fn tx(&mut self, payload: &[u8]) -> Result<(), Sx127xError<SPI::Error>> {
+        #[cfg(feature = "defmt")]
+        debug!("tx: {:a}", payload);
         let payload_len = payload.len();
         if payload_len > PAYLOAD_SIZE {
             #[cfg(feature = "defmt")]

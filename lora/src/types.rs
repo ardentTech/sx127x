@@ -12,6 +12,7 @@ use crate::types::PowerRamp::*;
 use crate::validate;
 use crate::validate::{RX_TIMEOUT_SYMBOLS_MAX, RX_TIMEOUT_SYMBOLS_MIN};
 
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bandwidth {
     Bw7_8kHz = 0x0,
@@ -95,6 +96,7 @@ impl Into<f32> for CodingRate {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum DeviceMode {
     SLEEP = 0x0,
@@ -123,6 +125,7 @@ impl From<u8> for DeviceMode {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum HeaderMode {
     #[default]
@@ -235,6 +238,7 @@ mod private {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum LNAGain {
     Auto,
@@ -259,6 +263,7 @@ impl From<u8> for LNAGain {
     }
 }
 
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct LNA {
     pub boost_hf: bool,
     pub gain: LNAGain,
@@ -370,6 +375,7 @@ impl Default for Sx127xLoraConfig {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug)]
 pub struct OCP {
     pub on: bool,
@@ -391,6 +397,7 @@ impl Default for OCP {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PowerRamp {
     Ms3_4 = 0x0,
@@ -472,6 +479,7 @@ impl FEI {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PreambleLength(pub(crate) u16);
 
@@ -489,6 +497,7 @@ impl Default for PreambleLength {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum SpreadingFactor {
     /// Only implicit header mode is possible with Sf6.

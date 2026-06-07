@@ -1,6 +1,5 @@
-//! This example checks for channel activity before transmitting a packet. The high spread factor (SF)
-//! results in a low bit rate, so low data rate optimization is enabled and the power amplifier is set
-//! to max.
+//! This example demonstrates CAD and TX by checking for channel activity before transmitting a 128 byte payload. The green led on GPIO 21 will pulse on
+//! success, or the red les on GPIO 22 will pulse on error.
 #![no_std]
 #![no_main]
 
@@ -16,7 +15,7 @@ use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{debug_config, led_task, Led, PULSE_LED};
+use common::{debug_config, led_task, Led, PULSE_LED, TX_PAYLOAD};
 use sx127xlora::driver::{Sx127xLora};
 use sx127xlora::types::{CadDetected, CadDone, PowerRamp, PreambleLength, SpreadingFactor, TxConfig, TxDone, OCP};
 
@@ -54,7 +53,7 @@ async fn main(spawner: Spawner) {
         dio3.wait_for_high().await;
 
         if !sx127x.interrupt_flag::<CadDetected>().await.unwrap() {
-            sx127x.tx("howdy".as_bytes()).await.unwrap();
+            sx127x.tx(&TX_PAYLOAD).await.unwrap();
 
             dio0.wait_for_high().await;
             sx127x.clear_interrupt::<TxDone>().await.unwrap();

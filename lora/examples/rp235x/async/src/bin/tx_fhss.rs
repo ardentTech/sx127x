@@ -1,4 +1,4 @@
-//! This example shows how to transmit a packet using frequency hopping spread spectrum (FHSS). An external push button connected to GPIO 14 is used to
+//! This example shows how to use frequency hopping spread spectrum (FHSS) to transmit a packet. An external push button connected to GPIO 14 is used to
 //! initiate transmission.
 #![no_std]
 #![no_main]
@@ -17,9 +17,9 @@ use embassy_sync::mutex::Mutex;
 use static_cell::StaticCell;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{fhss_config, led_task, Led, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS, PULSE_LED};
+use common::{fhss_config, led_task, Led, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS, PULSE_LED, TX_PAYLOAD};
 use sx127xlora::driver::Sx127xLora;
-use sx127xlora::types::{FhssChangeChannel, PowerRamp, PreambleLength, TxConfig, TxDone, OCP};
+use sx127xlora::types::{FhssChangeChannel, PowerRamp, TxConfig, TxDone, OCP};
 
 type Lora = Mutex<CriticalSectionRawMutex, RefCell<Sx127xLora<SpiDevice<'static, CriticalSectionRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>>>;
 
@@ -45,10 +45,11 @@ unsafe fn SWI_IRQ_0() {
 #[embassy_executor::task]
 async fn tx_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
+        info!("tx_task waiting...");
         pin.wait_for_rising_edge().await;
         {
             let lora_unlocked = lora.lock().await;
-            lora_unlocked.borrow_mut().tx(&"howdy".as_bytes()).await.unwrap();
+            lora_unlocked.borrow_mut().tx(&TX_PAYLOAD).await.unwrap();
         }
     }
 }
@@ -56,6 +57,7 @@ async fn tx_task(lora: &'static Lora, mut pin: Input<'static>) {
 #[embassy_executor::task]
 async fn tx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
+        info!("tx_done_task waiting...");
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;
@@ -69,6 +71,7 @@ async fn tx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
 #[embassy_executor::task]
 async fn change_channel_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
+        info!("change_channel_task waiting...");
         pin.wait_for_rising_edge().await;
         {
             let sx127x_unlocked = lora.lock().await;

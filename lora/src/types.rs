@@ -361,10 +361,6 @@ pub struct Sx127xLoraConfig {
     pub preamble_length: PreambleLength,
     pub spreading_factor: SpreadingFactor,
     pub sync_word: u8,
-    /// Whether or not to use the full automated (temperature-dependent) calibration.
-    ///
-    /// See: datasheet section 2.1.3.8
-    pub use_auto_temp_calibration: bool,
     /// Whether or not to use the cyclic redundancy check (CRC) generation and verification on rx/tx payloads.
     pub use_crc: bool,
 }
@@ -378,7 +374,6 @@ impl Sx127xLoraConfig {
         preamble_length: PreambleLength,
         spreading_factor: SpreadingFactor,
         sync_word: u8,
-        use_auto_temp_calibration: bool,
         use_crc: bool,
     ) -> Result<Self, Sx127xError<()>> {
         if !validate::header_mode_sf(header_mode, spreading_factor) {
@@ -386,7 +381,7 @@ impl Sx127xLoraConfig {
             error!("SF6 requires implicit header mode");
             return Err(InvalidInput);
         }
-        Ok(Self { auto_optimize, bandwidth, coding_rate, frequency, header_mode, preamble_length, spreading_factor, sync_word, use_auto_temp_calibration, use_crc })
+        Ok(Self { auto_optimize, bandwidth, coding_rate, frequency, header_mode, preamble_length, spreading_factor, sync_word, use_crc })
     }
 }
 impl Default for Sx127xLoraConfig {
@@ -400,7 +395,6 @@ impl Default for Sx127xLoraConfig {
             preamble_length: PreambleLength::default(),
             spreading_factor: SpreadingFactor::default(),
             sync_word: SYNC_WORD_DEFAULT,
-            use_auto_temp_calibration: false,
             use_crc: false,
         }
     }

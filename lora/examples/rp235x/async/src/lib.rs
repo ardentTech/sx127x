@@ -49,7 +49,6 @@ pub fn debug_config() -> Sx127xLoraConfig {
         PreambleLength::default(),
         SpreadingFactor::Sf11,
         0x12,
-        false,
         true
     ).unwrap()
 }
@@ -71,7 +70,6 @@ pub fn fhss_config() -> Sx127xLoraConfig {
         PreambleLength::default(),
         SpreadingFactor::Sf11,
         0x12,
-        false,
         true
     ).unwrap()
 }

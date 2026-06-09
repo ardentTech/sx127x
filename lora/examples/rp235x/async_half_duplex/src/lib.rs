@@ -20,7 +20,6 @@ pub fn example_config() -> Sx127xLoraConfig {
         PreambleLength::default(),
         SpreadingFactor::Sf11,
         0x12,
-        false,
         true
     ).unwrap()
 }

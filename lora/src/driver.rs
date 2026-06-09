@@ -541,7 +541,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_preamble_length(config.preamble_length).await?;
         self.set_spreading_factor(config.spreading_factor).await?;
         self.set_sync_word(config.sync_word).await?;
-        self.set_auto_temp_calibration(config.use_auto_temp_calibration).await?;
         self.set_crc(config.use_crc).await?;
 
         if config.auto_optimize {

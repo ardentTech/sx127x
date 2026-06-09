@@ -41,6 +41,7 @@ pub async fn heartbeat(mut pin: Output<'static>) {
 
 pub fn debug_config() -> Sx127xLoraConfig {
     Sx127xLoraConfig::new(
+        true,
         Bandwidth::Bw125kHz,
         CodingRate::Cr4_7,
         LORA_FREQUENCY_HZ,
@@ -62,6 +63,7 @@ pub fn debug_config() -> Sx127xLoraConfig {
 pub const FREQ_HOP_PERIOD_MS: u8 = 24;
 pub fn fhss_config() -> Sx127xLoraConfig {
     Sx127xLoraConfig::new(
+        true,
         Bandwidth::Bw125kHz,
         CodingRate::Cr4_7,
         LORA_FREQUENCY_HZ,

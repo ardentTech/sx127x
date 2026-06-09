@@ -1,9 +1,8 @@
-//! This example demonstrates CAD and TX by checking for channel activity before transmitting a 128 byte payload. The green led on GPIO 21 will pulse on
-//! success, or the red les on GPIO 22 will pulse on error.
+//! TODO
 #![no_std]
 #![no_main]
 
-use defmt::warn;
+use defmt::{info, warn};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
@@ -37,9 +36,6 @@ async fn main(spawner: Spawner) {
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 
-    let mut dio0 = Input::new(p.PIN_15, Pull::Down);
-    let mut dio3 = Input::new(p.PIN_18, Pull::Down);
-
     let mut sx127x = Sx127xLora::new(spi_dev, debug_config()).await.unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).await.unwrap();
 
@@ -47,23 +43,10 @@ async fn main(spawner: Spawner) {
     sx127x.map_dio3::<CadDone>().await.unwrap();
 
     spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
+    sx127x.random().await.unwrap();
 
     loop {
-        sx127x.start_cad().await.unwrap();
-        dio3.wait_for_high().await;
-
-        if !sx127x.interrupt_flag::<CadDetected>().await.unwrap() {
-            sx127x.tx(&TX_PAYLOAD).await.unwrap();
-
-            dio0.wait_for_high().await;
-            sx127x.clear_interrupt::<TxDone>().await.unwrap();
-
-            PULSE_LED.signal(Led::Green);
-        } else {
-            warn!("CadDetected triggered so TX not attempted");
-            sx127x.clear_interrupt::<CadDetected>().await.unwrap();
-        }
-        sx127x.clear_interrupt::<CadDone>().await.unwrap();
+        info!("random: {}", sx127x.random().await.unwrap());
         Timer::after_millis(TX_DELAY_MS).await;
     }
 }

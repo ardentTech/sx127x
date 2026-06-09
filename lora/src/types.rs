@@ -62,6 +62,21 @@ impl Bandwidth {
     pub(crate) fn khz(&self) -> f32 {
         self.hz() as f32 / 1000.0
     }
+
+    pub(crate) fn optimized_rx_response(&self) -> OptimizedRxResponse {
+        match self {
+            Bandwidth::Bw7_8kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x48), Some(7_810)),
+            Bandwidth::Bw10_4kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x44), Some(10_420)),
+            Bandwidth::Bw15_6kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x44), Some(15_620)),
+            Bandwidth::Bw20_8kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x44), Some(20_830)),
+            Bandwidth::Bw31_25kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x44), Some(31_250)),
+            Bandwidth::Bw41_7kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x44), Some(41_670)),
+            Bandwidth::Bw62_5kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x40), None),
+            Bandwidth::Bw125kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x40), None),
+            Bandwidth::Bw250kHz => OptimizedRxResponse::new(false, Some(0x00), Some(0x40), None),
+            Bandwidth::Bw500kHz => OptimizedRxResponse::new(true, None, None, None),
+        }
+    }
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -288,6 +303,19 @@ impl From<u8> for LNA {
 }
 
 // -------------------------------------------------------------------------------------------------
+pub(crate) struct OptimizedRxResponse {
+    pub(crate) automatic_if: bool,
+    pub(crate) if_freq_1: Option<u8>,
+    pub(crate) if_freq_2: Option<u8>,
+    pub(crate) frequency_offset: Option<i32>
+}
+impl OptimizedRxResponse {
+    fn new(automatic_if: bool, if_freq_1: Option<u8>, if_freq_2: Option<u8>, frequency_offset: Option<i32>) -> Self {
+        Self { automatic_if, if_freq_1, if_freq_2, frequency_offset }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum RxStatus {
     SignalDetected,
@@ -324,6 +352,8 @@ impl RxPacket {
 
 // -------------------------------------------------------------------------------------------------
 pub struct Sx127xLoraConfig {
+    /// Will automatically optimize for frequency, bandwidth, data rate and spurious rx response.
+    pub auto_optimize: bool,
     pub bandwidth: Bandwidth,
     pub coding_rate: CodingRate,
     pub frequency: Hz,
@@ -340,6 +370,7 @@ pub struct Sx127xLoraConfig {
 }
 impl Sx127xLoraConfig {
     pub fn new(
+        auto_optimize: bool,
         bandwidth: Bandwidth,
         coding_rate: CodingRate,
         frequency: Hz,
@@ -355,12 +386,13 @@ impl Sx127xLoraConfig {
             error!("SF6 requires implicit header mode");
             return Err(InvalidInput);
         }
-        Ok(Self { bandwidth, coding_rate, frequency, header_mode, preamble_length, spreading_factor, sync_word, use_auto_temp_calibration, use_crc })
+        Ok(Self { auto_optimize, bandwidth, coding_rate, frequency, header_mode, preamble_length, spreading_factor, sync_word, use_auto_temp_calibration, use_crc })
     }
 }
 impl Default for Sx127xLoraConfig {
     fn default() -> Self {
         Self {
+            auto_optimize: false,
             bandwidth: Bandwidth::default(),
             coding_rate: CodingRate::default(),
             frequency: DEFAULT_FREQUENCY_HZ,
@@ -376,7 +408,7 @@ impl Default for Sx127xLoraConfig {
 
 // -------------------------------------------------------------------------------------------------
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OCP {
     pub on: bool,
     pub imax: u8,
@@ -441,6 +473,8 @@ impl From<u8> for PowerRamp {
     }
 }
 
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TxConfig {
     pub(crate) ocp: OCP,
     pub(crate) power: u8,

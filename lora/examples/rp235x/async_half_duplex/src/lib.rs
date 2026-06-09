@@ -12,6 +12,7 @@ pub const TX_PAYLOAD: [u8; 256] = [76, 111, 111, 107, 32, 97, 103, 97, 105, 110,
 
 pub fn example_config() -> Sx127xLoraConfig {
     Sx127xLoraConfig::new(
+        true,
         Bandwidth::Bw125kHz,
         CodingRate::Cr4_7,
         LORA_FREQUENCY_HZ,

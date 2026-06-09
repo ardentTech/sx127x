@@ -38,6 +38,13 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "random"
+path = "src/bin/random.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "rx_continuous"
 path = "src/bin/rx_continuous.rs"
 test = false

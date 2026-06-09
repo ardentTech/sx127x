@@ -4,6 +4,7 @@ pub use sx127x_common::registers::*;
 pub const OP_MODE_LONG_RANGE_MODE_MASK: u8 = 0x80;
 pub const OP_MODE_LONG_RANGE_MODE_OFFSET: u8 = 0x7;
 pub const OP_MODE_ACCESS_SHARED_REG_MASK: u8 = 0x40;
+pub const OP_MODE_ACCESS_SHARED_REG_OFFSET: u8 = 0x06;
 pub const OP_MODE_LOW_FREQUENCY_MODE_ON_MASK: u8 = 0x08;
 pub const OP_MODE_LOW_FREQUENCY_MODE_ON_OFFSET: u8 = 0x03;
 pub const OP_MODE_MODE_MASK: u8 = 0x07;
@@ -127,6 +128,8 @@ pub const INVERT_IQ_TX_OFFSET: u8 = 0x0;
 // RegImageCal: this is a FSK/OOK reg needed for calibration (hence only pub(crate))
 pub(crate) const IMAGE_CAL: u8 = 0x3b;
 pub(crate) const IMAGE_CAL_IMAGE_CAL_START_MASK: u8 = 0x40;
+pub(crate) const IMAGE_CAL_TEMP_MONITOR_OFF_MASK: u8 = 0x01;
+pub(crate) const IMAGE_CAL_TEMP_MONITOR_OFF_OFFSET: u8 = 0x00;
 
 pub const HIGH_BW_OPTIMIZE_1: u8 = 0x36;
 

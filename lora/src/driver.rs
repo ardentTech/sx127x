@@ -1,7 +1,7 @@
-use defmt::debug;
+use defmt::{debug, info};
 #[cfg(feature = "defmt")]
 use defmt::error;
-
+use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::spi::SpiDevice;
 pub use sx127x_common::error::Sx127xError;
 use sx127x_common::{Hz, Modem, CHIP_VERSION, FSTEP};
@@ -21,7 +21,7 @@ pub struct Sx127xLora<SPI> {
 }
 impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Initializes a new instance of the loRa driver.
-    pub async fn new(spi: SPI, config: Sx127xLoraConfig) -> Result<Sx127xLora<SPI>, Sx127xError<SPI::Error>> {
+    pub async fn new<D: DelayNs>(spi: SPI, config: Sx127xLoraConfig, delay: D) -> Result<Sx127xLora<SPI>, Sx127xError<SPI::Error>> {
         let mut driver = Self { spi: Sx127xSpi::new(spi) };
 
         let version = driver.spi.read(VERSION).await?;
@@ -32,7 +32,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         }
 
         driver.set_modem(Modem::LoRa).await?;
-        driver.configure(config).await?;
+        driver.configure(config, delay).await?;
         driver.set_invert_iq(false, false).await?; // TODO decide if this is necessary
 
         Ok(driver)
@@ -41,14 +41,17 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Triggers the IQ and RSSI calibration. Takes ~10ms.
     ///
     /// See: datasheet section 2.1.3.8
-    pub async fn calibrate(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn calibrate<D: DelayNs>(&mut self, mut delay: D) -> Result<(), Sx127xError<SPI::Error>> {
         #[cfg(feature = "defmt")]
         debug!("calibrate");
 
         self.set_device_mode(DeviceMode::STDBY).await?;
+        self.access_fsk_registers(true).await?;
         let mut image_cal = self.read(IMAGE_CAL).await?;
         image_cal |= IMAGE_CAL_IMAGE_CAL_START_MASK;
-        self.write(IMAGE_CAL, image_cal).await
+        self.write(IMAGE_CAL, image_cal).await?;
+        delay.delay_ms(10).await;
+        self.access_fsk_registers(true).await
     }
 
     /// Clears all interrupts.
@@ -148,6 +151,23 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(self.read(IRQ_FLAGS).await? & <I as IRQ>::MASK == 1)
     }
 
+    /// Gets the received signal strength indicator (RSSI) in dBm of the last packet received.
+    ///
+    /// See: datasheet section 3.5.5
+    pub async fn last_packet_rssi(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
+        Ok(calculate::last_packet_rssi_dbm(
+            self.frequency().await?,
+            self.read(PKT_RSSI_VALUE).await? as i16,
+            self.last_packet_snr().await?,
+            self.read(RSSI_VALUE).await? as i16
+        ))
+    }
+
+    /// Gets the signal-to-noise ratio (SNR) of the last packet received.
+    pub async fn last_packet_snr(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
+        Ok((self.read(PKT_SNR_VALUE).await? >> 2) as i16)
+    }
+
     /// Maps the DIO0 pin signal source.
     ///
     /// See: datasheet table 18
@@ -212,21 +232,40 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(IRQ_FLAGS_MASK, byte | <I as IRQ>::MASK).await
     }
 
-    /// Gets the received signal strength indicator (RSSI) in dBm of the last packet received.
-    ///
-    /// See: datasheet section 3.5.5
-    pub async fn last_packet_rssi(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
-        Ok(calculate::last_packet_rssi_dbm(
-            self.frequency().await?,
-            self.read(PKT_RSSI_VALUE).await? as i16,
-            self.last_packet_snr().await?,
-            self.read(RSSI_VALUE).await? as i16
-        ))
-    }
+    pub async fn measure_temp<D: DelayNs>(&mut self, mut delay: D) -> Result<i8, Sx127xError<SPI::Error>> {
+        self.access_fsk_registers(true).await?;
+        // Set the device to  sleep
+        let mut op_mode = self.read(0x01).await?;
+        set_bits(&mut op_mode, 0x0, 0x7, 0x0);
+        self.write(0x01, op_mode).await?;
+        // Set the device to FSRx mode
+        let mut op_mode = self.read(0x01).await?;
+        set_bits(&mut op_mode, 0x4, 0x7, 0x0);
+        self.write(0x01, op_mode).await?;
+        // Set TempMonitorOff = 0 (enables the sensor). It is not required to wait for the PLL Lock indication
+        let mut image_cal = self.read(0x3b).await?;
+        set_bits(&mut image_cal, 0x0, 0x1, 0x0);
+        self.write(0x3b, image_cal).await?;
+        delay.delay_us(200).await;
+        // Set TempMonitorOff = 1
+        let mut image_cal = self.read(0x3b).await?;
+        set_bits(&mut image_cal, 0x1, 0x1, 0x0);
+        self.write(0x3b, image_cal).await?;
+        // Set device back to Sleep  mode
+        let mut op_mode = self.read(0x01).await?;
+        set_bits(&mut op_mode, 0x0, 0x7, 0x0);
+        self.write(0x01, op_mode).await?;
+        // Access temperature value in RegTemp
+        let temp = self.read(0x3c).await?;
+        self.access_fsk_registers(false).await?;
 
-    /// Gets the signal-to-noise ratio (SNR) of the last packet received.
-    pub async fn last_packet_snr(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
-        Ok((self.read(PKT_SNR_VALUE).await? >> 2) as i16)
+        if (temp & 0x80) == 0x80 {
+            info!("temp: {}", (255 - temp) as i8);
+        } else {
+            info!("temp: {}", -1 * temp as i8);
+        }
+
+        Ok(temp as i8)
     }
 
     /// Optimize for the current bandwidth.
@@ -364,17 +403,17 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(RxStatus::try_from(self.read(MODEM_STAT).await? & MODEM_STAT_MODEM_STATUS_MASK).map_err(|_| InvalidState)?)
     }
 
-    /// Sets the temperature monitor operation flag. This will switch to the FSK/OOK modem,
-    /// set/unset the temp monitor flag, then switch back to the LoRa modem before returning.
+    /// Sets the temperature monitor operation flag.
     ///
     /// See: datasheet section 2.1.3.8
-    pub async fn set_auto_temp_calibration(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn set_temp_monitor(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
         #[cfg(feature = "defmt")]
-        debug!("set_auto_temp_calibration: {}", on);
-        self.set_modem(Modem::Fsk).await?;
-        let image_cal = self.read(IMAGE_CAL).await?;
-        self.write(IMAGE_CAL, image_cal | !on as u8).await?;
-        self.set_modem(Modem::LoRa).await
+        debug!("set_temp_monitor: {}", on);
+        self.access_fsk_registers(true).await?;
+        let mut byte = self.read(IMAGE_CAL).await?;
+        set_bits(&mut byte, !on as u8, IMAGE_CAL_TEMP_MONITOR_OFF_MASK, IMAGE_CAL_TEMP_MONITOR_OFF_OFFSET);
+        self.write(IMAGE_CAL, byte).await?;
+        self.access_fsk_registers(false).await
     }
 
     /// Sets cyclic redundancy check (CRC) generation and verification on rx/tx payloads on/off.
@@ -518,6 +557,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     // PRIVATE -------------------------------------------------------------------------------------
 
+    async fn access_fsk_registers(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+        let mut byte = self.read(OP_MODE).await?;
+        set_bits(&mut byte, on as u8, OP_MODE_ACCESS_SHARED_REG_MASK, OP_MODE_ACCESS_SHARED_REG_OFFSET);
+        self.write(OP_MODE, byte).await
+    }
+
     /// Gets the bandwidth.
     ///
     /// See: datasheet section 4.1.1.4
@@ -533,7 +578,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Configures the LoRa driver.
-    async fn configure(&mut self, config: Sx127xLoraConfig) -> Result<(), Sx127xError<SPI::Error>> {
+    async fn configure<D: DelayNs>(&mut self, config: Sx127xLoraConfig, delay: D) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_bandwidth(config.bandwidth).await?;
         self.set_coding_rate(config.coding_rate).await?;
         self.set_frequency(config.frequency).await?;
@@ -544,7 +589,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_crc(config.use_crc).await?;
 
         if config.auto_optimize {
-            self.calibrate().await?;
+            self.calibrate(delay).await?;
             self.set_optimize_bandwidth(config.bandwidth).await?;
             let on = self.should_optimize_low_data_rate(config.bandwidth, config.spreading_factor).await?;
             self.set_optimize_data_rate(on).await?;
@@ -590,7 +635,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     }
 
     /// Performs a SPI read.
-    async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
+    pub async fn read(&mut self, addr: u8) -> Result<u8, Sx127xError<SPI::Error>> {
         self.spi.read(addr).await
     }
 

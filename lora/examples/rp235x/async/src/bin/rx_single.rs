@@ -15,6 +15,7 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, SPI1};
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
+use embassy_time::Delay;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
 use common::heartbeat;
@@ -40,7 +41,7 @@ async fn main(spawner: Spawner) {
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
     let mut dio1 = Input::new(p.PIN_16, Pull::Down);
 
-    let mut sx127x = Sx127xLora::new(spi_dev, Sx127xLoraConfig::default()).await.unwrap();
+    let mut sx127x = Sx127xLora::new(spi_dev, Sx127xLoraConfig::default(), Delay).await.unwrap();
     sx127x.optimize_rx_response().await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
     sx127x.map_dio1::<RxTimeout>().await.unwrap();

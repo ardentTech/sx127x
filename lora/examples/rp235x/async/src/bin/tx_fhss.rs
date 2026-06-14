@@ -4,7 +4,7 @@
 #![no_main]
 
 use core::cell::RefCell;
-use defmt::{debug, unwrap};
+use defmt::{debug, info, unwrap};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::{InterruptExecutor, Spawner};
 use embassy_rp::{bind_interrupts, interrupt};
@@ -14,6 +14,7 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, SPI1};
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex};
 use embassy_sync::mutex::Mutex;
+use embassy_time::Delay;
 use static_cell::StaticCell;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
@@ -45,8 +46,10 @@ unsafe fn SWI_IRQ_0() {
 #[embassy_executor::task]
 async fn tx_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
+        info!("waiting for btn press");
         pin.wait_for_rising_edge().await;
         {
+            info!("btn pressed!");
             let lora_unlocked = lora.lock().await;
             lora_unlocked.borrow_mut().tx(&TX_PAYLOAD).await.unwrap();
         }
@@ -57,6 +60,7 @@ async fn tx_task(lora: &'static Lora, mut pin: Input<'static>) {
 async fn tx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
         pin.wait_for_rising_edge().await;
+        info!("TxDone");
         {
             let sx127x_unlocked = lora.lock().await;
             sx127x_unlocked.borrow_mut().clear_interrupt::<TxDone>().await.unwrap();
@@ -70,6 +74,7 @@ async fn tx_done_task(lora: &'static Lora, mut pin: Input<'static>) {
 async fn change_channel_task(lora: &'static Lora, mut pin: Input<'static>) {
     loop {
         pin.wait_for_rising_edge().await;
+        info!("FhssChangeChannel");
         {
             let sx127x_unlocked = lora.lock().await;
             let mut sx127x = sx127x_unlocked.borrow_mut();
@@ -95,7 +100,7 @@ async fn main(_spawner: Spawner) {
     let spi_dev = SpiDevice::new(SPI_BUS.init(Mutex::new(spi)), cs);
     let mut config = fhss_config();
     config.frequency = FHSS_CHANNELS[0];
-    let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
+    let mut sx127x = Sx127xLora::new(spi_dev, config, Delay).await.unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).await.unwrap();
     sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
@@ -113,5 +118,5 @@ async fn main(_spawner: Spawner) {
     interrupt::SWI_IRQ_0.set_priority(Priority::P3);
     let spawner = EXECUTOR_MED.start(interrupt::SWI_IRQ_0);
     spawner.spawn(unwrap!(change_channel_task(lora, Input::new(p.PIN_16, Pull::Down))));
-    spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
+    spawner.spawn(unwrap!(led_task(Output::new(p.PIN_9, Level::Low), Output::new(p.PIN_7, Level::Low))));
 }

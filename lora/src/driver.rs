@@ -97,7 +97,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         debug!("clear_interrupt");
 
         let byte = self.read(IRQ_FLAGS).await?;
-        self.write(IRQ_FLAGS, byte | <I as IRQ>::MASK).await
+        self.write(IRQ_FLAGS, byte & <I as IRQ>::MASK).await
     }
 
     /// Gets the cyclic redundancy check (CRC) on/off flag.
@@ -148,7 +148,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Gets the flag for interrupt `I`.
     pub async fn interrupt_flag<I: IRQ>(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
-        Ok(self.read(IRQ_FLAGS).await? & <I as IRQ>::MASK == 1)
+        Ok(self.read(IRQ_FLAGS).await? & <I as IRQ>::MASK != 0)
     }
 
     /// Gets the received signal strength indicator (RSSI) in dBm of the last packet received.
@@ -610,7 +610,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     ///
     /// See: datasheet section 4.1.1.6
     async fn header_mode(&mut self) -> Result<HeaderMode, Sx127xError<SPI::Error>> {
-        Ok(HeaderMode::from(get_bits(self.read(MODEM_CONFIG_1).await?, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_OFFSET)))
+        Ok(HeaderMode::from(
+            get_bits(self.read(MODEM_CONFIG_1).await?, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_MASK, MODEM_CONFIG_1_IMPLICIT_HEADER_MODE_ON_OFFSET)))
     }
 
     /// Maps a signal to a DIO pin.

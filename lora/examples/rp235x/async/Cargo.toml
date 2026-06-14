@@ -74,7 +74,7 @@ bench = false
 
 [[bin]]
 name = "temp"
-path = "src/bin/temp.rs"
+path = "src/bin/temperature.rs"
 test = false
 doctest = false
 bench = false

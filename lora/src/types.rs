@@ -487,7 +487,6 @@ impl TxConfig {
         Ok(Self { ocp, power, ramp, use_rfo })
     }
 }
-// TODO impl Default for TxConfig?
 
 // -------------------------------------------------------------------------------------------------
 /// Frequency Error Indication (FEI)
@@ -558,7 +557,7 @@ pub struct TimeoutSymbols(pub(crate) u16);
 impl TimeoutSymbols {
     pub fn new(timeout: u16) -> Result<Self, Sx127xError<()>> {
         if !validate::rx_timeout_symbols(timeout) {
-            return Err(Sx127xError::InvalidInput)
+            return Err(InvalidInput)
         }
         Ok(TimeoutSymbols(timeout))
     }

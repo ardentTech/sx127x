@@ -13,7 +13,6 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, SPI1};
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex};
 use embassy_sync::mutex::Mutex;
-use embassy_time::Delay;
 use static_cell::StaticCell;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
@@ -91,7 +90,7 @@ async fn main(_spawner: Spawner) {
     let spi_dev = SpiDevice::new(SPI_BUS.init(Mutex::new(spi)), cs);
     let mut config = fhss_config();
     config.frequency = FHSS_CHANNELS[0];
-    let mut sx127x = Sx127xLora::new(spi_dev, config, Delay).await.unwrap();
+    let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
     sx127x.optimize_rx_response().await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();
@@ -108,7 +107,7 @@ async fn main(_spawner: Spawner) {
     interrupt::SWI_IRQ_0.set_priority(Priority::P3);
     let spawner = EXECUTOR_MED.start(interrupt::SWI_IRQ_0);
     spawner.spawn(unwrap!(change_channel_task(lora, Input::new(p.PIN_16, Pull::Down))));
-    spawner.spawn(led_task(Output::new(p.PIN_21, Level::Low), Output::new(p.PIN_22, Level::Low)).unwrap());
+    spawner.spawn(led_task(Output::new(p.PIN_9, Level::Low), Output::new(p.PIN_7, Level::Low)).unwrap());
 
     // kick-start the whole process
     {

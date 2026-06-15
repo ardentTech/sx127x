@@ -13,11 +13,10 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, SPI1};
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
-use embassy_time::Delay;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
+use common::ex_config;
 use sx127xlora::driver::Sx127xLora;
-use sx127xlora::types::{Sx127xLoraConfig};
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
@@ -35,7 +34,10 @@ async fn main(_spawner: Spawner) {
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 
-    let mut sx127x = Sx127xLora::new(spi_dev, Sx127xLoraConfig::default(), Delay).await.unwrap();
+    let mut config = ex_config();
+    config.use_crc = false;
+    let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
+
     sx127x.set_crc(true).await.unwrap();
     assert!(sx127x.crc().await.unwrap());
     sx127x.set_crc(false).await.unwrap();

@@ -352,7 +352,7 @@ impl RxPacket {
 
 // -------------------------------------------------------------------------------------------------
 pub struct Sx127xLoraConfig {
-    /// Will automatically optimize for frequency, bandwidth, data rate and spurious rx response.
+    /// Will automatically optimize for bandwidth, data rate and spurious rx response.
     pub auto_optimize: bool,
     pub bandwidth: Bandwidth,
     pub coding_rate: CodingRate,

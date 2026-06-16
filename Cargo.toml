@@ -1,5 +1,4 @@
 [workspace]
-resolver = "3"
 members = [
     "common",
     "fsk",
@@ -7,12 +6,13 @@ members = [
     "lora",
     "lora/examples/rp235x/async",
     "lora/examples/rp235x/async_half_duplex",
+    "lora/examples/rp235x/sync"
 ]
+resolver = "3"
 
 [workspace.dependencies]
 approx = "0.6.0-rc2"
 cortex-m-rt = "0.7.5"
-defmt = { version = "1.0.1" }
 defmt-rtt = "1.2.0"
 embassy-embedded-hal = "0.6.0"
 embassy-executor = "0.10.0"
@@ -20,7 +20,14 @@ embassy-futures = "0.1.2"
 embassy-rp = "0.10.0"
 embassy-sync = "0.8.0"
 embassy-time = "0.5.1"
-embedded-hal = { version = "1.0.0" }
-embedded-hal-async = { version = "1.0.0" }
 maybe-async = "0.2"
 panic-probe = "1.0.0"
+
+[workspace.dependencies.defmt]
+version = "1.0.1"
+
+[workspace.dependencies.embedded-hal]
+version = "1.0.0"
+
+[workspace.dependencies.embedded-hal-async]
+version = "1.0.0"

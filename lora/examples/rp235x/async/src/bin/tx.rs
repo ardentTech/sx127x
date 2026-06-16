@@ -1,5 +1,5 @@
-//! This example demonstrates CAD and TX by checking for channel activity before transmitting a 128 byte payload. The green led on GPIO 21 will pulse on
-//! success, or the red les on GPIO 22 will pulse on error.
+//! This example demonstrates CAD and TX by checking for channel activity before transmitting a 128 byte payload. The green led on GPIO 9 will pulse on
+//! success, or the red les on GPIO 7 will pulse on error.
 #![no_std]
 #![no_main]
 

@@ -25,4 +25,4 @@ approx = { workspace = true }
 default = []
 defmt = ["dep:defmt"]
 half_duplex = []
-sync = ["maybe-async/is_sync", "dep:embedded-hal"]
+sync = ["maybe-async/is_sync", "dep:embedded-hal", "sx127x-common/sync"]

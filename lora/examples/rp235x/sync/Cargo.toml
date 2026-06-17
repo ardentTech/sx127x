@@ -69,6 +69,13 @@ debug-assertions = false
 lto = 'fat'
 opt-level = 3
 
+[lib]
+name = "common"
+path = "src/lib.rs"
+test = false
+doctest = false
+bench = false
+
 [[bin]]
 name = "spi_rw"
 path = "src/bin/spi_rw.rs"
@@ -79,6 +86,13 @@ bench = false
 [[bin]]
 name = "tx"
 path = "src/bin/tx.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
+name = "tx_fhss"
+path = "src/bin/tx_fhss.rs"
 test = false
 doctest = false
 bench = false

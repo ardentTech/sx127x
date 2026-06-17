@@ -12,13 +12,13 @@
 
 - [x] async
 - [x] async rp235x examples
-- [ ] sync
+- [x] sync
 - [ ] sync rp235x examples
 
 ### Examples
 
 * [RP235x async](https://github.com/ardentTech/sx127x-lora/tree/main/examples/rp235x/async)
-* RP235x sync: TODO
+* [RP235x sync](https://github.com/ardentTech/sx127x-lora/tree/main/examples/rp235x/sync)
 
 ### TODO
 

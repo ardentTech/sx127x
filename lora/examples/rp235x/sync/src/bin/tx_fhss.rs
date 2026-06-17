@@ -1,5 +1,5 @@
-//! This example demonstrates CAD and TX by checking for channel activity before transmitting a 128 byte payload. The green led on GPIO 9 will pulse on
-//! success, or the red les on GPIO 7 will pulse on error.
+//! This example shows how to use frequency hopping spread spectrum (FHSS) to transmit a packet. An external push button connected to GPIO 14 is used to
+//! initiate transmission.
 #![no_std]
 #![no_main]
 
@@ -18,23 +18,23 @@ use rp235x_hal::{self as hal, pac, entry, gpio};
 use rp235x_hal::Clock;
 use rp235x_hal::fugit::RateExtU32;
 use rp235x_hal::gpio::{FunctionSioInput, FunctionSioOutput, FunctionSpi, Pin, PullDown, PullNone};
-use rp235x_hal::gpio::bank0::{Gpio15, Gpio18, Gpio7, Gpio9};
+use rp235x_hal::gpio::bank0::{Gpio14, Gpio15, Gpio16, Gpio9};
 use rp235x_hal::gpio::Interrupt::EdgeHigh;
-use common::{pulse_led, LORA_FREQUENCY_HZ, TX_PAYLOAD};
+use common::{fhss_config, pulse_led, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS, TX_PAYLOAD};
 use sx127xlora::driver::Sx127xLora;
-use sx127xlora::types::{CadDetected, CadDone, PowerRamp, Sx127xLoraConfig, TxConfig, TxDone, OCP};
+use sx127xlora::types::{FhssChangeChannel, PowerRamp, TxConfig, TxDone, OCP};
 // Provide an alias for our BSP so we can switch targets quickly.
 // Uncomment the BSP you included in Cargo.toml, the rest of the code does not need to change.
 // use some_bsp;
 
-const TX_DELAY_MS: u32 = 3_000;
-
+type Btn = Pin<Gpio14, FunctionSioInput, PullDown>;
 type Dio0 = Pin<Gpio15, FunctionSioInput, PullDown>;
-type Dio3 = Pin<Gpio18, FunctionSioInput, PullDown>;
-type Gpios = (Dio0, Dio3);
+type Dio1 = Pin<Gpio16, FunctionSioInput, PullDown>;
+type Gpios = (Btn, Dio0, Dio1);
 static GPIOS: Mutex<RefCell<Option<Gpios>>> = Mutex::new(RefCell::new(None));
+static BTN_FLAG: AtomicBool = AtomicBool::new(false);
 static DIO0_FLAG: AtomicBool = AtomicBool::new(false);
-static DIO3_FLAG: AtomicBool = AtomicBool::new(false);
+static DIO1_FLAG: AtomicBool = AtomicBool::new(false);
 
 /// Tell the Boot ROM about our application
 #[unsafe(link_section = ".start_block")]
@@ -86,27 +86,27 @@ fn main() -> ! {
     );
     let spi_bus = RefCell::new(spi);
 
+    let btn = pins.gpio14.into_pull_down_input();
+    btn.set_interrupt_enabled(EdgeHigh, true);
     let dio0: Dio0 = pins.gpio15.reconfigure();
     dio0.set_interrupt_enabled(EdgeHigh, true);
-    let dio3: Dio3 = pins.gpio18.reconfigure();
-    dio3.set_interrupt_enabled(EdgeHigh, true);
+    let dio1: Dio1 = pins.gpio16.reconfigure();
+    dio1.set_interrupt_enabled(EdgeHigh, true);
 
     let cs = pins.gpio13.into_push_pull_output_in_state(PinState::High);
     let spi_device = RefCellDevice::new(&spi_bus, cs, timer).unwrap();
-    let mut config = Sx127xLoraConfig::default();
-    config.frequency = LORA_FREQUENCY_HZ;
-    let mut sx127x = Sx127xLora::new(spi_device, config).unwrap();
+    let mut sx127x = Sx127xLora::new(spi_device, fhss_config()).unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).unwrap();
     sx127x.map_dio0::<TxDone>().unwrap();
-    sx127x.map_dio3::<CadDone>().unwrap();
+    sx127x.map_dio1::<FhssChangeChannel>().unwrap();
+    sx127x.set_hop_period(FREQ_HOP_PERIOD_MS).unwrap();
 
     let mut green_led: Pin<Gpio9, FunctionSioOutput, PullNone> = pins.gpio9.reconfigure();
-    let mut red_led: Pin<Gpio7, FunctionSioOutput, PullNone> = pins.gpio7.reconfigure();
 
     // Give away our pins by moving them into the `GLOBAL_PINS` variable.
     // We won't need to access them in the main thread again
     critical_section::with(|cs| {
-        GPIOS.borrow(cs).replace(Some((dio0, dio3)));
+        GPIOS.borrow(cs).replace(Some((btn, dio0, dio1)));
     });
 
     // Unmask the IRQ for I/O Bank 0 so that the RP2350's interrupt controller
@@ -123,33 +123,27 @@ fn main() -> ! {
     }
 
     loop {
-        sx127x.start_cad().unwrap();
         wfi();
-        if DIO3_FLAG.load(Ordering::Relaxed) {
-            DIO3_FLAG.store(false, Ordering::Relaxed);
-            if !sx127x.interrupt_flag::<CadDetected>().unwrap() {
-                sx127x.tx(&TX_PAYLOAD).unwrap();
-                wfi();
-                if DIO0_FLAG.load(Ordering::Relaxed) {
-                    DIO0_FLAG.store(false, Ordering::Relaxed);
-                    sx127x.clear_interrupt::<TxDone>().unwrap();
-                    pulse_led(&mut green_led, &mut delay);
-                } else {
-                    error!("expected DIO0_FLAG to be set");
-                    pulse_led(&mut red_led, &mut delay);
-                    // TODO should panic?
-                }
-            } else {
-                warn!("CadDetected triggered so TX not attempted");
-                sx127x.clear_interrupt::<CadDetected>().unwrap();
-            }
-        } else {
-            error!("expected DIO3_FLAG to be set");
-            pulse_led(&mut red_led, &mut delay);
-            // TODO should panic?
+        if BTN_FLAG.load(Ordering::Relaxed) {
+            info!("btn pressed!");
+            sx127x.tx(&TX_PAYLOAD).unwrap();
+            BTN_FLAG.store(false, Ordering::Relaxed);
         }
-        sx127x.clear_interrupt::<CadDone>().unwrap();
-        delay.delay_ms(TX_DELAY_MS);
+        if DIO0_FLAG.load(Ordering::Relaxed) {
+            info!("TxDone");
+            sx127x.clear_interrupt::<TxDone>().unwrap();
+            sx127x.set_frequency(FHSS_CHANNELS[0]).unwrap();
+            pulse_led(&mut green_led, &mut delay);
+            DIO0_FLAG.store(false, Ordering::Relaxed);
+        }
+        if DIO1_FLAG.load(Ordering::Relaxed) {
+            info!("FhssChangeChannel");
+            let channel = sx127x.hop_channel().unwrap();
+            sx127x.set_frequency(FHSS_CHANNELS[channel as usize % FHSS_CHANNELS_SIZE]).unwrap();
+            sx127x.clear_interrupt::<FhssChangeChannel>().unwrap();
+            debug!("hop to channel: {}", FHSS_CHANNELS[channel as usize % FHSS_CHANNELS_SIZE]);
+            DIO1_FLAG.store(false, Ordering::Relaxed);
+        }
     }
 }
 
@@ -158,14 +152,18 @@ fn main() -> ! {
 fn IO_IRQ_BANK0() {
     critical_section::with(|cs| {
         let mut maybe_gpios = GPIOS.borrow_ref_mut(cs);
-        if let Some((dio0, dio3)) = maybe_gpios.as_mut() {
+        if let Some((btn, dio0, dio1)) = maybe_gpios.as_mut() {
+            if btn.interrupt_status(EdgeHigh) {
+                BTN_FLAG.store(true, Ordering::Relaxed);
+                btn.clear_interrupt(EdgeHigh);
+            }
             if dio0.interrupt_status(EdgeHigh) {
                 DIO0_FLAG.store(true, Ordering::Relaxed);
                 dio0.clear_interrupt(EdgeHigh);
             }
-            if dio3.interrupt_status(EdgeHigh) {
-                DIO3_FLAG.store(true, Ordering::Relaxed);
-                dio3.clear_interrupt(EdgeHigh);
+            if dio1.interrupt_status(EdgeHigh) {
+                DIO1_FLAG.store(true, Ordering::Relaxed);
+                dio1.clear_interrupt(EdgeHigh);
             }
         }
     })

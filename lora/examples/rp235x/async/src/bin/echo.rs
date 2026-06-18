@@ -48,8 +48,6 @@ async fn main(spawner: Spawner) {
         match sx127x.rx_packet().await {
             Ok(rxp) => {
                 let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
-                info!("rx payload: {:a}", rxp.payload[..len]);
-                info!("rx coding rate: {}, rssi: {} dBm, snr: {} dB", rxp.coding_rate, rxp.rssi, rxp.snr);
                 PULSE_LED.signal(Led::Green);
 
                 sx127x.map_dio0::<TxDone>().await.unwrap();
@@ -58,7 +56,7 @@ async fn main(spawner: Spawner) {
                 sx127x.clear_interrupt::<TxDone>().await.unwrap();
                 PULSE_LED.signal(Led::Red);
             }
-            Err(_) => error!("read_rx_data failed :(")
+            Err(_) => error!("rx_packet() failed :(")
         }
     }
 }

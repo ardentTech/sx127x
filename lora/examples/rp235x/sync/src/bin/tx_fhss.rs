@@ -17,10 +17,10 @@ use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::{self as hal, pac, entry, gpio};
 use rp235x_hal::Clock;
 use rp235x_hal::fugit::RateExtU32;
-use rp235x_hal::gpio::{FunctionSioInput, FunctionSioOutput, FunctionSpi, Pin, PullDown, PullNone};
-use rp235x_hal::gpio::bank0::{Gpio14, Gpio15, Gpio16, Gpio9};
+use rp235x_hal::gpio::{FunctionSioInput, FunctionSpi, Pin, PullDown};
+use rp235x_hal::gpio::bank0::Gpio14;
 use rp235x_hal::gpio::Interrupt::EdgeHigh;
-use common::{fhss_config, pulse_led, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS, TX_PAYLOAD};
+use common::{fhss_config, pulse_led, Dio0, Dio1, GreenLed, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS, TX_PAYLOAD};
 use sx127xlora::driver::Sx127xLora;
 use sx127xlora::types::{FhssChangeChannel, PowerRamp, TxConfig, TxDone, OCP};
 // Provide an alias for our BSP so we can switch targets quickly.
@@ -28,8 +28,6 @@ use sx127xlora::types::{FhssChangeChannel, PowerRamp, TxConfig, TxDone, OCP};
 // use some_bsp;
 
 type Btn = Pin<Gpio14, FunctionSioInput, PullDown>;
-type Dio0 = Pin<Gpio15, FunctionSioInput, PullDown>;
-type Dio1 = Pin<Gpio16, FunctionSioInput, PullDown>;
 type Gpios = (Btn, Dio0, Dio1);
 static GPIOS: Mutex<RefCell<Option<Gpios>>> = Mutex::new(RefCell::new(None));
 static BTN_FLAG: AtomicBool = AtomicBool::new(false);
@@ -101,7 +99,7 @@ fn main() -> ! {
     sx127x.map_dio1::<FhssChangeChannel>().unwrap();
     sx127x.set_hop_period(FREQ_HOP_PERIOD_MS).unwrap();
 
-    let mut green_led: Pin<Gpio9, FunctionSioOutput, PullNone> = pins.gpio9.reconfigure();
+    let mut green_led: GreenLed = pins.gpio9.reconfigure();
 
     // Give away our pins by moving them into the `GLOBAL_PINS` variable.
     // We won't need to access them in the main thread again

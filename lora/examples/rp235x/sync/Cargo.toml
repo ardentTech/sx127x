@@ -77,6 +77,13 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "echo"
+path = "src/bin/echo.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "spi_rw"
 path = "src/bin/spi_rw.rs"
 test = false

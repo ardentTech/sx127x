@@ -17,10 +17,9 @@ use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::{self as hal, pac, entry, gpio};
 use rp235x_hal::Clock;
 use rp235x_hal::fugit::RateExtU32;
-use rp235x_hal::gpio::{FunctionSioInput, FunctionSioOutput, FunctionSpi, Pin, PullDown, PullNone};
-use rp235x_hal::gpio::bank0::{Gpio15, Gpio18, Gpio7, Gpio9};
+use rp235x_hal::gpio::{FunctionSpi, Pin, PullDown, PullNone};
 use rp235x_hal::gpio::Interrupt::EdgeHigh;
-use common::{pulse_led, LORA_FREQUENCY_HZ, TX_PAYLOAD};
+use common::{pulse_led, Dio0, Dio3, GreenLed, RedLed, LORA_FREQUENCY_HZ, TX_PAYLOAD};
 use sx127xlora::driver::Sx127xLora;
 use sx127xlora::types::{CadDetected, CadDone, PowerRamp, Sx127xLoraConfig, TxConfig, TxDone, OCP};
 // Provide an alias for our BSP so we can switch targets quickly.
@@ -29,8 +28,6 @@ use sx127xlora::types::{CadDetected, CadDone, PowerRamp, Sx127xLoraConfig, TxCon
 
 const TX_DELAY_MS: u32 = 3_000;
 
-type Dio0 = Pin<Gpio15, FunctionSioInput, PullDown>;
-type Dio3 = Pin<Gpio18, FunctionSioInput, PullDown>;
 type Gpios = (Dio0, Dio3);
 static GPIOS: Mutex<RefCell<Option<Gpios>>> = Mutex::new(RefCell::new(None));
 static DIO0_FLAG: AtomicBool = AtomicBool::new(false);
@@ -100,8 +97,8 @@ fn main() -> ! {
     sx127x.map_dio0::<TxDone>().unwrap();
     sx127x.map_dio3::<CadDone>().unwrap();
 
-    let mut green_led: Pin<Gpio9, FunctionSioOutput, PullNone> = pins.gpio9.reconfigure();
-    let mut red_led: Pin<Gpio7, FunctionSioOutput, PullNone> = pins.gpio7.reconfigure();
+    let mut green_led: GreenLed = pins.gpio9.reconfigure();
+    let mut red_led: RedLed = pins.gpio7.reconfigure();
 
     // Give away our pins by moving them into the `GLOBAL_PINS` variable.
     // We won't need to access them in the main thread again

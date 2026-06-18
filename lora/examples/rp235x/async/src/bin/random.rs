@@ -1,4 +1,4 @@
-//! This example reads a random byte from the chip.
+//! This example reads a random byte from the sx127x chip.
 #![no_std]
 #![no_main]
 
@@ -35,12 +35,6 @@ async fn main(spawner: Spawner) {
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 
     let mut sx127x = Sx127xLora::new(spi_dev, ex_config()).await.unwrap();
-    sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).await.unwrap();
-
-    sx127x.map_dio0::<TxDone>().await.unwrap();
-    sx127x.map_dio3::<CadDone>().await.unwrap();
-
-    spawner.spawn(led_task(Output::new(p.PIN_9, Level::Low), Output::new(p.PIN_7, Level::Low)).unwrap());
     sx127x.random().await.unwrap();
 
     loop {

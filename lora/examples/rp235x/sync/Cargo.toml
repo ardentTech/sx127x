@@ -84,6 +84,13 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "random"
+path = "src/bin/random.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "spi_rw"
 path = "src/bin/spi_rw.rs"
 test = false

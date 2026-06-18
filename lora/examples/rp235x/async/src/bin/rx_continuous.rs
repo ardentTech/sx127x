@@ -53,7 +53,7 @@ async fn main(spawner: Spawner) {
                 info!("rx coding rate: {}, rssi: {} dBm, snr: {} dB", rxp.coding_rate, rxp.rssi, rxp.snr);
                 PULSE_LED.signal(Led::Green);
             }
-            Err(_) => error!("read_rx_data failed :(")
+            Err(_) => error!("rx_packet failed :(")
         }
     }
 }

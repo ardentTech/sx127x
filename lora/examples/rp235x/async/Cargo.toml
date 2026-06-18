@@ -59,13 +59,6 @@ doctest = false
 bench = false
 
 [[bin]]
-name = "rx_single"
-path = "src/bin/rx_single.rs"
-test = false
-doctest = false
-bench = false
-
-[[bin]]
 name = "spi_rw"
 path = "src/bin/spi_rw.rs"
 test = false

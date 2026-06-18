@@ -91,6 +91,13 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "rx_continuous"
+path = "src/bin/rx_continuous.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "spi_rw"
 path = "src/bin/spi_rw.rs"
 test = false

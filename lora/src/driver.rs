@@ -7,12 +7,12 @@ use embedded_hal_async::spi::SpiDevice;
 use embedded_hal::spi::SpiDevice;
 
 pub use sx127x_common::error::Sx127xError;
-use sx127x_common::{Hz, Modem, CHIP_VERSION, FSTEP};
+use sx127x_common::{Hz, Modem, CHIP_VERSION, FSTEP, HF_MIN_HZ};
 use sx127x_common::bits::{get_bits, set_bits};
 use sx127x_common::error::Sx127xError::{InvalidState, InvalidVersion};
 use sx127x_common::spi::Sx127xSpi;
 use crate::{calculate, check};
-use crate::constants::{HF_MIN_HZ, PAYLOAD_SIZE};
+use crate::constants::PAYLOAD_SIZE;
 use crate::registers::*;
 use crate::types::*;
 use crate::validate;

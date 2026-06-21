@@ -1,5 +1,4 @@
-use sx127x_common::Hz;
-use crate::constants::HF_MIN_HZ;
+use sx127x_common::{Hz, HF_MIN_HZ};
 
 const RSSI_LF_CONSTANT: i16 = -164; // TODO see p87 note2
 const RSSI_HF_CONSTANT: i16 = -157; // TODO see p87 note2

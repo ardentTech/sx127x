@@ -402,6 +402,7 @@ impl From<u8> for PreambleDetectorSize {
 }
 
 // TODO verify this with example
+// TODO "Threshold" or is tolerance more appropriate?
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PreambleDetectorThreshold(pub(crate) u8);
 impl PreambleDetectorThreshold {
@@ -429,9 +430,9 @@ impl Default for PreambleDetector {
 impl From<u8> for PreambleDetector {
     fn from(value: u8) -> Self {
         Self {
-            on: get_bits(value, PREAMBLE_DETECT_PREAMBLE_DETECTOR_ON_MASK, 7) == 1,
-            size: PreambleDetectorSize::from(get_bits(value, PREAMBLE_DETECT_PREAMBLE_DETECTOR_SIZE_MASK, 5)),
-            tolerance: PreambleDetectorThreshold(get_bits(value, PREAMBLE_DETECT_PREAMBLE_DETECTOR_ON_MASK, 0))
+            on: get_bits(value, PREAMBLE_DETECT_PREAMBLE_DETECTOR_ON_MASK, PREAMBLE_DETECT_PREAMBLE_DETECTOR_ON_OFFSET) == 1,
+            size: PreambleDetectorSize::from(get_bits(value, PREAMBLE_DETECT_PREAMBLE_DETECTOR_SIZE_MASK, PREAMBLE_DETECT_PREAMBLE_DETECTOR_SIZE_OFFSET)),
+            tolerance: PreambleDetectorThreshold(get_bits(value, PREAMBLE_DETECT_PREAMBLE_DETECTOR_TOL_MASK, PREAMBLE_DETECT_PREAMBLE_DETECTOR_TOL_OFFSET))
         }
     }
 }
@@ -628,17 +629,17 @@ pub struct SequencerTransitions {
 }
 impl SequencerTransitions {
     pub(crate) fn set_config1(&mut self, byte: u8) {
-        self.idle_mode = IdleMode::from(get_bits(byte, SEQ_CONFIG_1_IDLE_MODE_MASK, 5));
-        self.from_start = FromStart::from(get_bits(byte, SEQ_CONFIG_1_FROM_START_MASK, 3));
-        self.low_power_selection = LowPowerSelection::from(get_bits(byte, SEQ_CONFIG_1_LOW_POWER_SELECTION_MASK, 2));
-        self.from_idle = FromIdle::from(get_bits(byte, SEQ_CONFIG_1_FROM_IDLE_MASK, 1));
-        self.from_transmit = FromTransmit::from(get_bits(byte, SEQ_CONFIG_1_FROM_TRANSMIT_MASK, 0));
+        self.idle_mode = IdleMode::from(get_bits(byte, SEQ_CONFIG_1_IDLE_MODE_MASK, SEQ_CONFIG_1_IDLE_MODE_OFFSET));
+        self.from_start = FromStart::from(get_bits(byte, SEQ_CONFIG_1_FROM_START_MASK, SEQ_CONFIG_1_FROM_START_OFFSET));
+        self.low_power_selection = LowPowerSelection::from(get_bits(byte, SEQ_CONFIG_1_LOW_POWER_SELECTION_MASK, SEQ_CONFIG_1_LOW_POWER_SELECTION_OFFSET));
+        self.from_idle = FromIdle::from(get_bits(byte, SEQ_CONFIG_1_FROM_IDLE_MASK, SEQ_CONFIG_1_FROM_IDLE_OFFSET));
+        self.from_transmit = FromTransmit::from(get_bits(byte, SEQ_CONFIG_1_FROM_TRANSMIT_MASK, SEQ_CONFIG_1_FROM_TRANSMIT_OFFSET));
     }
 
     pub(crate) fn set_config2(&mut self, byte: u8) {
-        self.from_receive = FromReceive::from(get_bits(byte, SEQ_CONFIG_2_FROM_RECEIVE_MASK, 5));
-        self.from_rx_timeout = FromRxTimeout::from(get_bits(byte, SEQ_CONFIG_2_FROM_RX_TIMEOUT_MASK, 3));
-        self.from_packet_received = FromPacketReceived::from(get_bits(byte, SEQ_CONFIG_2_FROM_PACKET_RECEIVED, 0));
+        self.from_receive = FromReceive::from(get_bits(byte, SEQ_CONFIG_2_FROM_RECEIVE_MASK, SEQ_CONFIG_2_FROM_RECEIVE_OFFSET));
+        self.from_rx_timeout = FromRxTimeout::from(get_bits(byte, SEQ_CONFIG_2_FROM_RX_TIMEOUT_MASK, SEQ_CONFIG_2_FROM_RX_TIMEOUT_OFFSET));
+        self.from_packet_received = FromPacketReceived::from(get_bits(byte, SEQ_CONFIG_2_FROM_PACKET_RECEIVED_MASK, SEQ_CONFIG_2_FROM_PACKET_RECEIVED_OFFSET));
     }
 }
 

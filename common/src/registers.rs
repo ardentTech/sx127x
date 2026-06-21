@@ -1,5 +1,14 @@
 pub const FIFO: u8 = 0x00;
+
+// RegOpMode ---------------------------------------------------------------------------------------
 pub const OP_MODE: u8 = 0x01;
+pub const OP_MODE_LONG_RANGE_MODE_MASK: u8 = 0x80;
+pub const OP_MODE_LONG_RANGE_MODE_OFFSET: u8 = 0x7;
+pub const OP_MODE_MODULATION_TYPE_MASK: u8 = 0x60;
+pub const OP_MODE_LOW_FREQUENCY_MODE_ON_MASK: u8 = 0x08;
+pub const OP_MODE_LOW_FREQUENCY_MODE_ON_OFFSET: u8 = 0x03;
+pub const OP_MODE_MODE_MASK: u8 = 0x07;
+pub const OP_MODE_MODE_OFFSET: u8 = 0x0;
 
 // -------------------------------------------------------------------------------------------------
 pub const FRF_MSB: u8 = 0x06;

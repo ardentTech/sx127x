@@ -2,16 +2,16 @@
 use defmt::debug;
 
 #[cfg(not(feature = "sync"))]
-use embedded_hal_async::spi::SpiDevice;
+pub use embedded_hal_async::spi::SpiDevice;
 #[cfg(feature = "sync")]
-use embedded_hal::spi::SpiDevice;
+pub use embedded_hal::spi::SpiDevice;
 
 use crate::error::Sx127xError;
 
 pub struct Sx127xSpi<SPI> {
     pub spi: SPI
 }
-impl <SPI: SpiDevice> Sx127xSpi<SPI> {
+impl<SPI: SpiDevice> Sx127xSpi<SPI> {
     pub fn new(spi: SPI) -> Self {
         Self { spi }
     }

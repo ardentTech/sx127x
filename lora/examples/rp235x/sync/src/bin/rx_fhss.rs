@@ -14,7 +14,7 @@ use embedded_hal::digital::{PinState};
 use embedded_hal_bus::spi::RefCellDevice;
 use panic_probe as _;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::{self as hal, pac, entry, gpio};
+use rp235x_hal::{self as hal, pac, gpio};
 use rp235x_hal::Clock;
 use rp235x_hal::fugit::RateExtU32;
 use rp235x_hal::gpio::FunctionSpi;
@@ -36,7 +36,7 @@ static DIO1_FLAG: AtomicBool = AtomicBool::new(false);
 #[used]
 pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
 
-#[entry]
+#[cortex_m_rt::entry] // this is available via rp235x_hal but rustrover fails to resolve it
 fn main() -> ! {
     info!("Program start");
     let mut pac = pac::Peripherals::take().unwrap();

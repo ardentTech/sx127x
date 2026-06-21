@@ -1564,10 +1564,8 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "defmt 1.1.0",
- "embedded-hal 1.0.0",
- "embedded-hal-async",
  "maybe-async",
- "sx127x-common 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sx127x-common 0.4.0",
 ]
 
 [[package]]
@@ -1636,18 +1634,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "syn"
-version = "2.0.117"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e665b8803e7b1d2a727f4023456bbbbe74da67099c585258af0ad9c5013b9b99"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
-]
-
-[[package]]
-name = "sync"
+name = "sx127xlora-rp235x-sync"
 version = "0.1.0"
 dependencies = [
  "cortex-m",
@@ -1660,6 +1647,17 @@ dependencies = [
  "panic-probe",
  "rp235x-hal",
  "sx127xlora",
+]
+
+[[package]]
+name = "syn"
+version = "2.0.117"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e665b8803e7b1d2a727f4023456bbbbe74da67099c585258af0ad9c5013b9b99"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
 ]
 
 [[package]]

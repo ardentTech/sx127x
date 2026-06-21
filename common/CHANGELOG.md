@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-21
+
+### Fixed
+
+- export `SpiDevice` imported via conditional compilation so downstream crates don't need to duplicate logic
+
 ## [0.4.0] - 2026-06-21
 
 ### Added

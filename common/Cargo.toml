@@ -1,6 +1,6 @@
 [package]
 name = "sx127x-common"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 authors = ["Jonathan D. Baker <jonathan@ardent.tech>"]
 description = "Common code for the Semtech Sx127x chips."

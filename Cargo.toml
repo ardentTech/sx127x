@@ -6,7 +6,7 @@ members = [
     "lora",
     "lora/examples/rp235x/async",
     "lora/examples/rp235x/async_half_duplex",
-    "lora/examples/rp235x/sync"
+    "lora/examples/rp235x/sync",
 ]
 resolver = "3"
 
@@ -22,6 +22,7 @@ embassy-sync = "0.8.0"
 embassy-time = "0.5.1"
 maybe-async = "0.2"
 panic-probe = "1.0.0"
+sx127x-common = "0.4.0"
 
 [workspace.dependencies.defmt]
 version = "1.0.1"

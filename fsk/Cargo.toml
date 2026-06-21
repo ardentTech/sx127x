@@ -16,12 +16,12 @@ defmt = { workspace = true, optional = true }
 embedded-hal = { workspace = true, optional = true }
 embedded-hal-async = { workspace = true }
 maybe-async = { workspace = true }
-sx127x-common = { path = "../common" }
+sx127x-common = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
 
 [features]
 default = []
-defmt = ["dep:defmt"]
+defmt = ["dep:defmt", "sx127x-common/defmt"]
 sync = ["maybe-async/is_sync", "dep:embedded-hal"]

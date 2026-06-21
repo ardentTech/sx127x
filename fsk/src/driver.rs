@@ -1,8 +1,12 @@
 #[cfg(feature = "defmt")]
 use defmt::debug;
 
-use core::marker::PhantomData;
+#[cfg(not(feature = "sync"))]
 use embedded_hal_async::spi::SpiDevice;
+#[cfg(feature = "sync")]
+use embedded_hal::spi::SpiDevice;
+
+use core::marker::PhantomData;
 use sx127x_common::bits::{get_bits, set_bits, unset_bits};
 use sx127x_common::error::Sx127xError;
 use sx127x_common::{FSTEP, FXOSC_HZ};

@@ -3,8 +3,15 @@ use defmt::debug;
 
 #[cfg(not(feature = "sync"))]
 pub use embedded_hal_async::spi::SpiDevice;
+#[cfg(not(feature = "sync"))]
+pub use embedded_hal_async::delay::DelayNs;
+
+
 #[cfg(feature = "sync")]
 pub use embedded_hal::spi::SpiDevice;
+#[cfg(feature = "sync")]
+pub use embedded_hal::delay::DelayNs;
+
 
 use crate::error::Sx127xError;
 

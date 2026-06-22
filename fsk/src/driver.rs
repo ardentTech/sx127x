@@ -5,7 +5,8 @@ use core::marker::PhantomData;
 use sx127x_common::bits::{get_bits, set_bits, unset_bits};
 use sx127x_common::error::Sx127xError;
 use sx127x_common::{Hz, FSTEP, FXOSC_HZ, HF_MIN_HZ, LF_MAX_HZ};
-use sx127x_common::spi::{SpiDevice, Sx127xSpi};
+use sx127x_common::error::Sx127xError::ModeNotReady;
+use sx127x_common::spi::{DelayNs, SpiDevice, Sx127xSpi};
 use crate::{calculate, validate};
 use crate::data_mode::DataMode;
 use crate::dio::*;
@@ -842,12 +843,35 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         self.spi.write(SEQ_CONFIG_1, byte).await
     }
 
-    /// Gets the temperature measurement.
+    /// Gets the raw temperature measurement in °C. This will allow up to 30ms for oscillator startup.
     ///
-    /// See: datasheet section 3.5.7
+    /// See: datasheet sections 3.5.7, 5.6
     #[maybe_async::maybe_async]
-    pub async fn temp(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
-        self.spi.read(TEMP).await
+    pub async fn raw_temperature<D: DelayNs>(&mut self, mut delay: D) -> Result<i8, Sx127xError<SPI::Error>> {
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        // stdby mode is ready when XO is running
+        if !self.mode_ready().await? {
+            let mut retries = 3;
+            while !self.mode_ready().await? && retries > 0 {
+                delay.delay_ms(10).await; // TODO how long? make const? make config?
+                retries -= 1;
+            }
+            if retries == 0 {
+                return Err(ModeNotReady)
+            }
+        }
+
+        self.set_device_mode(DeviceMode::FSRX).await?;
+        self.set_temp_monitor(true).await?;
+        delay.delay_ms(140).await;
+        self.set_temp_monitor(false).await?;
+        self.set_device_mode(DeviceMode::STDBY).await?;
+        let raw_temp = self.spi.read(TEMP).await?;
+        if (raw_temp & 0x80) == 0x80 {
+            Ok((255 - raw_temp) as i8)
+        } else {
+            Ok(-1 * raw_temp as i8)
+        }
     }
 
     /// Gets the IRQ flag witnessing a temperature change exceeding TempThreshold since the last Image and RSSI calibration.
@@ -953,6 +977,12 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         let mut byte = self.spi.read(addr).await?;
         set_bits(&mut byte, bits, mask, shift);
         self.spi.write(addr, byte).await
+    }
+
+    /// Set when the operation mode requested in Mode, is ready.
+    #[maybe_async::maybe_async]
+    async fn mode_ready(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
+        Ok(get_bits(self.read(IRQ_FLAGS_1).await?, IRQ_FLAGS_1_MODE_READY_MASK, IRQ_FLAGS_1_MODE_READY_OFFSET) == 1)
     }
 
     // Selects the LoRa modem when `on` == true, and the FSK/OOK modem when `on` == false.

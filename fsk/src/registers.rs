@@ -226,7 +226,10 @@ pub const LOW_BAT_TRIM_MASK: u8 = 0x07;
 pub const LOW_BAT_TRIM_OFFSET: u8 = 0x0;
 
 // -------------------------------------------------------------------------------------------------
-// TODO pub const IRQ_FLAGS_1: u8 = 0x3e;
+pub const IRQ_FLAGS_1: u8 = 0x3e;
+pub const IRQ_FLAGS_1_MODE_READY_MASK: u8 = 0x80;
+pub const IRQ_FLAGS_1_MODE_READY_OFFSET: u8 = 0x7;
+
 // TODO pub const IRQ_FLAGS_2: u8 = 0x3f;
 
 // RegPllHop ---------------------------------------------------------------------------------------

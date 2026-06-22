@@ -4,6 +4,7 @@ pub enum Sx127xError<SPI> {
     InvalidPayloadLength,
     InvalidState,
     InvalidVersion,
+    ModeNotReady,
     PacketTermination,
     SF6RequiresImplicitHeaderMode,
     SPI(SPI),

@@ -102,7 +102,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.8
     #[maybe_async::maybe_async]
     pub async fn auto_image_calibration(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
-        Ok(get_bits(self.spi.read(IMAGE_CAL).await?, IMAGE_CAL_AUTO_IMAGE_CAL_ON_MASK, IMAGE_CAL_AUTO_IMAGE_CAL_ON_OFFSET) == 1)
+        Ok(get_bits(self.read(IMAGE_CAL).await?, IMAGE_CAL_AUTO_IMAGE_CAL_ON_MASK, IMAGE_CAL_AUTO_IMAGE_CAL_ON_OFFSET) == 1)
     }
 
     /// Gets the bit rate in b/s.
@@ -110,9 +110,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.1
     #[maybe_async::maybe_async]
     pub async fn bit_rate(&mut self) -> Result<f32, Sx127xError<SPI::Error>> {
-        let msb = self.spi.read(BITRATE_MSB).await?;
-        let lsb = self.spi.read(BITRATE_LSB).await?;
-        let frac = self.spi.read(BITRATE_FRAC).await? & BITRATE_FRAC_MASK;
+        let msb = self.read(BITRATE_MSB).await?;
+        let lsb = self.read(BITRATE_LSB).await?;
+        let frac = self.read(BITRATE_FRAC).await? & BITRATE_FRAC_MASK;
 
         Ok(calculate::bit_rate(FXOSC_HZ as f32, ((msb as u16) << 8 | lsb as u16) as f32, frac as f32))
     }
@@ -122,23 +122,23 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.6
     #[maybe_async::maybe_async]
     pub async fn broadcast_addr(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
-        self.spi.read(BROADCAST_ADRS).await
+        self.read(BROADCAST_ADRS).await
     }
 
     /// Trigger calibration of the RC oscillator.
     #[maybe_async::maybe_async]
     pub async fn calibrate_rc_oscillator(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        let byte = self.spi.read(OSC).await?;
+        let byte = self.read(OSC).await?;
         self.set_device_mode(DeviceMode::STDBY).await?;
-        self.spi.write(OSC, byte | OSC_RC_CAL_START_MASK).await
+        self.write(OSC, byte | OSC_RC_CAL_START_MASK).await
     }
 
     /// Clears the AFC register set in RX mode.
     #[maybe_async::maybe_async]
     pub async fn clear_afc_register(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(AFC_FEI).await?;
+        let mut byte = self.read(AFC_FEI).await?;
         set_bits(&mut byte, 1, AFC_FEI_AFC_CLEAR_MASK, AFC_FEI_AFC_CLEAR_OFFSET);
-        self.spi.write(AFC_FEI, byte).await
+        self.write(AFC_FEI, byte).await
     }
 
     /// Configure band-specific registers 0x61-0x73 based upon the currently programmed frequency.
@@ -164,8 +164,8 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.2.1
     #[maybe_async::maybe_async]
     pub async fn fdev(&mut self) -> Result<f32, Sx127xError<SPI::Error>> {
-        let msb = self.spi.read(FDEV_MSB).await?;
-        let lsb = self.spi.read(FDEV_LSB).await?;
+        let msb = self.read(FDEV_MSB).await?;
+        let lsb = self.read(FDEV_LSB).await?;
         Ok(FSTEP * ((msb as u16) << 8 | lsb as u16) as f32)
     }
 
@@ -174,8 +174,8 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.4
     #[maybe_async::maybe_async]
     pub async fn fei(&mut self) -> Result<i16, Sx127xError<SPI::Error>> {
-        let msb = self.spi.read(FEI_MSB).await?;
-        let lsb = self.spi.read(FEI_LSB).await?;
+        let msb = self.read(FEI_MSB).await?;
+        let lsb = self.read(FEI_LSB).await?;
         Ok(((msb as u16) << 8 | lsb as u16) as i16)
     }
 
@@ -184,7 +184,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.10
     #[maybe_async::maybe_async]
     pub async fn fifo_threshold(&mut self) -> Result<FifoThreshold, Sx127xError<SPI::Error>> {
-        Ok(FifoThreshold(get_bits(self.spi.read(FIFO_THRESH).await?, FIFO_THRESH_FIFO_THRESHOLD_MASK, FIFO_THRESH_FIFO_THRESHOLD_OFFSET)))
+        Ok(FifoThreshold(get_bits(self.read(FIFO_THRESH).await?, FIFO_THRESH_FIFO_THRESHOLD_MASK, FIFO_THRESH_FIFO_THRESHOLD_OFFSET)))
     }
 
     /// Gets the carrier frequency in Hz.
@@ -204,7 +204,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.8
     #[maybe_async::maybe_async]
     pub async fn image_calibration_running(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
-        let byte = self.spi.read(IMAGE_CAL).await?;
+        let byte = self.read(IMAGE_CAL).await?;
         Ok(get_bits(byte, IMAGE_CAL_IMAGE_CAL_RUNNING_MASK, IMAGE_CAL_IMAGE_CAL_RUNNING_OFFSET) == 1)
     }
 
@@ -213,7 +213,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.6
     #[maybe_async::maybe_async]
     pub async fn node_addr(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
-        self.spi.read(NODE_ADRS).await
+        self.read(NODE_ADRS).await
     }
 
     /// Gets the packet mode settings.
@@ -221,8 +221,8 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet sections 2.1.13.2, 2.1.13.4, 2.1.13.6, 2.1.13.7
     #[maybe_async::maybe_async]
     pub async fn packet_config(&mut self) -> Result<PacketConfig, Sx127xError<SPI::Error>> {
-        let config_1 = self.spi.read(PACKET_CONFIG_1).await?;
-        let config_2 = self.spi.read(PACKET_CONFIG_2).await?;
+        let config_1 = self.read(PACKET_CONFIG_1).await?;
+        let config_2 = self.read(PACKET_CONFIG_2).await?;
 
         Ok(PacketConfig {
             address_filtering: AddressFiltering::from(get_bits(config_1, PACKET_CONFIG_1_ADDRESS_FILTERING_MASK, PACKET_CONFIG_1_ADDRESS_FILTERING_OFFSET)),
@@ -233,13 +233,13 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
             dc_free: DcFree::from(get_bits(config_1, PACKET_CONFIG_1_DC_FREE_MASK, PACKET_CONFIG_1_DC_FREE_OFFSET)),
             io_home_on: get_bits(config_2, PACKET_CONFIG_2_IO_HOME_ON_MASK, PACKET_CONFIG_2_IO_HOME_ON_OFFSET) == 1,
             packet_format: PacketFormat::from(get_bits(config_1, PACKET_CONFIG_1_PACKET_FORMAT_MASK, PACKET_CONFIG_1_PACKET_FORMAT_OFFSET)),
-            payload_length: (get_bits(config_2, PACKET_CONFIG_2_PAYLOAD_LENGTH_MASK, PACKET_CONFIG_2_PAYLOAD_LENGTH_OFFSET) as u16) << 8 | self.spi.read(PAYLOAD_LENGTH).await? as u16
+            payload_length: (get_bits(config_2, PACKET_CONFIG_2_PAYLOAD_LENGTH_MASK, PACKET_CONFIG_2_PAYLOAD_LENGTH_OFFSET) as u16) << 8 | self.read(PAYLOAD_LENGTH).await? as u16
         })
     }
 
     #[maybe_async::maybe_async]
     pub async fn packet_format(&mut self) -> Result<PacketFormat, Sx127xError<SPI::Error>> {
-        Ok(PacketFormat::from(get_bits(self.spi.read(PACKET_CONFIG_1).await?, PACKET_CONFIG_1_PACKET_FORMAT_MASK, PACKET_CONFIG_1_PACKET_FORMAT_OFFSET)))
+        Ok(PacketFormat::from(get_bits(self.read(PACKET_CONFIG_1).await?, PACKET_CONFIG_1_PACKET_FORMAT_MASK, PACKET_CONFIG_1_PACKET_FORMAT_OFFSET)))
     }
 
     /// Gets the payload length.
@@ -247,9 +247,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.2
     #[maybe_async::maybe_async]
     pub async fn payload_length(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
-        let packet_config_2 = self.spi.read(PACKET_CONFIG_2).await?;
+        let packet_config_2 = self.read(PACKET_CONFIG_2).await?;
         Ok((get_bits(packet_config_2,
-                     PACKET_CONFIG_2_PAYLOAD_LENGTH_MASK, PACKET_CONFIG_2_PAYLOAD_LENGTH_OFFSET) as u16) << 8 | self.spi.read(PAYLOAD_LENGTH).await? as u16)
+                     PACKET_CONFIG_2_PAYLOAD_LENGTH_MASK, PACKET_CONFIG_2_PAYLOAD_LENGTH_OFFSET) as u16) << 8 | self.read(PAYLOAD_LENGTH).await? as u16)
     }
 
     /// Gets the preamble detector configuration.
@@ -257,15 +257,15 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.6
     #[maybe_async::maybe_async]
     pub async fn preamble_detector(&mut self) -> Result<PreambleDetector, Sx127xError<SPI::Error>> {
-        let byte = self.spi.read(PREAMBLE_DETECT).await?;
+        let byte = self.read(PREAMBLE_DETECT).await?;
         Ok(PreambleDetector::from(byte))
     }
 
     /// Gets the preamble size to be sent.
     #[maybe_async::maybe_async]
     pub async fn preamble_size(&mut self) -> Result<u16, Sx127xError<SPI::Error>> {
-        let msb = self.spi.read(PREAMBLE_MSB).await?;
-        let lsb = self.spi.read(PREAMBLE_LSB).await?;
+        let msb = self.read(PREAMBLE_MSB).await?;
+        let lsb = self.read(PREAMBLE_LSB).await?;
         Ok((msb as u16) << 8 | lsb as u16)
     }
 
@@ -280,13 +280,13 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.5.6
     #[maybe_async::maybe_async]
     pub async fn restart_rx(&mut self, with_pll_lock: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(RX_CONFIG).await?;
+        let mut byte = self.read(RX_CONFIG).await?;
         if with_pll_lock {
             set_bits(&mut byte, 1, RX_CONFIG_RESTART_WITH_PLL_LOCK_MASK, RX_CONFIG_RESTART_WITH_PLL_LOCK_OFFSET);
         } else {
             set_bits(&mut byte, 1, RX_CONFIG_RESTART_WITHOUT_PLL_LOCK_MASK, RX_CONFIG_RESTART_WITHOUT_PLL_LOCK_OFFSET);
         }
-        self.spi.write(RX_CONFIG, byte).await
+        self.write(RX_CONFIG, byte).await
     }
 
     /// Gets the absolute value of the received signal strength indicator (RSSI) in dBm, 0.5dB steps.
@@ -294,7 +294,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 3.5.4
     #[maybe_async::maybe_async]
     pub async fn rssi(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
-        self.spi.read(RSSI_VALUE).await
+        self.read(RSSI_VALUE).await
     }
 
     /// Gets the sequencer transition options.
@@ -303,8 +303,8 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     #[maybe_async::maybe_async]
     pub async fn sequencer_transitions(&mut self) -> Result<SequencerTransitions, Sx127xError<SPI::Error>> {
         let mut res = SequencerTransitions::default();
-        res.set_config1(self.spi.read(SEQ_CONFIG_1).await?);
-        res.set_config2(self.spi.read(SEQ_CONFIG_2).await?);
+        res.set_config1(self.read(SEQ_CONFIG_1).await?);
+        res.set_config2(self.read(SEQ_CONFIG_2).await?);
         Ok(res)
     }
 
@@ -313,8 +313,8 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.5
     #[maybe_async::maybe_async]
     pub async fn set_afc(&mut self, afc: i16) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(AFC_MSB, (afc >> 8) as u8).await?;
-        self.spi.write(AFC_LSB, afc as u8).await
+        self.write(AFC_MSB, (afc >> 8) as u8).await?;
+        self.write(AFC_LSB, afc as u8).await
     }
 
     /// Sets the automatic frequency correction (AFC) auto-clear. Only valid if AfcAutoOn bit of RegRxConfig is set.
@@ -322,9 +322,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.5
     #[maybe_async::maybe_async]
     pub async fn set_afc_auto_clear(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(AFC_FEI).await?;
+        let mut byte = self.read(AFC_FEI).await?;
         set_bits(&mut byte, on as u8, AFC_FEI_AFC_AUTO_CLEAR_ON_MASK, AFC_FEI_AFC_AUTO_CLEAR_ON_OFFSET);
-        self.spi.write(AFC_FEI, byte).await
+        self.write(AFC_FEI, byte).await
     }
 
     /// Sets the bandwidth for automatic frequency correction (AFC).
@@ -332,11 +332,11 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.5
     #[maybe_async::maybe_async]
     pub async fn set_afc_bw(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(AFC_BW).await?;
+        let mut byte = self.read(AFC_BW).await?;
         let bw = BwConfig::from(bandwidth);
         set_bits(&mut byte, bw.exp, AFC_BW_EXP_MASK, AFC_BW_EXP_OFFSET);
         set_bits(&mut byte, bw.mant, AFC_BW_MANT_MASK, AFC_BW_MANT_OFFSET);
-        self.spi.write(AFC_BW, byte).await
+        self.write(AFC_BW, byte).await
     }
 
     /// Sets the automatic gain correction (AGC) threshold.
@@ -344,9 +344,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// TODO
     #[maybe_async::maybe_async]
     pub async fn set_agc_threshold(&mut self, threshold: AgcThreshold) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(threshold.reg_addr()).await?;
+        let mut byte = self.read(threshold.reg_addr()).await?;
         set_bits(&mut byte, threshold.value(), threshold.mask(), threshold.offset());
-        self.spi.write(threshold.reg_addr(), byte).await
+        self.write(threshold.reg_addr(), byte).await
     }
 
     /// Sets the image calibration mechanism on/off.
@@ -354,9 +354,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.8
     #[maybe_async::maybe_async]
     pub async fn set_auto_image_calibration(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(IMAGE_CAL).await?;
+        let mut byte = self.read(IMAGE_CAL).await?;
         set_bits(&mut byte, on as u8, IMAGE_CAL_AUTO_IMAGE_CAL_ON_MASK, IMAGE_CAL_AUTO_IMAGE_CAL_ON_OFFSET);
-        self.spi.write(IMAGE_CAL, byte).await
+        self.write(IMAGE_CAL, byte).await
     }
 
     /// Sets the bit rate.
@@ -364,9 +364,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.1
     #[maybe_async::maybe_async]
     pub async fn set_bit_rate(&mut self, rate: u16, frac: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(BITRATE_MSB, (rate >> 8) as u8).await?;
-        self.spi.write(BITRATE_LSB, rate as u8).await?;
-        self.spi.write(BITRATE_FRAC, frac).await
+        self.write(BITRATE_MSB, (rate >> 8) as u8).await?;
+        self.write(BITRATE_LSB, rate as u8).await?;
+        self.write(BITRATE_FRAC, frac).await
     }
 
     /// Sets the broadcast address used in address filtering.
@@ -374,7 +374,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.6
     #[maybe_async::maybe_async]
     pub async fn set_broadcast_addr(&mut self, addr: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(BROADCAST_ADRS, addr).await
+        self.write(BROADCAST_ADRS, addr).await
     }
 
     /// Sets the CLKOUT frequency.
@@ -382,9 +382,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.11
     #[maybe_async::maybe_async]
     pub async fn set_clk_out(&mut self, clk_out: ClkOut) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(OSC).await?;
+        let mut byte = self.read(OSC).await?;
         set_bits(&mut byte, clk_out as u8, OSC_CLK_OUT_MASK, OSC_CLK_OUT_OFFSET);
-        self.spi.write(OSC, byte).await
+        self.write(OSC, byte).await
     }
 
     /// Sets the device mode.
@@ -396,9 +396,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         #[cfg(feature = "defmt")]
         debug!("set_device_mode: {:?}", device_mode);
 
-        let mut byte = self.spi.read(OP_MODE).await?;
+        let mut byte = self.read(OP_MODE).await?;
         set_bits(&mut byte, device_mode as u8, OP_MODE_MODE_MASK, OP_MODE_MODE_OFFSET);
-        self.spi.write(OP_MODE, byte).await
+        self.write(OP_MODE, byte).await
     }
 
     /// Sets the fast frequency hopping mode.
@@ -406,9 +406,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.5.6
     #[maybe_async::maybe_async]
     pub async fn set_fast_frequency_hopping_mode(&mut self, mode: FastFrequencyHoppingMode) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(PLL_HOP).await?;
+        let mut byte = self.read(PLL_HOP).await?;
         set_bits(&mut byte, mode as u8, PLL_HOP_FAST_HOP_ON_MASK, PLL_HOP_FAST_HOP_ON_OFFSET);
-        self.spi.write(PLL_HOP, byte).await
+        self.write(PLL_HOP, byte).await
     }
 
     /// Sets the frequency deviation (fdev).
@@ -420,8 +420,8 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
             return Err(Sx127xError::InvalidInput)
         }
         let fdev = (hz as f32 / FSTEP) as u16;
-        self.spi.write(FDEV_MSB, (fdev >> 8) as u8).await?;
-        self.spi.write(FDEV_LSB, fdev as u8).await
+        self.write(FDEV_MSB, (fdev >> 8) as u8).await?;
+        self.write(FDEV_LSB, fdev as u8).await
     }
 
     /// Sets the frequency error indication (FEI).
@@ -429,8 +429,8 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.4
     #[maybe_async::maybe_async]
     pub async fn set_fei(&mut self, fei: i16) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(FEI_MSB, (fei >> 8) as u8).await?;
-        self.spi.write(FEI_LSB, fei as u8).await
+        self.write(FEI_MSB, (fei >> 8) as u8).await?;
+        self.write(FEI_LSB, fei as u8).await
     }
 
     /// Sets the FIFO threshold used to trigger the FifoLevel interrupt.
@@ -438,9 +438,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.10
     #[maybe_async::maybe_async]
     pub async fn set_fifo_threshold(&mut self, threshold: FifoThreshold) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(FIFO_THRESH).await?;
+        let mut byte = self.read(FIFO_THRESH).await?;
         set_bits(&mut byte, threshold.0, FIFO_THRESH_FIFO_THRESHOLD_MASK, FIFO_THRESH_FIFO_THRESHOLD_OFFSET);
-        self.spi.write(FIFO_THRESH, byte).await
+        self.write(FIFO_THRESH, byte).await
     }
 
     /// Sets the carrier frequency.
@@ -451,9 +451,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         // TODO SX1279 has more range
         // TODO getter
         let frf = sx127x_common::calculate::frf(hz, FSTEP);
-        self.spi.write(FRF_MSB, (frf >> 16) as u8).await?;
-        self.spi.write(FRF_MID, (frf >> 8) as u8).await?;
-        self.spi.write(FRF_LSB, frf as u8).await
+        self.write(FRF_MSB, (frf >> 16) as u8).await?;
+        self.write(FRF_MID, (frf >> 8) as u8).await?;
+        self.write(FRF_LSB, frf as u8).await
     }
 
     /// Sets an additional delay before an automatic receiver restart is launched.
@@ -461,7 +461,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.7.2
     #[maybe_async::maybe_async]
     pub async fn set_inter_packet_rx_delay(&mut self, delay: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(RX_DELAY, delay).await
+        self.write(RX_DELAY, delay).await
     }
 
     /// Sets the low battery detector on/off.
@@ -469,9 +469,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 3.2
     #[maybe_async::maybe_async]
     pub async fn set_low_battery_detector(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(LOW_BAT).await?;
+        let mut byte = self.read(LOW_BAT).await?;
         set_bits(&mut byte, on as u8, LOW_BAT_ON_MASK, LOW_BAT_ON_OFFSET);
-        self.spi.write(LOW_BAT, byte).await
+        self.write(LOW_BAT, byte).await
     }
 
     /// Sets the trimming of the low battery detection threshold.
@@ -479,18 +479,18 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 3.2
     #[maybe_async::maybe_async]
     pub async fn set_low_battery_trim(&mut self, threshold: LowBatteryThreshold) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(LOW_BAT).await?;
+        let mut byte = self.read(LOW_BAT).await?;
         set_bits(&mut byte, threshold as u8, LOW_BAT_TRIM_MASK, LOW_BAT_TRIM_OFFSET);
-        self.spi.write(LOW_BAT, byte).await
+        self.write(LOW_BAT, byte).await
     }
 
 
     /// Sets the modulation type.
     #[maybe_async::maybe_async]
     pub async fn set_modulation_type(&mut self, modulation_type: ModulationType) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(OP_MODE).await?;
+        let mut byte = self.read(OP_MODE).await?;
         set_bits(&mut byte, modulation_type as u8, OP_MODE_MODULATION_TYPE_MASK, 5);
-        self.spi.write(OP_MODE, byte).await
+        self.write(OP_MODE, byte).await
     }
 
     /// Sets the node address used in address filtering.
@@ -498,7 +498,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.6
     #[maybe_async::maybe_async]
     pub async fn set_node_addr(&mut self, addr: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(NODE_ADRS, addr).await
+        self.write(NODE_ADRS, addr).await
     }
 
     /// Sets the average of the OOK demod config.
@@ -506,11 +506,11 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.2
     #[maybe_async::maybe_async]
     pub async fn set_ook_avg(&mut self, config: OokAvg) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(OOK_AVG).await?;
+        let mut byte = self.read(OOK_AVG).await?;
         set_bits(&mut byte, config.ook_peak_thresh_dec as u8, OOK_AVG_OOK_PEAK_THRESH_DEC_MASK, OOK_AVG_OOK_PEAK_THRESH_DEC_OFFSET);
         set_bits(&mut byte, config.ook_average_offset as u8, OOK_AVG_OOK_AVERAGE_OFFSET_MASK, OOK_AVG_OOK_AVERAGE_OFFSET_OFFSET);
         set_bits(&mut byte, config.ook_average_thresh_filt as u8, OOK_AVG_OOK_AVERAGE_THRESH_FILT_MASK, OOK_AVG_OOK_AVERAGE_THRESH_FILT_OFFSET);
-        self.spi.write(OOK_AVG, byte).await
+        self.write(OOK_AVG, byte).await
     }
 
     /// Sets the OOK peak configuration.
@@ -518,11 +518,11 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.2
     #[maybe_async::maybe_async]
     pub async fn set_ook_peak_config(&mut self, config: OokPeakConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(OOK_PEAK).await?;
+        let mut byte = self.read(OOK_PEAK).await?;
         set_bits(&mut byte, config.bit_sync_on as u8, OOK_PEAK_BIT_SYNC_ON_MASK, OOK_PEAK_BIT_SYNC_ON_OFFSET);
         set_bits(&mut byte, config.ook_thresh_type as u8, OOK_PEAK_OOK_THRESH_TYPE_MASK, OOK_PEAK_OOK_THRESH_TYPE_OFFSET);
         set_bits(&mut byte, config.ook_peak_thresh as u8, OOK_PEAK_OOK_PEAK_THRESH_STEP_MASK, OOK_PEAK_OOK_PEAK_THRESH_STEP_OFFSET);
-        self.spi.write(OOK_PEAK, byte).await
+        self.write(OOK_PEAK, byte).await
     }
 
     /// Sets the fixed threshold for the Data Slicer in OOK mode, or the floor threshold for the Data Slicer in OOK when Peak mode is used.
@@ -530,7 +530,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.2
     #[maybe_async::maybe_async]
     pub async fn set_ook_threshold(&mut self, threshold: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(OOK_FIX, threshold).await
+        self.write(OOK_FIX, threshold).await
     }
 
     /// Sets packet mode settings.
@@ -546,16 +546,16 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         set_bits(&mut config1, config.crc_auto_clear_off as u8, PACKET_CONFIG_1_CRC_AUTO_CLEAR_OFF_MASK, PACKET_CONFIG_1_CRC_AUTO_CLEAR_OFF_OFFSET);
         set_bits(&mut config1, config.address_filtering as u8, PACKET_CONFIG_1_ADDRESS_FILTERING_MASK, PACKET_CONFIG_1_ADDRESS_FILTERING_OFFSET);
         set_bits(&mut config1, config.crc_whitening_type as u8, PACKET_CONFIG_1_CRC_WHITENING_TYPE_MASK, PACKET_CONFIG_1_CRC_WHITENING_TYPE_OFFSET);
-        self.spi.write(PACKET_CONFIG_1, config1).await?;
+        self.write(PACKET_CONFIG_1, config1).await?;
 
         let mut config2 = 0u8;
         //set_bits(&mut config2, config.data_mode as u8, PACKET_CONFIG_2_DATA_MODE_MASK, 6);
         set_bits(&mut config2, config.io_home_on as u8, PACKET_CONFIG_2_IO_HOME_ON_MASK, PACKET_CONFIG_2_IO_HOME_ON_OFFSET);
         set_bits(&mut config2, config.beacon_on as u8, PACKET_CONFIG_2_BEACON_ON_MASK, PACKET_CONFIG_2_BEACON_ON_OFFSET);
         set_bits(&mut config2, (config.payload_length >> 8) as u8, PACKET_CONFIG_2_PAYLOAD_LENGTH_MASK, PACKET_CONFIG_2_PAYLOAD_LENGTH_OFFSET);
-        self.spi.write(PACKET_CONFIG_2, config2).await?;
+        self.write(PACKET_CONFIG_2, config2).await?;
 
-        self.spi.write(PAYLOAD_LENGTH, config.payload_length as u8).await
+        self.write(PAYLOAD_LENGTH, config.payload_length as u8).await
     }
 
     /// Sets the packet format.
@@ -563,9 +563,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.2
     #[maybe_async::maybe_async]
     pub async fn set_packet_format(&mut self, format: PacketFormat) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(PACKET_CONFIG_1).await?;
+        let mut byte = self.read(PACKET_CONFIG_1).await?;
         set_bits(&mut byte, format as u8, PACKET_CONFIG_1_PACKET_FORMAT_MASK, PACKET_CONFIG_1_PACKET_FORMAT_OFFSET);
-        self.spi.write(PACKET_CONFIG_1, byte).await
+        self.write(PACKET_CONFIG_1, byte).await
     }
 
     /// Sets the payload length.
@@ -573,10 +573,10 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.2
     #[maybe_async::maybe_async]
     pub async fn set_payload_length(&mut self, length: u16) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut packet_config_2 = self.spi.read(PACKET_CONFIG_2).await?;
+        let mut packet_config_2 = self.read(PACKET_CONFIG_2).await?;
         set_bits(&mut packet_config_2, (length >> 8) as u8, PACKET_CONFIG_2_PAYLOAD_LENGTH_MASK, PACKET_CONFIG_2_PAYLOAD_LENGTH_OFFSET);
-        self.spi.write(PACKET_CONFIG_2, packet_config_2).await?;
-        self.spi.write(PAYLOAD_LENGTH, length as u8).await
+        self.write(PACKET_CONFIG_2, packet_config_2).await?;
+        self.write(PAYLOAD_LENGTH, length as u8).await
     }
 
     /// Sets the preamble detector configuration.
@@ -588,14 +588,14 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         set_bits(&mut byte, detector.on as u8, PREAMBLE_DETECT_PREAMBLE_DETECTOR_ON_MASK, PREAMBLE_DETECT_PREAMBLE_DETECTOR_ON_OFFSET);
         set_bits(&mut byte, detector.size as u8, PREAMBLE_DETECT_PREAMBLE_DETECTOR_SIZE_MASK, PREAMBLE_DETECT_PREAMBLE_DETECTOR_SIZE_OFFSET);
         set_bits(&mut byte, detector.tolerance.0, PREAMBLE_DETECT_PREAMBLE_DETECTOR_TOL_MASK, PREAMBLE_DETECT_PREAMBLE_DETECTOR_TOL_OFFSET);
-        self.spi.write(PREAMBLE_DETECT, byte).await
+        self.write(PREAMBLE_DETECT, byte).await
     }
 
     /// Sets the preamble size to be sent.
     #[maybe_async::maybe_async]
     pub async fn set_preamble_size(&mut self, size: u16) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(PREAMBLE_MSB, (size >> 8) as u8).await?;
-        self.spi.write(PREAMBLE_LSB, size as u8).await
+        self.write(PREAMBLE_MSB, (size >> 8) as u8).await?;
+        self.write(PREAMBLE_LSB, size as u8).await
     }
 
     /// Sets the received signal strength indicator (RSSI) collision threshold.
@@ -603,7 +603,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// Seee: datasheet section 2.1.7.3
     #[maybe_async::maybe_async]
     pub async fn set_rssi_collision_threshold(&mut self, db: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(RSSI_COLLISION, db).await
+        self.write(RSSI_COLLISION, db).await
     }
 
     /// Sets the received signal strength indicator (RSSI) offset.
@@ -614,9 +614,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         if !validate::rssi_offset(offset) {
             return Err(Sx127xError::InvalidInput)
         }
-        let mut byte = self.spi.read(RSSI_CONFIG).await?;
+        let mut byte = self.read(RSSI_CONFIG).await?;
         set_bits(&mut byte, offset as u8, RSSI_CONFIG_RSSI_OFFSET_MASK, RSSI_CONFIG_RSSI_OFFSET_OFFSET);
-        self.spi.write(RSSI_CONFIG, byte).await
+        self.write(RSSI_CONFIG, byte).await
     }
 
     /// Sets the received signal strength indicator (RSSI) smoothing.
@@ -624,9 +624,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 3.5.4
     #[maybe_async::maybe_async]
     pub async fn set_rssi_smoothing(&mut self, smoothing: RssiSmoothing) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(RSSI_CONFIG).await?;
+        let mut byte = self.read(RSSI_CONFIG).await?;
         set_bits(&mut byte, smoothing as u8, RSSI_CONFIG_RSSI_SMOOTHING_MASK, RSSI_CONFIG_RSSI_SMOOTHING_OFFSET);
-        self.spi.write(RSSI_CONFIG, byte).await
+        self.write(RSSI_CONFIG, byte).await
     }
 
     /// Sets the received signal strength indicator (RSSI) trigger level for the Rssi interrupt.
@@ -634,7 +634,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// Seee: datasheet section 2.1.3.9
     #[maybe_async::maybe_async]
     pub async fn set_rssi_threshold(&mut self, control: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(RSSI_THRESH, control).await
+        self.write(RSSI_THRESH, control).await
     }
 
     /// Sets the bandwidth for the channel filter.
@@ -642,11 +642,11 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 3.5.6
     #[maybe_async::maybe_async]
     pub async fn set_rx_bw(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(RX_BW).await?;
+        let mut byte = self.read(RX_BW).await?;
         let bw = BwConfig::from(bandwidth);
         set_bits(&mut byte, bw.exp, RX_BW_EXP_MASK, RX_BW_EXP_OFFSET);
         set_bits(&mut byte, bw.mant, RX_BW_MANT_MASK, RX_BW_MANT_OFFSET);
-        self.spi.write(RX_BW, byte).await
+        self.write(RX_BW, byte).await
     }
 
     /// Sets the receiver config.
@@ -654,12 +654,12 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet page 96
     #[maybe_async::maybe_async]
     pub async fn set_rx_config(&mut self, config: RxConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(RX_CONFIG).await?;
+        let mut byte = self.read(RX_CONFIG).await?;
         set_bits(&mut byte, config.afc_auto_on as u8, RX_CONFIG_AFC_AUTO_ON_MASK, RX_CONFIG_AFC_AUTO_ON_OFFSET);
         set_bits(&mut byte, config.agc_auto_on as u8, RX_CONFIG_AGC_AUTO_ON_MASK, RX_CONFIG_AGC_AUTO_ON_OFFSET);
         set_bits(&mut byte, config.restart_rx_on_collision as u8, RX_CONFIG_RESTART_RX_ON_COLLISION_MASK, RX_CONFIG_RESTART_RX_ON_COLLISION_OFFSET);
         set_bits(&mut byte, config.rx_trigger, RX_CONFIG_RX_TRIGGER_MASK, RX_CONFIG_RX_TRIGGER_OFFSET);
-        self.spi.write(RX_CONFIG, byte).await
+        self.write(RX_CONFIG, byte).await
     }
 
     /// Sets the sequencer transition options.
@@ -667,19 +667,19 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.8.2
     #[maybe_async::maybe_async]
     pub async fn set_sequencer_transitions(&mut self, options: SequencerTransitions) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(SEQ_CONFIG_1).await?;
+        let mut byte = self.read(SEQ_CONFIG_1).await?;
         set_bits(&mut byte, options.idle_mode as u8, SEQ_CONFIG_1_IDLE_MODE_MASK, SEQ_CONFIG_1_IDLE_MODE_OFFSET);
         set_bits(&mut byte, options.from_start as u8, SEQ_CONFIG_1_FROM_START_MASK, SEQ_CONFIG_1_FROM_START_OFFSET);
         set_bits(&mut byte, options.low_power_selection as u8, SEQ_CONFIG_1_LOW_POWER_SELECTION_MASK, SEQ_CONFIG_1_LOW_POWER_SELECTION_OFFSET);
         set_bits(&mut byte, options.from_idle as u8, SEQ_CONFIG_1_FROM_IDLE_MASK, SEQ_CONFIG_1_FROM_IDLE_OFFSET);
         set_bits(&mut byte, options.from_transmit as u8, SEQ_CONFIG_1_FROM_TRANSMIT_MASK, SEQ_CONFIG_1_FROM_TRANSMIT_OFFSET);
-        self.spi.write(SEQ_CONFIG_1, byte).await?;
+        self.write(SEQ_CONFIG_1, byte).await?;
 
-        let mut byte = self.spi.read(SEQ_CONFIG_2).await?;
+        let mut byte = self.read(SEQ_CONFIG_2).await?;
         set_bits(&mut byte, options.from_receive as u8, SEQ_CONFIG_2_FROM_RECEIVE_MASK, SEQ_CONFIG_2_FROM_RECEIVE_OFFSET);
         set_bits(&mut byte, options.from_rx_timeout as u8, SEQ_CONFIG_2_FROM_RX_TIMEOUT_MASK, SEQ_CONFIG_2_FROM_RX_TIMEOUT_OFFSET);
         set_bits(&mut byte, options.from_packet_received as u8, SEQ_CONFIG_2_FROM_PACKET_RECEIVED_MASK, SEQ_CONFIG_2_FROM_PACKET_RECEIVED_OFFSET);
-        self.spi.write(SEQ_CONFIG_2, byte).await
+        self.write(SEQ_CONFIG_2, byte).await
     }
 
     /// Sets the RX signal sync timeout.
@@ -687,7 +687,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.9
     #[maybe_async::maybe_async]
     pub async fn set_rx_signal_sync_timeout(&mut self, timeout: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(RX_TIMEOUT_3, timeout).await
+        self.write(RX_TIMEOUT_3, timeout).await
     }
 
     /// Sets the sync word recognition configuration.
@@ -699,12 +699,12 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         if !validate::sync_size(config.sync_size) {
             return Err(Sx127xError::InvalidInput)
         }
-        let mut byte = self.spi.read(SYNC_CONFIG).await?;
+        let mut byte = self.read(SYNC_CONFIG).await?;
         set_bits(&mut byte, config.auto_restart_rx_mode as u8, SYNC_CONFIG_AUTO_RESTART_RX_MODE_MASK, SYNC_CONFIG_AUTO_RESTART_RX_MODE_OFFSET);
         set_bits(&mut byte, config.preamble_polarity as u8, SYNC_CONFIG_PREAMBLE_POLARITY_MASK, SYNC_CONFIG_PREAMBLE_POLARITY_OFFSET);
         set_bits(&mut byte, config.sync_on as u8, SYNC_CONFIG_SYNC_ON_MASK, SYNC_CONFIG_SYNC_ON_OFFSET);
         set_bits(&mut byte, config.sync_size, SYNC_CONFIG_SYNC_SIZE_MASK, SYNC_CONFIG_SYNC_SIZE_OFFSET);
-        self.spi.write(SYNC_CONFIG, byte).await
+        self.write(SYNC_CONFIG, byte).await
     }
 
     /// Sets the sync word values. `values[0]` == RegSyncValue1 (MSB byte) ... `values[7]` == RegSyncValue8.
@@ -715,7 +715,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     #[maybe_async::maybe_async]
     pub async fn set_sync_values(&mut self, values: &[u8; 8]) -> Result<(), Sx127xError<SPI::Error>> {
         for (i, n) in values.iter().enumerate() {
-            self.spi.write(SYNC_VALUE_1 + i as u8, if *n == 0 { 0x1 } else { *n }).await?;
+            self.write(SYNC_VALUE_1 + i as u8, if *n == 0 { 0x1 } else { *n }).await?;
         }
         Ok(())
     }
@@ -725,9 +725,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.8
     #[maybe_async::maybe_async]
     pub async fn set_temp_monitor(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(IMAGE_CAL).await?;
+        let mut byte = self.read(IMAGE_CAL).await?;
         set_bits(&mut byte, !(on as u8), IMAGE_CAL_TEMP_MONITOR_OFF_MASK, IMAGE_CAL_TEMP_MONITOR_OFF_OFFSET);
-        self.spi.write(IMAGE_CAL, byte).await
+        self.write(IMAGE_CAL, byte).await
     }
 
     /// Sets the temperature change threshold to trigger a new I/Q calibration.
@@ -735,9 +735,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.8
     #[maybe_async::maybe_async]
     pub async fn set_temp_threshold(&mut self, temp_threshold: TempThreshold) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(IMAGE_CAL).await?;
+        let mut byte = self.read(IMAGE_CAL).await?;
         set_bits(&mut byte, temp_threshold as u8, IMAGE_CAL_TEMP_THRESHOLD_MASK, IMAGE_CAL_TEMP_THRESHOLD_OFFSET);
-        self.spi.write(IMAGE_CAL, byte).await
+        self.write(IMAGE_CAL, byte).await
     }
 
     /// Sets the RX preamble timeout.
@@ -745,7 +745,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.9
     #[maybe_async::maybe_async]
     pub async fn set_rx_preamble_timeout(&mut self, timeout: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(RX_TIMEOUT_2, timeout).await
+        self.write(RX_TIMEOUT_2, timeout).await
     }
 
     /// Sets the RX RSSI timeout.
@@ -753,7 +753,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.9
     #[maybe_async::maybe_async]
     pub async fn set_rx_rssi_timeout(&mut self, timeout: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(RX_TIMEOUT_1, timeout).await
+        self.write(RX_TIMEOUT_1, timeout).await
     }
 
     /// Sets the resolution of Timer 1.
@@ -761,9 +761,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.8.3
     #[maybe_async::maybe_async]
     pub async fn set_timer1(&mut self, config: TimerConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(TIMER_RESOL).await?;
+        let mut byte = self.read(TIMER_RESOL).await?;
         set_bits(&mut byte, config as u8, TIMER_RESOL_TIMER_1_RESOLUTION_MASK, TIMER_RESOL_TIMER_1_RESOLUTION_OFFSET);
-        self.spi.write(TIMER_RESOL, byte).await
+        self.write(TIMER_RESOL, byte).await
     }
 
     /// Sets the resolution of Timer 2.
@@ -771,9 +771,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.8.3
     #[maybe_async::maybe_async]
     pub async fn set_timer2(&mut self, config: TimerConfig) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(TIMER_RESOL).await?;
+        let mut byte = self.read(TIMER_RESOL).await?;
         set_bits(&mut byte, config as u8, TIMER_RESOL_TIMER_2_RESOLUTION_MASK, TIMER_RESOL_TIMER_2_RESOLUTION_OFFSET);
-        self.spi.write(TIMER_RESOL, byte).await
+        self.write(TIMER_RESOL, byte).await
     }
 
     /// Sets the coefficient for Timer1.
@@ -781,7 +781,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.8.3
     #[maybe_async::maybe_async]
     pub async fn set_timer1_coefficient(&mut self, coefficient: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(TIMER_1_COEFF, coefficient).await
+        self.write(TIMER_1_COEFF, coefficient).await
     }
 
     /// Sets the coefficient for Timer2.
@@ -789,7 +789,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.8.3
     #[maybe_async::maybe_async]
     pub async fn set_timer2_coefficient(&mut self, coefficient: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        self.spi.write(TIMER_2_COEFF, coefficient).await
+        self.write(TIMER_2_COEFF, coefficient).await
     }
 
     /// Sets the condition to start packet transmission.
@@ -797,9 +797,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.3
     #[maybe_async::maybe_async]
     pub async fn set_tx_start_condition(&mut self, condition: TxStartCondition) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(FIFO_THRESH).await?;
+        let mut byte = self.read(FIFO_THRESH).await?;
         set_bits(&mut byte, condition as u8, FIFO_THRESH_TX_START_CONDITION_MASK, FIFO_THRESH_TX_START_CONDITION_OFFSET);
-        self.spi.write(FIFO_THRESH, byte).await
+        self.write(FIFO_THRESH, byte).await
     }
 
     /// Triggers an AGC sequence.
@@ -807,8 +807,8 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.5
     #[maybe_async::maybe_async]
     pub async fn start_agc_sequence(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        let byte = self.spi.read(AFC_FEI).await?;
-        self.spi.write(AFC_FEI, byte | AFC_FEI_AGC_START_MASK).await
+        let byte = self.read(AFC_FEI).await?;
+        self.write(AFC_FEI, byte | AFC_FEI_AGC_START_MASK).await
     }
 
     /// Triggers the IQ and RSSI calibration when set in Standby mode.
@@ -817,9 +817,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     #[maybe_async::maybe_async]
     pub async fn start_image_calibration(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
-        let mut byte = self.spi.read(IMAGE_CAL).await?;
+        let mut byte = self.read(IMAGE_CAL).await?;
         set_bits(&mut byte, 1, IMAGE_CAL_IMAGE_CAL_START_MASK, IMAGE_CAL_IMAGE_CAL_START_OFFSET);
-        self.spi.write(IMAGE_CAL, byte).await
+        self.write(IMAGE_CAL, byte).await
     }
 
     /// Starts the top level sequencer.
@@ -828,9 +828,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     #[maybe_async::maybe_async]
     pub async fn start_sequencer(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::STDBY).await?;
-        let mut byte = self.spi.read(SEQ_CONFIG_1).await?;
+        let mut byte = self.read(SEQ_CONFIG_1).await?;
         set_bits(&mut byte, 1, SEQ_CONFIG_1_SEQUENCER_START_MASK, SEQ_CONFIG_1_SEQUENCER_START_OFFSET);
-        self.spi.write(SEQ_CONFIG_1, byte).await
+        self.write(SEQ_CONFIG_1, byte).await
     }
 
     /// Stops the top level sequencer.
@@ -838,9 +838,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.8
     #[maybe_async::maybe_async]
     pub async fn stop_sequencer(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(SEQ_CONFIG_1).await?;
+        let mut byte = self.read(SEQ_CONFIG_1).await?;
         set_bits(&mut byte, 1, SEQ_CONFIG_1_SEQUENCER_STOP_MASK, SEQ_CONFIG_1_SEQUENCER_STOP_OFFSET);
-        self.spi.write(SEQ_CONFIG_1, byte).await
+        self.write(SEQ_CONFIG_1, byte).await
     }
 
     /// Gets the raw temperature measurement in °C. This will allow up to 30ms for oscillator startup.
@@ -866,7 +866,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
         delay.delay_ms(140).await;
         self.set_temp_monitor(false).await?;
         self.set_device_mode(DeviceMode::STDBY).await?;
-        let raw_temp = self.spi.read(TEMP).await?;
+        let raw_temp = self.read(TEMP).await?;
         if (raw_temp & 0x80) == 0x80 {
             Ok((255 - raw_temp) as i8)
         } else {
@@ -879,7 +879,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.8
     #[maybe_async::maybe_async]
     pub async fn temp_change_greater_than_threshold(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
-        let byte = self.spi.read(IMAGE_CAL).await?;
+        let byte = self.read(IMAGE_CAL).await?;
         Ok(get_bits(byte, IMAGE_CAL_TEMP_CHANGE_MASK, IMAGE_CAL_TEMP_CHANGE_OFFSET) == 1)
     }
 
@@ -888,7 +888,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.8
     #[maybe_async::maybe_async]
     pub async fn temp_monitor(&mut self) -> Result<bool, Sx127xError<SPI::Error>> {
-        Ok(get_bits(self.spi.read(IMAGE_CAL).await?, IMAGE_CAL_TEMP_MONITOR_OFF_MASK, IMAGE_CAL_TEMP_MONITOR_OFF_OFFSET) == 0)
+        Ok(get_bits(self.read(IMAGE_CAL).await?, IMAGE_CAL_TEMP_MONITOR_OFF_MASK, IMAGE_CAL_TEMP_MONITOR_OFF_OFFSET) == 0)
     }
 
     /// Gets the temperature change threshold to trigger a new I/Q calibration.
@@ -896,7 +896,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.3.8
     #[maybe_async::maybe_async]
     pub async fn temp_threshold(&mut self) -> Result<TempThreshold, Sx127xError<SPI::Error>> {
-        Ok(TempThreshold::from(get_bits(self.spi.read(IMAGE_CAL).await?, IMAGE_CAL_TEMP_THRESHOLD_MASK, IMAGE_CAL_TEMP_THRESHOLD_OFFSET)))
+        Ok(TempThreshold::from(get_bits(self.read(IMAGE_CAL).await?, IMAGE_CAL_TEMP_THRESHOLD_MASK, IMAGE_CAL_TEMP_THRESHOLD_OFFSET)))
     }
 
     /// Sets the coefficient for Timer1.
@@ -904,7 +904,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.8.3
     #[maybe_async::maybe_async]
     pub async fn timer1_coefficient(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
-        self.spi.read(TIMER_1_COEFF).await
+        self.read(TIMER_1_COEFF).await
     }
 
     /// Sets the coefficient for Timer2.
@@ -912,7 +912,7 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.8.3
     #[maybe_async::maybe_async]
     pub async fn timer2_coefficient(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
-        self.spi.read(TIMER_2_COEFF).await
+        self.read(TIMER_2_COEFF).await
     }
 
     #[maybe_async::maybe_async]
@@ -927,13 +927,13 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
             // // TODO really need a dep just for chunks()?
             // for chunk in &payload.iter().chunks(FIFO_CAPACITY) {
             //     for &byte in chunk {
-            //         self.spi.write(FIFO, byte).await?;
+            //         self.write(FIFO, byte).await?;
             //     }
             //     // TODO wait for FifoThreshold or FifoEmpty
             // }
         } else {
             for &byte in payload.iter() {
-                self.spi.write(FIFO, byte).await?;
+                self.write(FIFO, byte).await?;
             }
             self.set_device_mode(DeviceMode::TX).await?;
         }
@@ -948,13 +948,13 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     /// See: datasheet section 2.1.13.3
     #[maybe_async::maybe_async]
     pub async fn tx_start_condition(&mut self) -> Result<TxStartCondition, Sx127xError<SPI::Error>> {
-        Ok(TxStartCondition::from(get_bits(self.spi.read(FIFO_THRESH).await?, FIFO_THRESH_TX_START_CONDITION_MASK, FIFO_THRESH_TX_START_CONDITION_OFFSET)))
+        Ok(TxStartCondition::from(get_bits(self.read(FIFO_THRESH).await?, FIFO_THRESH_TX_START_CONDITION_MASK, FIFO_THRESH_TX_START_CONDITION_OFFSET)))
     }
 
     /// Gets the version code of the chip. Bits 7-4 give the full revision number; bits 3-0 give the metal mask revision number.
     #[maybe_async::maybe_async]
     pub async fn version(&mut self) -> Result<u8, Sx127xError<SPI::Error>> {
-        self.spi.read(VERSION).await
+        self.read(VERSION).await
     }
 
     /// Performs a SPI write.
@@ -967,16 +967,16 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
 
     #[maybe_async::maybe_async]
     async fn set_data_mode(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(PACKET_CONFIG_2).await?;
+        let mut byte = self.read(PACKET_CONFIG_2).await?;
         set_bits(&mut byte, DM::DATA_MODE_BIT, PACKET_CONFIG_2_DATA_MODE_MASK, PACKET_CONFIG_2_DATA_MODE_OFFSET);
-        self.spi.write(PACKET_CONFIG_2, byte).await
+        self.write(PACKET_CONFIG_2, byte).await
     }
 
     #[maybe_async::maybe_async]
     async fn set_dio(&mut self, addr: u8, bits: u8, mask: u8, shift: u8) -> Result<(), Sx127xError<SPI::Error>> {
-        let mut byte = self.spi.read(addr).await?;
+        let mut byte = self.read(addr).await?;
         set_bits(&mut byte, bits, mask, shift);
-        self.spi.write(addr, byte).await
+        self.write(addr, byte).await
     }
 
     /// Set when the operation mode requested in Mode, is ready.
@@ -990,9 +990,9 @@ impl<DM: DataMode, SPI: SpiDevice> Sx127xFsk<DM, SPI> {
     async fn set_fsk_mode(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
         self.set_device_mode(DeviceMode::SLEEP).await?;
 
-        let mut op_mode = self.spi.read(OP_MODE).await?;
+        let mut op_mode = self.read(OP_MODE).await?;
         unset_bits(&mut op_mode, OP_MODE_LONG_RANGE_MODE_MASK);
-        self.spi.write(OP_MODE, op_mode).await?;
+        self.write(OP_MODE, op_mode).await?;
 
         self.set_device_mode(DeviceMode::STDBY).await
     }

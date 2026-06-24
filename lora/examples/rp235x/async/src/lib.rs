@@ -47,9 +47,9 @@ pub fn ex_config() -> Sx127xLoraConfig {
         LORA_FREQUENCY_HZ,
         HeaderMode::Explicit,
         PreambleLength::default(),
-        SpreadingFactor::Sf11,
+        SpreadingFactor::Sf8,
         0x12,
-        true
+        false
     ).unwrap()
 }
 

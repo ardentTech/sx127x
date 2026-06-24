@@ -1,6 +1,5 @@
 #[cfg(feature = "defmt")]
-use defmt::{debug, error};
-
+use defmt::{debug, error, info};
 #[cfg(not(feature = "sync"))]
 use embedded_hal_async::spi::SpiDevice;
 #[cfg(feature = "sync")]
@@ -37,7 +36,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
         driver.set_modem(Modem::LoRa).await?;
         driver.configure(config).await?;
-        driver.set_invert_iq(false, false).await?; // TODO decide if this is necessary
+        // driver.set_invert_iq(false, false).await?; // TODO decide if this is necessary
 
         Ok(driver)
     }
@@ -242,24 +241,24 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Optimize for the current bandwidth.
     ///
     /// See: errata section 2.1
-    #[maybe_async::maybe_async]
-    pub async fn optimize_bandwidth(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        #[cfg(feature = "defmt")]
-        debug!("optimize_bandwidth");
-        let bandwidth = self.bandwidth().await?;
-        self.set_optimize_bandwidth(bandwidth).await
-    }
+    // #[maybe_async::maybe_async]
+    // pub async fn optimize_bandwidth(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    //     #[cfg(feature = "defmt")]
+    //     debug!("optimize_bandwidth");
+    //     let bandwidth = self.bandwidth().await?;
+    //     self.set_optimize_bandwidth(bandwidth).await
+    // }
 
     /// Optimize receiver response for spurious reception of LoRa signal.
     ///
     /// See: errata section 2.3
-    #[maybe_async::maybe_async]
-    pub async fn optimize_rx_response(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
-        #[cfg(feature = "defmt")]
-        debug!("optimize_rx_response");
-        let bandwidth = self.bandwidth().await?;
-        self.set_optimize_rx_response(bandwidth).await
-    }
+    // #[maybe_async::maybe_async]
+    // pub async fn optimize_rx_response(&mut self) -> Result<(), Sx127xError<SPI::Error>> {
+    //     #[cfg(feature = "defmt")]
+    //     debug!("optimize_rx_response");
+    //     let bandwidth = self.bandwidth().await?;
+    //     self.set_optimize_rx_response(bandwidth).await
+    // }
 
     /// Generates a random byte using a von Neumann extractor. Will transition to STDBY when done.
     ///
@@ -325,11 +324,10 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let crc_on_payload = get_bits(reg_hop_channel, HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, HOP_CHANNEL_CRC_ON_PAYLOAD_OFFSET) == 1;
 
         let irq_flags_bits = self.read(IRQ_FLAGS).await? >> 4;
-        let rx_packet_termination_ok = if crc_on_payload {
-            irq_flags_bits & 0xf == 0
-        } else {
-            irq_flags_bits & 0xc == 0 && irq_flags_bits & 0x1 == 0
-        };
+        let mut rx_packet_termination_ok = irq_flags_bits & 0x8 == 0;
+        if crc_on_payload {
+            rx_packet_termination_ok = irq_flags_bits & 0x2 == 0;
+        }
         if !rx_packet_termination_ok {
             #[cfg(feature = "defmt")]
             error!("RX packet termination failed");
@@ -456,34 +454,34 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Enables/disables low data rate optimization.
     ///
     /// See: datasheet section 4.1.1.6
-    #[maybe_async::maybe_async]
-    pub async fn set_optimize_data_rate(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
-        #[cfg(feature = "defmt")]
-        debug!("set_optimize_data_rate: {}", on);
-
-        let mut byte = self.read(MODEM_CONFIG_3).await?;
-        set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET);
-        self.write(MODEM_CONFIG_3, byte).await
-    }
+    // #[maybe_async::maybe_async]
+    // pub async fn set_optimize_data_rate(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
+    //     #[cfg(feature = "defmt")]
+    //     debug!("set_optimize_data_rate: {}", on);
+    //
+    //     let mut byte = self.read(MODEM_CONFIG_3).await?;
+    //     set_bits(&mut byte, on as u8, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_MASK, MODEM_CONFIG_3_LOW_DATA_RATE_OPTIMIZE_OFFSET);
+    //     self.write(MODEM_CONFIG_3, byte).await
+    // }
 
     /// Determines if low data rate optimization is necessary.
     ///
     /// See: datasheet page 31 section Low Data Rate Optimization
-    #[maybe_async::maybe_async]
-    pub async fn should_optimize_low_data_rate(&mut self, bandwidth: Bandwidth, spreading_factor: SpreadingFactor) -> Result<bool, Sx127xError<SPI::Error>> {
-        #[cfg(feature = "defmt")]
-        debug!("should_optimize_low_data_rate: {}, {}", bandwidth, spreading_factor);
-        Ok(
-            check::should_optimize_for_low_data_rate(
-                calculate::symbol_period(
-                    calculate::symbol_rate(
-                        bandwidth.hz(),
-                        spreading_factor as u32
-                    )
-                )
-            )
-        )
-    }
+    // #[maybe_async::maybe_async]
+    // pub async fn should_optimize_low_data_rate(&mut self, bandwidth: Bandwidth, spreading_factor: SpreadingFactor) -> Result<bool, Sx127xError<SPI::Error>> {
+    //     #[cfg(feature = "defmt")]
+    //     debug!("should_optimize_low_data_rate: {}, {}", bandwidth, spreading_factor);
+    //     Ok(
+    //         check::should_optimize_for_low_data_rate(
+    //             calculate::symbol_period(
+    //                 calculate::symbol_rate(
+    //                     bandwidth.hz(),
+    //                     spreading_factor as u32
+    //                 )
+    //             )
+    //         )
+    //     )
+    // }
 
     /// Starts the Channel Activity Detector (CAD).
     #[maybe_async::maybe_async]
@@ -588,12 +586,12 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_sync_word(config.sync_word).await?;
         self.set_crc(config.use_crc).await?;
 
-        if config.auto_optimize {
-            self.set_optimize_bandwidth(config.bandwidth).await?;
-            let on = self.should_optimize_low_data_rate(config.bandwidth, config.spreading_factor).await?;
-            self.set_optimize_data_rate(on).await?;
-            self.set_optimize_rx_response(config.bandwidth).await?;
-        }
+        // if config.auto_optimize {
+        //     self.set_optimize_bandwidth(config.bandwidth).await?;
+        //     let on = self.should_optimize_low_data_rate(config.bandwidth, config.spreading_factor).await?;
+        //     self.set_optimize_data_rate(on).await?;
+        //     self.set_optimize_rx_response(config.bandwidth).await?;
+        // }
 
         Ok(())
     }
@@ -704,28 +702,28 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Optimize receiver response for spurious reception of LoRa signal.
     ///
     /// See: errata section 2.3
-    #[maybe_async::maybe_async]
-    async fn set_optimize_rx_response(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
-        #[cfg(feature = "defmt")]
-        debug!("set_optimize_rx_response: {}", bandwidth);
-        let config = bandwidth.optimized_rx_response();
-        self.set_device_mode(DeviceMode::STDBY).await?;
-
-        if let Some(offset) = config.frequency_offset {
-            let mut frequency = self.frequency().await?;
-            frequency = (frequency as i32 + offset) as u32;
-            self.set_frequency(frequency).await?;
-        }
-
-        self.set_automatic_if(config.automatic_if).await?;
-        if let Some(if_freq_2) = config.if_freq_2 {
-            self.write(IF_FREQ_2, if_freq_2).await?;
-        }
-        if let Some(if_freq_1) = config.if_freq_1 {
-            self.write(IF_FREQ_1, if_freq_1).await?;
-        }
-        Ok(())
-    }
+    // #[maybe_async::maybe_async]
+    // async fn set_optimize_rx_response(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
+    //     #[cfg(feature = "defmt")]
+    //     debug!("set_optimize_rx_response: {}", bandwidth);
+    //     let config = bandwidth.optimized_rx_response();
+    //     self.set_device_mode(DeviceMode::STDBY).await?;
+    //
+    //     if let Some(offset) = config.frequency_offset {
+    //         let mut frequency = self.frequency().await?;
+    //         frequency = (frequency as i32 + offset) as u32;
+    //         self.set_frequency(frequency).await?;
+    //     }
+    //
+    //     self.set_automatic_if(config.automatic_if).await?;
+    //     if let Some(if_freq_2) = config.if_freq_2 {
+    //         self.write(IF_FREQ_2, if_freq_2).await?;
+    //     }
+    //     if let Some(if_freq_1) = config.if_freq_1 {
+    //         self.write(IF_FREQ_1, if_freq_1).await?;
+    //     }
+    //     Ok(())
+    // }
 
     #[maybe_async::maybe_async]
     async fn set_automatic_if(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
@@ -739,26 +737,26 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     /// Optimize for the current bandwidth.
     ///
     /// See: errata section 2.1
-    #[maybe_async::maybe_async]
-    async fn set_optimize_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
-        #[cfg(feature = "defmt")]
-        debug!("optimize_bandwidth: {}", bandwidth);
-        if bandwidth == Bandwidth::Bw500kHz {
-            match self.frequency().await? {
-                410_000_000..=525_000_000 => {
-                    self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
-                    self.write(HIGH_BW_OPTIMIZE_2, 0x7f).await
-                }
-                862_000_000..=1_020_000_000 => {
-                    self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
-                    self.write(HIGH_BW_OPTIMIZE_2, 0x64).await
-                }
-                _ => Ok(())
-            }
-        } else {
-            self.write(HIGH_BW_OPTIMIZE_1, 0x03).await
-        }
-    }
+    // #[maybe_async::maybe_async]
+    // async fn set_optimize_bandwidth(&mut self, bandwidth: Bandwidth) -> Result<(), Sx127xError<SPI::Error>> {
+    //     #[cfg(feature = "defmt")]
+    //     debug!("optimize_bandwidth: {}", bandwidth);
+    //     if bandwidth == Bandwidth::Bw500kHz {
+    //         match self.frequency().await? {
+    //             410_000_000..=525_000_000 => {
+    //                 self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
+    //                 self.write(HIGH_BW_OPTIMIZE_2, 0x7f).await
+    //             }
+    //             862_000_000..=1_020_000_000 => {
+    //                 self.write(HIGH_BW_OPTIMIZE_1, 0x02).await?;
+    //                 self.write(HIGH_BW_OPTIMIZE_2, 0x64).await
+    //             }
+    //             _ => Ok(())
+    //         }
+    //     } else {
+    //         self.write(HIGH_BW_OPTIMIZE_1, 0x03).await
+    //     }
+    // }
 
     /// Sets the rise/fall time of the power amplifier (PA).
     #[maybe_async::maybe_async]

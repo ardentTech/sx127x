@@ -3,7 +3,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::warn;
+use defmt::{info, warn};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
@@ -47,6 +47,13 @@ async fn main(spawner: Spawner) {
     sx127x.map_dio3::<CadDone>().await.unwrap();
 
     spawner.spawn(led_task(Output::new(p.PIN_9, Level::Low), Output::new(p.PIN_7, Level::Low)).unwrap());
+
+    info!("begin dump");
+    for i in 0x0..=0x70 {
+        let v = sx127x.spi.read(i).await.unwrap();
+        info!("0x{:x}: 0x{:x}", i, v);
+    }
+    info!("end dump");
 
     loop {
         sx127x.start_cad().await.unwrap();

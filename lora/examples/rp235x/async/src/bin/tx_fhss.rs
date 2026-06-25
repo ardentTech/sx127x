@@ -99,7 +99,7 @@ async fn main(_spawner: Spawner) {
     let spi_dev = SpiDevice::new(SPI_BUS.init(Mutex::new(spi)), cs);
     let mut config = fhss_config();
     config.frequency = FHSS_CHANNELS[0];
-    let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, config).await.unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).await.unwrap();
     sx127x.map_dio0::<TxDone>().await.unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().await.unwrap();

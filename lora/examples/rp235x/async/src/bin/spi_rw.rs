@@ -36,7 +36,7 @@ async fn main(_spawner: Spawner) {
 
     let mut config = ex_config();
     config.use_crc = false;
-    let mut sx127x = Sx127xLora::new(spi_dev, config).await.unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, config).await.unwrap();
 
     sx127x.set_crc(true).await.unwrap();
     assert!(sx127x.crc().await.unwrap());

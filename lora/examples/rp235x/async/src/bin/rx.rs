@@ -37,7 +37,7 @@ async fn main(spawner: Spawner) {
 
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
 
-    let mut sx127x = Sx127xLora::new(spi_dev, ex_config()).await.unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, ex_config()).await.unwrap();
     //sx127x.optimize_rx_response().await.unwrap();
     sx127x.map_dio0::<RxDone>().await.unwrap();
     spawner.spawn(led_task(Output::new(p.PIN_9, Level::Low), Output::new(p.PIN_7, Level::Low)).unwrap());

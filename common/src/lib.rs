@@ -15,6 +15,7 @@ pub const FXOSC_HZ: u32 = 32_000_000;
 pub const LF_MAX_HZ: u32 = 525_000_000;
 pub const HF_MIN_HZ: u32 = 779_000_000;
 
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Modem {
     Fsk = 0x0,
     LoRa = 0x1,

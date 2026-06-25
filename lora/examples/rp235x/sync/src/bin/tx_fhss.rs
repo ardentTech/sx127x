@@ -93,7 +93,7 @@ fn main() -> ! {
 
     let cs = pins.gpio13.into_push_pull_output_in_state(PinState::High);
     let spi_device = RefCellDevice::new(&spi_bus, cs, timer).unwrap();
-    let mut sx127x = Sx127xLora::new(spi_device, fhss_config()).unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_device, fhss_config()).unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).unwrap();
     sx127x.map_dio0::<TxDone>().unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().unwrap();

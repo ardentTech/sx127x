@@ -351,6 +351,7 @@ impl RxPacket {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Sx127xLoraConfig {
     /// Will automatically optimize for bandwidth, data rate and spurious rx response.
     pub auto_optimize: bool,
@@ -552,6 +553,7 @@ impl From<u8> for SpreadingFactor {
 }
 
 // -------------------------------------------------------------------------------------------------
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TimeoutSymbols(pub(crate) u16);
 
 impl TimeoutSymbols {

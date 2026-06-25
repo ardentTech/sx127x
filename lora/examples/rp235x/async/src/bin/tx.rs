@@ -40,7 +40,7 @@ async fn main(spawner: Spawner) {
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
     let mut dio3 = Input::new(p.PIN_18, Pull::Down);
 
-    let mut sx127x = Sx127xLora::new(spi_dev, ex_config()).await.unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, ex_config()).await.unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).await.unwrap();
 
     sx127x.map_dio0::<TxDone>().await.unwrap();

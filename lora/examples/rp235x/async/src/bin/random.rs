@@ -34,7 +34,7 @@ async fn main(spawner: Spawner) {
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 
-    let mut sx127x = Sx127xLora::new(spi_dev, ex_config()).await.unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, ex_config()).await.unwrap();
     sx127x.random().await.unwrap();
 
     loop {

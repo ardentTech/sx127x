@@ -88,7 +88,7 @@ fn main() -> ! {
 
     let cs = pins.gpio13.into_push_pull_output_in_state(PinState::High);
     let spi_device = RefCellDevice::new(&spi_bus, cs, timer).unwrap();
-    let mut sx127x = Sx127xLora::new(spi_device, fhss_config()).unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_device, fhss_config()).unwrap();
     sx127x.map_dio0::<RxDone>().unwrap();
     sx127x.map_dio1::<FhssChangeChannel>().unwrap();
     sx127x.set_hop_period(FREQ_HOP_PERIOD_MS).unwrap();

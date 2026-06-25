@@ -87,7 +87,7 @@ fn main() -> ! {
     let spi_device = RefCellDevice::new(&spi_bus, cs, timer).unwrap();
     let mut config = Sx127xLoraConfig::default();
     config.use_crc = false;
-    let mut sx127x = Sx127xLora::new(spi_device, config).unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_device, config).unwrap();
     sx127x.map_dio0::<RxDone>().unwrap();
 
     loop {

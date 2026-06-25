@@ -359,6 +359,7 @@ pub struct Sx127xLoraConfig {
     pub coding_rate: CodingRate,
     pub frequency: Hz,
     pub header_mode: HeaderMode,
+    pub invert_iq: bool,
     pub preamble_length: PreambleLength,
     pub spreading_factor: SpreadingFactor,
     pub sync_word: u8,
@@ -372,6 +373,7 @@ impl Sx127xLoraConfig {
         coding_rate: CodingRate,
         frequency: Hz,
         header_mode: HeaderMode,
+        invert_iq: bool,
         preamble_length: PreambleLength,
         spreading_factor: SpreadingFactor,
         sync_word: u8,
@@ -382,7 +384,7 @@ impl Sx127xLoraConfig {
             error!("SF6 requires implicit header mode");
             return Err(InvalidInput);
         }
-        Ok(Self { auto_optimize, bandwidth, coding_rate, frequency, header_mode, preamble_length, spreading_factor, sync_word, use_crc })
+        Ok(Self { auto_optimize, bandwidth, coding_rate, frequency, header_mode, invert_iq, preamble_length, spreading_factor, sync_word, use_crc })
     }
 }
 impl Default for Sx127xLoraConfig {
@@ -393,6 +395,7 @@ impl Default for Sx127xLoraConfig {
             coding_rate: CodingRate::default(),
             frequency: DEFAULT_FREQUENCY_HZ,
             header_mode: HeaderMode::default(),
+            invert_iq: false,
             preamble_length: PreambleLength::default(),
             spreading_factor: SpreadingFactor::default(),
             sync_word: SYNC_WORD_DEFAULT,

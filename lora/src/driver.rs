@@ -18,7 +18,7 @@ pub struct Sx127xLora<SPI> {
     pub spi: Sx127xSpi<SPI>
 }
 impl<SPI: SpiDevice> Sx127xLora<SPI> {
-    /// Initializes a new instance of the LoRa driver. This modifies no registers beyond enabling the LoRa modem.
+    /// Initializes a new instance of the LoRa driver. Beyond enabling the LoRa modem, this modifies no registers.
     #[maybe_async::maybe_async]
     pub async fn new(spi: SPI) -> Result<Sx127xLora<SPI>, Sx127xError<SPI::Error>> {
         #[cfg(feature = "defmt")]
@@ -40,7 +40,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         driver.verify_version().await?;
         driver.set_modem(Modem::LoRa).await?;
         driver.configure(config).await?;
-        // driver.set_invert_iq(false, false).await?; // TODO decide if this is necessary
         Ok(driver)
     }
 
@@ -417,7 +416,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(RxStatus::try_from(self.read(MODEM_STAT).await? & MODEM_STAT_MODEM_STATUS_MASK).map_err(|_| InvalidState)?)
     }
 
-    /// Sets cyclic redundancy check (CRC) generation and verification on rx/tx payloads on/off.
+    /// Sets cyclic redundancy check (CRC) generation and verification on/off.
     ///
     /// See: section 4.1.1.6
     #[maybe_async::maybe_async]
@@ -454,14 +453,15 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
 
     /// Sets the invert I and Q signals in the Rx or TX path.
     #[maybe_async::maybe_async]
-    pub async fn set_invert_iq(&mut self, rx: bool, tx: bool) -> Result<(), Sx127xError<SPI::Error>> {
+    pub async fn set_invert_iq(&mut self, on: bool) -> Result<(), Sx127xError<SPI::Error>> {
         #[cfg(feature = "defmt")]
-        debug!("Sx127xLora.set_invert_iq: {}, {}", rx, tx);
-        let mut byte = self.read(INVERT_IQ).await?; // bit 0 (tx path) appears to default to 1 instead of 0 as documented?
-        set_bits(&mut byte, rx as u8, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET);
-        set_bits(&mut byte, tx as u8, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET);
+        debug!("Sx127xLora.set_invert_iq: {}", on);
+        let mut byte = self.read(INVERT_IQ).await?;
+        set_bits(&mut byte, on as u8, INVERT_IQ_RX_MASK, INVERT_IQ_RX_OFFSET);
+        // see https://github.com/jgromes/RadioLib/issues/778
+        set_bits(&mut byte, !on as u8, INVERT_IQ_TX_MASK, INVERT_IQ_TX_OFFSET);
         self.write(INVERT_IQ, byte).await?;
-        self.write(INVERT_IQ_2, if rx || tx { INVERT_IQ_2_ON } else { INVERT_IQ_2_OFF }).await
+        self.write(INVERT_IQ_2, if on { INVERT_IQ_2_ON } else { INVERT_IQ_2_OFF }).await
     }
 
     /// Sets the gain and high frequency boost for the low noise receiver amplifier (LNA).
@@ -626,6 +626,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.set_coding_rate(config.coding_rate).await?;
         self.set_frequency(config.frequency).await?;
         self.set_header_mode(config.header_mode).await?;
+        self.set_invert_iq(config.invert_iq).await?;
         self.set_preamble_length(config.preamble_length).await?;
         self.set_spreading_factor(config.spreading_factor).await?;
         self.set_sync_word(config.sync_word).await?;

@@ -347,16 +347,21 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         #[cfg(feature = "defmt")]
         debug!("Sx127xLora.rx_packet");
         let reg_hop_channel = self.read(HOP_CHANNEL).await?;
-        let crc_on_payload = get_bits(reg_hop_channel, HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, HOP_CHANNEL_CRC_ON_PAYLOAD_OFFSET) == 1;
-
         let irq_flags_bits = self.read(IRQ_FLAGS).await? >> 4;
-        let mut rx_packet_termination_ok = irq_flags_bits & 0x8 == 0;
-        if crc_on_payload {
-            rx_packet_termination_ok = irq_flags_bits & 0x2 == 0;
+        #[cfg(feature = "defmt")]
+        debug!("irq_flags_bits: 0x{:x}", irq_flags_bits);
+
+        // if explicit header mode with CRC, check for CRC errors
+        if get_bits(reg_hop_channel, HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, HOP_CHANNEL_CRC_ON_PAYLOAD_OFFSET) == 1 {
+            if irq_flags_bits & 0x2 != 0 {
+                #[cfg(feature = "defmt")]
+                error!("Packet termination failed due to PayloadCrcError");
+                return Err(Sx127xError::PacketTermination)
+            }
         }
-        if !rx_packet_termination_ok {
+        if irq_flags_bits & 0x8 != 0 {
             #[cfg(feature = "defmt")]
-            error!("RX packet termination failed");
+            error!("Packet termination failed due to RxTimeout");
             return Err(Sx127xError::PacketTermination)
         }
 

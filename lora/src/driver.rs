@@ -351,7 +351,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         #[cfg(feature = "defmt")]
         debug!("irq_flags_bits: 0x{:x}", irq_flags_bits);
 
-        // if explicit header mode with CRC, check for CRC errors
         if get_bits(reg_hop_channel, HOP_CHANNEL_CRC_ON_PAYLOAD_MASK, HOP_CHANNEL_CRC_ON_PAYLOAD_OFFSET) == 1 {
             if irq_flags_bits & 0x2 != 0 {
                 #[cfg(feature = "defmt")]
@@ -368,8 +367,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let rx_fifo_addr = self.read(FIFO_RX_CURRENT_ADDR).await?;
         self.write(FIFO_ADDR_PTR, rx_fifo_addr).await?;
 
-        let num_bytes = self.read(RX_NB_BYTES).await?;
-        if num_bytes > PAYLOAD_SIZE as u8 {
+        let num_bytes = self.read(RX_NB_BYTES).await? as u16;
+        if num_bytes > PAYLOAD_SIZE as u16 {
             #[cfg(feature = "defmt")]
             error!("received {} bytes but buffer size is only {} bytes", num_bytes, PAYLOAD_SIZE);
             return Err(Sx127xError::InvalidPayloadLength)
@@ -505,7 +504,6 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
     pub async fn set_payload_length(&mut self, len: u8) -> Result<(), Sx127xError<SPI::Error>> {
         #[cfg(feature = "defmt")]
         debug!("Sx127xLora.set_payload_length: {}", len);
-
         self.write(PAYLOAD_LENGTH, len).await
     }
 
@@ -547,7 +545,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         Ok(calculate::symbol_rate(bandwidth.hz(), spreading_factor as u32) as u16)
     }
 
-    /// Transmits a `payload` of 128 bytes in full duplex mode, or 256 bytes in half duplex mode. Will transition to STDBY when done.
+    /// Transmits a `payload` of 128 bytes in full duplex mode, or 255 bytes in half duplex mode. Will transition to STDBY when done.
     ///
     /// See: datasheet figure 9
     #[maybe_async::maybe_async]

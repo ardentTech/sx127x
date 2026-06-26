@@ -48,13 +48,6 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(led_task(Output::new(p.PIN_9, Level::Low), Output::new(p.PIN_7, Level::Low)).unwrap());
 
-    info!("begin dump");
-    for i in 0x0..=0x70 {
-        let v = sx127x.spi.read(i).await.unwrap();
-        info!("0x{:x}: 0x{:x}", i, v);
-    }
-    info!("end dump");
-
     loop {
         sx127x.start_cad().await.unwrap();
         dio3.wait_for_high().await;

@@ -1607,17 +1607,14 @@ name = "sx127xlora-rp235x-async-half-duplex"
 version = "0.1.0"
 dependencies = [
  "cortex-m-rt",
- "critical-section",
  "defmt 1.1.0",
  "defmt-rtt",
  "embassy-embedded-hal",
  "embassy-executor",
- "embassy-futures",
  "embassy-rp",
  "embassy-sync",
  "embassy-time",
  "panic-probe",
- "static_cell",
  "sx127xlora",
 ]
 

@@ -5,7 +5,7 @@
 ### Cargo Features
 
 - `defmt`: include deferred formatting logging functionality
-- `half_duplex`: use the full data buffer size of 256 bytes for RX or TX, at the cost of full duplex RX and TX with 128 byte buffers.
+- `half_duplex`: use the full data buffer size of 255 bytes instead of full duplex with 128 byte buffers.
 - `sync`: modem sync implementation
 
 ### Roadmap

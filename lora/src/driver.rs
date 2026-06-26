@@ -500,6 +500,15 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         self.write(MODEM_CONFIG_3, byte).await
     }
 
+    /// Sets the payload length.
+    #[maybe_async::maybe_async]
+    pub async fn set_payload_length(&mut self, len: u8) -> Result<(), Sx127xError<SPI::Error>> {
+        #[cfg(feature = "defmt")]
+        debug!("Sx127xLora.set_payload_length: {}", len);
+
+        self.write(PAYLOAD_LENGTH, len).await
+    }
+
     /// Determines if low data rate optimization is necessary.
     ///
     /// See: datasheet page 31 section Low Data Rate Optimization
@@ -559,7 +568,7 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         for &byte in payload.iter().take(PAYLOAD_SIZE) {
             self.write(FIFO, byte).await?;
         }
-        self.write(PAYLOAD_LENGTH, payload_len as u8).await?;
+        self.set_payload_length(payload_len as u8).await?;
         self.set_device_mode(DeviceMode::TX).await
     }
 

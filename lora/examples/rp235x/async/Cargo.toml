@@ -57,6 +57,13 @@ doctest = false
 bench = false
 
 [[bin]]
+name = "rx_implicit"
+path = "src/bin/rx_implicit.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
 name = "spi_rw"
 path = "src/bin/spi_rw.rs"
 test = false
@@ -73,6 +80,13 @@ bench = false
 [[bin]]
 name = "tx_fhss"
 path = "src/bin/tx_fhss.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
+name = "tx_implicit"
+path = "src/bin/tx_implicit.rs"
 test = false
 doctest = false
 bench = false

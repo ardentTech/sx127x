@@ -1,5 +1,4 @@
-//! This example will echo whatever packet payload it receives. The green led will pulse on
-//! `RxDone` and the red led will pulse on `TxDone`.
+//! This example demonstrates RX with implicit header mode. The green led on GPIO 9 will pulse on success, or the red led on GPIO 7 will pulse on error.
 #![no_std]
 #![no_main]
 
@@ -14,9 +13,9 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{ex_config, led_task, Led, PULSE_LED};
+use common::{ex_config, implicit_config, led_task, Led, IMPLICIT_TX_PAYLOAD_LEN, PULSE_LED};
 use sx127xlora::driver::Sx127xLora;
-use sx127xlora::types::{RxDone, TxDone};
+use sx127xlora::types::RxDone;
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
@@ -36,25 +35,24 @@ async fn main(spawner: Spawner) {
 
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
 
-    let mut sx127x = Sx127xLora::new_with_config(spi_dev, ex_config()).await.unwrap();
-
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, implicit_config()).await.unwrap();
+    sx127x.map_dio0::<RxDone>().await.unwrap();
     spawner.spawn(led_task(Output::new(p.PIN_9, Level::Low), Output::new(p.PIN_7, Level::Low)).unwrap());
+    // must explicitly set payload len, error coding rate (config above) and payload CRC (config above) in implicit header mode
+    sx127x.set_payload_length(IMPLICIT_TX_PAYLOAD_LEN as u8).await.unwrap();
+    sx127x.rx(None).await.unwrap();
 
     loop {
-        sx127x.map_dio0::<RxDone>().await.unwrap();
-        sx127x.rx(None).await.unwrap();
         dio0.wait_for_high().await;
         sx127x.clear_interrupt::<RxDone>().await.unwrap();
         match sx127x.rx_packet().await {
             Ok(rxp) => {
+                let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
+                info!("rx payload: {:a}", rxp.payload[..len]);
+                info!("rx coding rate: {}, rssi: {} dBm, snr: {} dB", rxp.coding_rate, rxp.rssi, rxp.snr);
                 PULSE_LED.signal(Led::Green);
-                sx127x.map_dio0::<TxDone>().await.unwrap();
-                sx127x.tx(&rxp.payload).await.unwrap();
-                dio0.wait_for_high().await;
-                sx127x.clear_interrupt::<TxDone>().await.unwrap();
-                PULSE_LED.signal(Led::Red);
             }
-            Err(_) => error!("rx_packet() failed :(")
+            Err(_) => error!("rx_packet failed :(")
         }
     }
 }

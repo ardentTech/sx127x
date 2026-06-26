@@ -1,5 +1,5 @@
-//! This example demonstrates CAD and TX by checking for channel activity before transmitting a 128 byte payload. The green led on GPIO 9 will pulse on
-//! success, or the red led on GPIO 7 will pulse on error.
+//! This example demonstrates TX and implicit header mode with a 32 byte payload. The green led on GPIO 9 will pulse on success, or the red les on GPIO 7 will
+//! pulse on error.
 #![no_std]
 #![no_main]
 
@@ -15,9 +15,9 @@ use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{ex_config, led_task, Led, PULSE_LED, TX_PAYLOAD};
+use common::{ex_config, implicit_config, led_task, Led, IMPLICIT_TX_PAYLOAD_LEN, PULSE_LED, TX_PAYLOAD};
 use sx127xlora::driver::{Sx127xLora};
-use sx127xlora::types::{CadDetected, CadDone, PowerRamp, TxConfig, TxDone, OCP};
+use sx127xlora::types::{CadDetected, CadDone, HeaderMode, PowerRamp, Sx127xLoraConfig, TxConfig, TxDone, OCP};
 
 const TX_DELAY_MS: u64 = 3_000;
 
@@ -40,7 +40,7 @@ async fn main(spawner: Spawner) {
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
     let mut dio3 = Input::new(p.PIN_18, Pull::Down);
 
-    let mut sx127x = Sx127xLora::new_with_config(spi_dev, ex_config()).await.unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, implicit_config()).await.unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).await.unwrap();
 
     sx127x.map_dio0::<TxDone>().await.unwrap();
@@ -48,19 +48,12 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(led_task(Output::new(p.PIN_9, Level::Low), Output::new(p.PIN_7, Level::Low)).unwrap());
 
-    info!("begin dump");
-    for i in 0x0..=0x70 {
-        let v = sx127x.spi.read(i).await.unwrap();
-        info!("0x{:x}: 0x{:x}", i, v);
-    }
-    info!("end dump");
-
     loop {
         sx127x.start_cad().await.unwrap();
         dio3.wait_for_high().await;
 
         if !sx127x.interrupt_flag::<CadDetected>().await.unwrap() {
-            sx127x.tx(&TX_PAYLOAD).await.unwrap();
+            sx127x.tx(&TX_PAYLOAD[..IMPLICIT_TX_PAYLOAD_LEN]).await.unwrap();
 
             dio0.wait_for_high().await;
             sx127x.clear_interrupt::<TxDone>().await.unwrap();

@@ -18,9 +18,9 @@ use rp235x_hal::{Clock, pac};
 use rp235x_hal::fugit::RateExtU32;
 use rp235x_hal::gpio::{FunctionSpi};
 use rp235x_hal::gpio::Interrupt::EdgeHigh;
-use common::{pulse_led, Dio0, GreenLed, RedLed};
+use common::{base_config, pulse_led, Dio0, GreenLed, RedLed};
 use sx127xlora::driver::{Sx127xLora};
-use sx127xlora::types::{RxDone, Sx127xLoraConfig, TxDone};
+use sx127xlora::types::{RxDone, TxDone};
 // Provide an alias for our BSP so we can switch targets quickly.
 // Uncomment the BSP you included in Cargo.toml, the rest of the code does not need to change.
 // use some_bsp;
@@ -85,10 +85,26 @@ fn main() -> ! {
 
     let cs = pins.gpio13.into_push_pull_output_in_state(PinState::High);
     let spi_device = RefCellDevice::new(&spi_bus, cs, timer).unwrap();
-    let mut config = Sx127xLoraConfig::default();
-    config.use_crc = false;
-    let mut sx127x = Sx127xLora::new_with_config(spi_device, config).unwrap();
-    sx127x.map_dio0::<RxDone>().unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_device, base_config()).unwrap();
+
+    // Give away our pins by moving them into the `GLOBAL_PINS` variable.
+    // We won't need to access them in the main thread again
+    critical_section::with(|cs| {
+        DIO0.borrow(cs).replace(Some(dio0));
+    });
+
+    // Unmask the IRQ for I/O Bank 0 so that the RP2350's interrupt controller
+    // (NVIC in Arm mode, or Xh3irq in RISC-V mode) will jump to the interrupt
+    // function when the interrupt occurs. We do this last so that the interrupt
+    // can't go off while it is in the middle of being configured
+    unsafe {
+        hal::arch::interrupt_unmask(pac::Interrupt::IO_IRQ_BANK0);
+    }
+
+    // Enable interrupts on this core
+    unsafe {
+        hal::arch::interrupt_enable();
+    }
 
     loop {
         sx127x.map_dio0::<RxDone>().unwrap();
@@ -99,14 +115,13 @@ fn main() -> ! {
             DIO0_FLAG.store(false, Ordering::Relaxed);
             match sx127x.rx_packet() {
                 Ok(rxp) => {
-                    let len: usize = rxp.payload.iter().filter(|c| **c != 0).count();
                     pulse_led(&mut green_led, &mut delay);
-
                     sx127x.map_dio0::<TxDone>().unwrap();
                     sx127x.tx(&rxp.payload).unwrap();
                     wfi();
                     if DIO0_FLAG.load(Ordering::Relaxed) {
                         sx127x.clear_interrupt::<TxDone>().unwrap();
+                        info!("TxDone cleared");
                         pulse_led(&mut red_led, &mut delay);
                         DIO0_FLAG.store(false, Ordering::Relaxed);
                     }

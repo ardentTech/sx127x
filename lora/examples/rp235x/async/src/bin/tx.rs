@@ -3,7 +3,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::{info, warn};
+use defmt::warn;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
@@ -15,7 +15,7 @@ use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{ex_config, led_task, Led, PULSE_LED, TX_PAYLOAD};
+use common::{base_config, led_task, Led, PULSE_LED, TX_PAYLOAD};
 use sx127xlora::driver::{Sx127xLora};
 use sx127xlora::types::{CadDetected, CadDone, PowerRamp, TxConfig, TxDone, OCP};
 
@@ -40,7 +40,7 @@ async fn main(spawner: Spawner) {
     let mut dio0 = Input::new(p.PIN_15, Pull::Down);
     let mut dio3 = Input::new(p.PIN_18, Pull::Down);
 
-    let mut sx127x = Sx127xLora::new_with_config(spi_dev, ex_config()).await.unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, base_config()).await.unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).await.unwrap();
 
     sx127x.map_dio0::<TxDone>().await.unwrap();

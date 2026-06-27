@@ -19,7 +19,7 @@ use rp235x_hal::Clock;
 use rp235x_hal::fugit::RateExtU32;
 use rp235x_hal::gpio::FunctionSpi;
 use rp235x_hal::gpio::Interrupt::EdgeHigh;
-use common::{fhss_config, pulse_led, Dio0, Dio1, GreenLed, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS, TX_PAYLOAD};
+use common::{fhss_config, pulse_led, Dio0, Dio1, GreenLed, FHSS_CHANNELS, FHSS_CHANNELS_SIZE, FREQ_HOP_PERIOD_MS};
 use sx127xlora::driver::Sx127xLora;
 use sx127xlora::types::{FhssChangeChannel, RxDone};
 // Provide an alias for our BSP so we can switch targets quickly.

@@ -13,7 +13,7 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{ex_config, implicit_config, led_task, Led, IMPLICIT_TX_PAYLOAD_LEN, PULSE_LED};
+use common::{implicit_config, led_task, Led, IMPLICIT_TX_PAYLOAD_LEN, PULSE_LED};
 use sx127xlora::driver::Sx127xLora;
 use sx127xlora::types::RxDone;
 

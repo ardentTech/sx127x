@@ -119,6 +119,7 @@ fn main() -> ! {
     unsafe {
         hal::arch::interrupt_enable();
     }
+    info!("waiting for btn press");
 
     loop {
         wfi();

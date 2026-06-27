@@ -3,7 +3,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::{info, warn};
+use defmt::{warn};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
@@ -15,9 +15,9 @@ use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{ex_config, implicit_config, led_task, Led, IMPLICIT_TX_PAYLOAD_LEN, PULSE_LED, TX_PAYLOAD};
-use sx127xlora::driver::{Sx127xLora};
-use sx127xlora::types::{CadDetected, CadDone, HeaderMode, PowerRamp, Sx127xLoraConfig, TxConfig, TxDone, OCP};
+use common::{implicit_config, led_task, Led, IMPLICIT_TX_PAYLOAD_LEN, PULSE_LED, TX_PAYLOAD};
+use sx127xlora::driver::Sx127xLora;
+use sx127xlora::types::{CadDetected, CadDone, PowerRamp, TxConfig, TxDone, OCP};
 
 const TX_DELAY_MS: u64 = 3_000;
 

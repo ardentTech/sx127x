@@ -19,9 +19,9 @@ use rp235x_hal::Clock;
 use rp235x_hal::fugit::RateExtU32;
 use rp235x_hal::gpio::{FunctionSpi};
 use rp235x_hal::gpio::Interrupt::EdgeHigh;
-use common::{pulse_led, Dio0, Dio3, GreenLed, RedLed, LORA_FREQUENCY_HZ, TX_PAYLOAD};
+use common::{base_config, pulse_led, Dio0, Dio3, GreenLed, RedLed, TX_PAYLOAD};
 use sx127xlora::driver::Sx127xLora;
-use sx127xlora::types::{CadDetected, CadDone, PowerRamp, Sx127xLoraConfig, TxConfig, TxDone, OCP};
+use sx127xlora::types::{CadDetected, CadDone, PowerRamp, TxConfig, TxDone, OCP};
 // Provide an alias for our BSP so we can switch targets quickly.
 // Uncomment the BSP you included in Cargo.toml, the rest of the code does not need to change.
 // use some_bsp;
@@ -90,9 +90,7 @@ fn main() -> ! {
 
     let cs = pins.gpio13.into_push_pull_output_in_state(PinState::High);
     let spi_device = RefCellDevice::new(&spi_bus, cs, timer).unwrap();
-    let mut config = Sx127xLoraConfig::default();
-    config.frequency = LORA_FREQUENCY_HZ;
-    let mut sx127x = Sx127xLora::new_with_config(spi_device, config).unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_device, base_config()).unwrap();
     sx127x.configure_tx(TxConfig::new(OCP::default(), 20, PowerRamp::default(), false).unwrap()).unwrap();
     sx127x.map_dio0::<TxDone>().unwrap();
     sx127x.map_dio3::<CadDone>().unwrap();

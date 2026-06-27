@@ -14,16 +14,15 @@ use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 #[allow(unused_imports)]
 use {defmt_rtt as _, panic_probe as _};
-use common::{ex_config, led_task};
+use common::base_config;
 use sx127xlora::driver::{Sx127xLora};
-use sx127xlora::types::{CadDone, PowerRamp, TxConfig, TxDone, OCP};
 
 bind_interrupts!(struct Irqs {
     DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
 });
 
 #[embassy_executor::main]
-async fn main(spawner: Spawner) {
+async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
     let miso = p.PIN_12;
     let mosi = p.PIN_11;
@@ -34,7 +33,7 @@ async fn main(spawner: Spawner) {
     let spi_bus: Mutex<NoopRawMutex, Spi<SPI1, Async>> = Mutex::new(spi);
     let spi_dev = SpiDevice::new(&spi_bus, cs);
 
-    let mut sx127x = Sx127xLora::new_with_config(spi_dev, ex_config()).await.unwrap();
+    let mut sx127x = Sx127xLora::new_with_config(spi_dev, base_config()).await.unwrap();
     sx127x.random().await.unwrap();
 
     loop {

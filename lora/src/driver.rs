@@ -367,8 +367,8 @@ impl<SPI: SpiDevice> Sx127xLora<SPI> {
         let rx_fifo_addr = self.read(FIFO_RX_CURRENT_ADDR).await?;
         self.write(FIFO_ADDR_PTR, rx_fifo_addr).await?;
 
-        let num_bytes = self.read(RX_NB_BYTES).await? as u16;
-        if num_bytes > PAYLOAD_SIZE as u16 {
+        let num_bytes = self.read(RX_NB_BYTES).await?;
+        if num_bytes > PAYLOAD_SIZE as u8 {
             #[cfg(feature = "defmt")]
             error!("received {} bytes but buffer size is only {} bytes", num_bytes, PAYLOAD_SIZE);
             return Err(Sx127xError::InvalidPayloadLength)

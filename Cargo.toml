@@ -22,7 +22,7 @@ embassy-sync = "0.8.0"
 embassy-time = "0.5.1"
 maybe-async = "0.2"
 panic-probe = "1.0.0"
-sx127x-common = "0.4.1"
+sx127x-common = "0.5.0"
 
 [workspace.dependencies.defmt]
 version = "1.0.1"

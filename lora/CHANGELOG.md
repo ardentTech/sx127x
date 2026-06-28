@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.2.0
+
 ### Added
 
+- `async` examples
+- `async_half_duplex` examples
+- `sync` examples
 - `crc` getter
-- `half_duplex` example
 - `random` method
 
 ### Changed

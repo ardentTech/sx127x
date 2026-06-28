@@ -1547,13 +1547,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "sx127x-common"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "633f09d9a5a80fb8aef46c60b2b70ae3d368722c6d783f8a61d6ab0ee2b06cf4"
+dependencies = [
+ "defmt 1.1.0",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "maybe-async",
+]
+
+[[package]]
 name = "sx127xfsk"
 version = "0.1.0"
 dependencies = [
  "approx",
  "defmt 1.1.0",
  "maybe-async",
- "sx127x-common",
+ "sx127x-common 0.5.0",
 ]
 
 [[package]]
@@ -1575,14 +1587,14 @@ dependencies = [
 
 [[package]]
 name = "sx127xlora"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "approx",
  "defmt 1.1.0",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "maybe-async",
- "sx127x-common",
+ "sx127x-common 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
